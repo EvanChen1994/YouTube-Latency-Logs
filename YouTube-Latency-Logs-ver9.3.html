@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Youtube_Live_LagLogger ver 9.3</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
+    header { padding: 12px 14px; background:#0f1620; position: sticky; top:0; z-index:10; border-bottom:1px solid #1d2a3a; }
+    header h1 { margin:0; font-size:16px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .ver { font-size:12px; color:#a9b8cc; border:1px solid #2a3c55; padding:2px 8px; border-radius:999px; background:#0b0f14; }
+    .wrap { padding: 12px 14px; display:flex; flex-direction:column; gap:12px; }
+    .card { background:#0f1620; border:1px solid #1d2a3a; border-radius:12px; padding:12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    label { font-size:12px; color:#a9b8cc; }
+    input[type="text"], input[type="number"] {
+      width: 100%; box-sizing:border-box;
+      padding:10px 10px; border-radius:10px;
+      border:1px solid #223247; background:#0b0f14; color:#e8eef7;
+      outline:none;
+    }
+    input[type="number"] { max-width: 280px; }
+    button {
+      padding:10px 12px; border-radius:10px;
+      border:1px solid #2a3c55; background:#162235; color:#e8eef7;
+      font-weight:700;
+    }
+    button:disabled { opacity:.45; }
+    .btn-bg { border-color:#3a5aa0; background:#1a2a4a; }
+    .btn-bg.on { border-color:#2d6a4f; background:#163a2b; }
+    .muted { color:#a9b8cc; font-size:12px; line-height:1.55; }
+    .kv { display:grid; grid-template-columns: 190px 1fr; gap:6px 10px; font-size:12px; }
+    .kv div:nth-child(odd) { color:#a9b8cc; }
+    #playerWrap { aspect-ratio: 16/9; width:100%; background:#000; border-radius:12px; overflow:hidden; border:1px solid #1d2a3a; }
+    #player { width:100%; height:100%; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    th, td { border-bottom:1px solid #1d2a3a; padding:8px 6px; vertical-align:top; }
+    th { text-align:left; color:#a9b8cc; font-weight:700; background:#0d141e; position: sticky; top: 56px; z-index:5; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2a3c55; background:#0b0f14; font-size:12px; }
+    .ok { border-color:#2d6a4f; color:#d8f3dc; }
+    .warn { border-color:#9c6644; color:#ffe8d6; }
+    .small { font-size:11px; color:#a9b8cc; }
+    .note { width:100%; min-height:40px; resize:vertical; box-sizing:border-box; padding:8px; border-radius:10px; border:1px solid #223247; background:#0b0f14; color:#e8eef7; }
+    .footerSpace { height: 24px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>
+    Youtube_Live_LagLogger ver 9.3
+    <span class="ver">UTC+08:00 / ms / 兩層追直播：層1保守(門檻/冷卻)＋層2 lag結束立刻追 / GPS 1秒抓不到用lastGeo(註記)</span>
+  </h1>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="row">
+      <div style="flex:1; min-width:260px;">
+        <label>YouTube 直播網址 / Video ID</label>
+        <input id="inpUrl" type="text" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>LAG 判定(ms)（只記錄 >=；BUFFERING 或 STALL 都用此門檻）</label>
+        <input id="inpLagMs" type="number" min="0" step="100" value="5000" />
+      </div>
+      <div>
+        <label>追直播門檻(ms)（層1：落後 >= 就追）</label>
+        <input id="inpCatchMs" type="number" min="0" step="100" value="4500" />
+      </div>
+      <div>
+        <label>回復門檻(ms)（層1：落後 <= 才再允許追）</label>
+        <input id="inpRearmMs" type="number" min="0" step="100" value="1500" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>取樣間隔(ms)</label>
+        <input id="inpSampleMs" type="number" min="500" step="100" value="3000" />
+      </div>
+      <div>
+        <label>追直播冷卻(ms)（層1）</label>
+        <input id="inpCooldownMs" type="number" min="0" step="500" value="15000" />
+      </div>
+      <div>
+        <label>追直播防抖(ms)（進入PLAYING後等待；層1）</label>
+        <input id="inpDebounceMs" type="number" min="0" step="100" value="2000" />
+      </div>
+      <div>
+        <label>安全距離(ms)（seek 到 duration-安全距離；更穩）</label>
+        <input id="inpSafetyMs" type="number" min="0" step="50" value="1500" />
+      </div>
+      <div>
+        <label>最大允許落後(ms)（層1：>= 就強制追）</label>
+        <input id="inpMaxBehindMs" type="number" min="0" step="500" value="7000" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px; align-items:center;">
+      <button id="btnBg" class="btn-bg">背景執行：OFF</button>
+      <button id="btnLoad">載入/播放</button>
+      <button id="btnReset">恢復預設</button>
+      <button id="btnClear">清空事件</button>
+      <button id="btnExport" disabled>匯出 CSV</button>
+    </div>
+
+    <div style="margin-top:10px;" class="kv">
+      <div>Video ID</div><div id="stVid" class="mono">-</div>
+      <div>狀態(state)</div><div id="stState">-</div>
+      <div>落後(ms)</div><div id="stBehind">-</div>
+      <div>取樣(上次)</div><div id="stBehindTs">-</div>
+      <div>追直播(上次)</div><div id="stCatchupTs">-</div>
+      <div>追直播狀態</div><div id="stCatchArmed">ARMED</div>
+      <div>LAG/STALL</div><div id="stStall">-</div>
+      <div>GPS</div><div id="stGps">未授權</div>
+      <div>背景模式</div><div id="stBg">OFF</div>
+      <div>時間時區</div><div class="mono">UTC+08:00（台灣時間）</div>
+    </div>
+
+    <div class="muted" style="margin-top:8px;">
+      ✅ 兩層策略：<br/>
+      - <b>層1（保守維持Live）</b>：只有落後 >=「追直播門檻」或 >=「最大允許落後」才追，且受冷卻/防抖/回復門檻管控。<br/>
+      - <b>層2（lag結束立刻追）</b>：當 lag 結束（resume）且已完成記錄後，立刻追一次到最新（不受層1冷卻與armed限制），確保永遠回到直播中。<br/>
+      ✅ lag 期間不追，避免污染 lag_event。
+    </div>
+  </div>
+
+  <div id="playerWrap">
+    <div id="player"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div>
+        <span class="pill" id="pillReady">Player: Not Ready</span>
+        <span class="pill" id="pillLag">LAG Events: <span id="countLag">0</span></span>
+        <span class="pill" id="pillLog">Event Log: <span id="countLog">0</span></span>
+      </div>
+      <div class="small">最新事件在最上方</div>
+    </div>
+
+    <div style="margin-top:10px; overflow:auto; max-height: 46vh;">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:120px;">event</th>
+            <th style="min-width:210px;">time_tw</th>
+            <th style="min-width:110px;">lag_ms</th>
+            <th style="min-width:210px;">watch_start_tw</th>
+            <th style="min-width:210px;">lag_start_tw</th>
+            <th style="min-width:210px;">resume_tw</th>
+            <th style="min-width:150px;">ct/du start</th>
+            <th style="min-width:150px;">ct/du resume</th>
+            <th style="min-width:140px;">behind start/resume</th>
+            <th style="min-width:190px;">gps</th>
+            <th style="min-width:260px;">note</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footerSpace"></div>
+</div>
+
+<script>
+const LS_KEYS = {
+  url: "ytlag_url",
+  lag: "ytlag_lag_ms",
+  catch: "ytlag_catch_ms",
+  rearm: "ytlag_rearm_ms",
+  sample: "ytlag_sample_ms",
+  cooldown: "ytlag_cooldown_ms",
+  debounce: "ytlag_debounce_ms",
+  safety: "ytlag_safety_ms",
+  maxBehind: "ytlag_maxbehind_ms",
+  bg: "ytlag_bg_mode"
+};
+
+// ✅ ver 9（兩層追直播）保守預設：主抓 >=5秒 lag，又能保持接近live
+const DEFAULTS_V9 = {
+  url: "https://www.youtube.com/live/KyT4qSK8lJo?si=GudVcyxFxRcNfcqd",
+  lagMs: 5000,
+  catchMs: 4500,
+  rearmMs: 1500,
+  sampleMs: 3000,
+  cooldownMs: 15000,
+  debounceMs: 2000,
+  safetyMs: 1500,
+  maxBehindMs: 7000,
+  bgMode: false
+};
+
+// 層2：lag結束後立即追的最小間隔（避免同一波狀態抖動造成連續觸發）
+const AFTER_LAG_FORCE_GUARD_MS = 2000;
+
+const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
+function nowTwIso(ms = Date.now()) {
+  const d = new Date(ms + TZ_OFFSET_MS);
+  return d.toISOString().replace("Z", "+08:00");
+}
+
+function computeBehindMs(ct, du) { if (ct == null || du == null) return null; return Math.round((du - ct) * 1000); }
+function clamp0(n) { return (n == null || !Number.isFinite(n)) ? null : Math.max(0, n); }
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+function getMs(el, fallback) {
+  const n = Number(el.value);
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+}
+
+const inpUrl = document.getElementById("inpUrl");
+const inpLagMs = document.getElementById("inpLagMs");
+const inpCatchMs = document.getElementById("inpCatchMs");
+const inpRearmMs = document.getElementById("inpRearmMs");
+const inpSampleMs = document.getElementById("inpSampleMs");
+const inpCooldownMs = document.getElementById("inpCooldownMs");
+const inpDebounceMs = document.getElementById("inpDebounceMs");
+const inpSafetyMs = document.getElementById("inpSafetyMs");
+const inpMaxBehindMs = document.getElementById("inpMaxBehindMs");
+
+const btnBg = document.getElementById("btnBg");
+const btnLoad = document.getElementById("btnLoad");
+const btnReset = document.getElementById("btnReset");
+const btnClear = document.getElementById("btnClear");
+const btnExport = document.getElementById("btnExport");
+
+const stVid = document.getElementById("stVid");
+const stState = document.getElementById("stState");
+const stBehind = document.getElementById("stBehind");
+const stGps = document.getElementById("stGps");
+const stBg = document.getElementById("stBg");
+const stBehindTs = document.getElementById("stBehindTs");
+const stCatchupTs = document.getElementById("stCatchupTs");
+const stCatchArmed = document.getElementById("stCatchArmed");
+const stStall = document.getElementById("stStall");
+
+const pillReady = document.getElementById("pillReady");
+const countLag = document.getElementById("countLag");
+const countLog = document.getElementById("countLog");
+const tbody = document.getElementById("tbody");
+
+let player = null;
+let playerReady = false;
+let currentVideoId = "";
+let pendingVideoId = null;
+
+let watchStartUtcMs = null;
+let playedOnceEver = false;
+
+let lagActive = false;
+let lagMode = "";
+let lagStartUtcMs = null;
+let lagStartCt = null;
+let lagStartDu = null;
+
+let geoWatchId = null;
+let lastGeo = null;
+
+let rows = [];
+
+let lastBehindMs = null;
+let lastBehindAtUtcMs = null;
+
+// 層1：catch-up control
+let lastCatchupUtcMs = null;
+let lastPlayingEnterUtcMs = null;
+let catchArmed = true;
+
+// 層2：lag結束立刻追 guard
+let lastAfterLagForceUtcMs = null;
+
+// bg mode
+let bgMode = false;
+let wakeLock = null;
+
+// timers
+let tickTimer = null;
+let stallTimer = null;
+
+// conservative STALL detector
+const STALL_POLL_MS = 500;
+const STALL_EPSILON_SEC = 0.25;
+const BEHIND_NOISE_TOL_MS = 150;
+
+let stallAccumMs = 0;
+let stallLastCt = null;
+let stallLastBehindMs = null;
+
+function getConfig() {
+  const lagThrMs = getMs(inpLagMs, DEFAULTS_V9.lagMs);
+  const catchThrMs = getMs(inpCatchMs, DEFAULTS_V9.catchMs);
+  const rearmMs = getMs(inpRearmMs, DEFAULTS_V9.rearmMs);
+  const sampleMs = Math.max(500, getMs(inpSampleMs, DEFAULTS_V9.sampleMs));
+  const cooldownMs = getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs);
+  const debounceMs = getMs(inpDebounceMs, DEFAULTS_V9.debounceMs);
+  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safetyMs));
+  const maxBehindMs = getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs);
+  return { lagThrMs, catchThrMs, rearmMs, sampleMs, cooldownMs, debounceMs, safetyMs, maxBehindMs };
+}
+
+function loadSettings() {
+  inpUrl.value = localStorage.getItem(LS_KEYS.url) || DEFAULTS_V9.url;
+
+  inpLagMs.value      = String(Number(localStorage.getItem(LS_KEYS.lag)      || DEFAULTS_V9.lagMs));
+  inpCatchMs.value    = String(Number(localStorage.getItem(LS_KEYS.catch)    || DEFAULTS_V9.catchMs));
+  inpRearmMs.value    = String(Number(localStorage.getItem(LS_KEYS.rearm)    || DEFAULTS_V9.rearmMs));
+  inpSampleMs.value   = String(Number(localStorage.getItem(LS_KEYS.sample)   || DEFAULTS_V9.sampleMs));
+  inpCooldownMs.value = String(Number(localStorage.getItem(LS_KEYS.cooldown) || DEFAULTS_V9.cooldownMs));
+  inpDebounceMs.value = String(Number(localStorage.getItem(LS_KEYS.debounce) || DEFAULTS_V9.debounceMs));
+  inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS_V9.safetyMs));
+  inpMaxBehindMs.value= String(Number(localStorage.getItem(LS_KEYS.maxBehind)|| DEFAULTS_V9.maxBehindMs));
+
+  bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS_V9.bgMode ? "1" : "0")) === "1";
+  applyBgUi();
+  restartTick();
+  restartStallDetector();
+}
+
+function saveSettings() {
+  localStorage.setItem(LS_KEYS.url, inpUrl.value.trim());
+  localStorage.setItem(LS_KEYS.lag, String(getMs(inpLagMs, DEFAULTS_V9.lagMs)));
+  localStorage.setItem(LS_KEYS.catch, String(getMs(inpCatchMs, DEFAULTS_V9.catchMs)));
+  localStorage.setItem(LS_KEYS.rearm, String(getMs(inpRearmMs, DEFAULTS_V9.rearmMs)));
+  localStorage.setItem(LS_KEYS.sample, String(getMs(inpSampleMs, DEFAULTS_V9.sampleMs)));
+  localStorage.setItem(LS_KEYS.cooldown, String(getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs)));
+  localStorage.setItem(LS_KEYS.debounce, String(getMs(inpDebounceMs, DEFAULTS_V9.debounceMs)));
+  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safetyMs)));
+  localStorage.setItem(LS_KEYS.maxBehind, String(getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs)));
+  localStorage.setItem(LS_KEYS.bg, bgMode ? "1" : "0");
+}
+
+function parseVideoId(input) {
+  const s = (input || "").trim();
+  if (!s) return "";
+  if (!s.includes("http") && /^[A-Za-z0-9_-]{11,20}$/.test(s)) return s;
+
+  let url;
+  try { url = new URL(s); }
+  catch {
+    try { url = new URL("https://" + s); }
+    catch { return ""; }
+  }
+
+  const host = (url.hostname || "").toLowerCase();
+  const path = (url.pathname || "").replace(/\/+$/, "");
+  const seg = path.split("/").filter(Boolean);
+
+  if (host === "youtu.be" || host.endsWith(".youtu.be")) {
+    const id = seg[0] || "";
+    return /^[A-Za-z0-9_-]{11,20}$/.test(id) ? id : "";
+  }
+
+  const isYoutube = host.includes("youtube.com") || host.includes("youtube-nocookie.com") || host.includes("m.youtube.com");
+  if (!isYoutube) return "";
+
+  const v = url.searchParams.get("v");
+  if (v && /^[A-Za-z0-9_-]{11,20}$/.test(v)) return v;
+
+  if (seg.length >= 2 && seg[0].toLowerCase() === "live")   return /^[A-Za-z0-9_-]{11,20}$/.test(seg[1]) ? seg[1] : "";
+  if (seg.length >= 2 && seg[0].toLowerCase() === "embed")  return /^[A-Za-z0-9_-]{11,20}$/.test(seg[1]) ? seg[1] : "";
+  if (seg.length >= 2 && seg[0].toLowerCase() === "shorts") return /^[A-Za-z0-9_-]{11,20}$/.test(seg[1]) ? seg[1] : "";
+  if (seg.length >= 2 && seg[0].toLowerCase() === "v")      return /^[A-Za-z0-9_-]{11,20}$/.test(seg[1]) ? seg[1] : "";
+
+  if (seg.length >= 1) {
+    const last = seg[seg.length - 1];
+    if (/^[A-Za-z0-9_-]{11,20}$/.test(last)) return last;
+  }
+  return "";
+}
+
+async function ensureGeo() {
+  if (!navigator.geolocation) { stGps.textContent = "此瀏覽器不支援定位"; return false; }
+  return true;
+}
+
+function startGeoWatch() {
+  if (!navigator.geolocation || geoWatchId != null) return;
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      lastGeo = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, tUtcMs: Date.now() };
+      stGps.textContent = `${lastGeo.lat.toFixed(6)}, ${lastGeo.lon.toFixed(6)} (±${Math.round(lastGeo.acc)}m)`;
+    },
+    (err) => { stGps.textContent = `定位失敗：${err.message || err.code}`; },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
+  );
+}
+
+function getFreshGeoOnce({ timeoutMs = 1000, highAccuracy = true } = {}) {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude,
+        acc: pos.coords.accuracy,
+        tUtcMs: Date.now()
+      }),
+      () => resolve(null),
+      { enableHighAccuracy: highAccuracy, maximumAge: 0, timeout: timeoutMs }
+    );
+  });
+}
+
+function safeGetCurrentTime() { try { return player ? Number(player.getCurrentTime()) : null; } catch { return null; } }
+function safeGetDuration()    { try { return player ? Number(player.getDuration()) : null; } catch { return null; } }
+function safeGetPlayerState() { try { return player && typeof player.getPlayerState === "function" ? player.getPlayerState() : null; } catch { return null; } }
+
+function snapshotCtDuBehind() {
+  const ct = safeGetCurrentTime();
+  const du = safeGetDuration();
+  const behindMs = clamp0(computeBehindMs(ct, du));
+  return { ct, du, behindMs };
+}
+
+async function resolveGeoForEvent() {
+  const fresh = await getFreshGeoOnce({ timeoutMs: 1000, highAccuracy: true });
+  if (fresh) return { geo: fresh, gpsType: "getCurrentPosition" };
+  if (lastGeo) return { geo: lastGeo, gpsType: "lastGeo" };
+  return { geo: null, gpsType: "none" };
+}
+
+function addRow(partial) {
+  const r = {
+    event: partial.event || "",
+    timeTw: partial.timeTw || nowTwIso(),
+    lagMs: partial.lagMs ?? "",
+    lagMode: partial.lagMode ?? "",
+
+    watchStartTw: partial.watchStartTw || (watchStartUtcMs ? nowTwIso(watchStartUtcMs) : ""),
+    lagStartTw: partial.lagStartTw || "",
+    resumeTw: partial.resumeTw || "",
+
+    // 這兩欄原本叫 start/resume：我們維持欄位名，但所有 event 都能用它們記錄「當下 ct/du」
+    ctStart: partial.ctStart ?? "",
+    duStart: partial.duStart ?? "",
+    ctResume: partial.ctResume ?? "",
+    duResume: partial.duResume ?? "",
+
+    behindStartMs: partial.behindStartMs ?? "",
+    behindResumeMs: partial.behindResumeMs ?? "",
+
+    lat: partial.lat ?? (lastGeo?.lat ?? ""),
+    lon: partial.lon ?? (lastGeo?.lon ?? ""),
+    acc: partial.acc ?? (lastGeo?.acc ?? ""),
+    gpsType: partial.gpsType ?? "",
+
+    note: partial.note || ""
+  };
+  rows.unshift(r);
+  render();
+}
+window._setNote = (idx, v) => { if (rows[idx]) rows[idx].note = v; };
+
+function render() {
+  const lagCount = rows.filter(r => r.event === "lag_event").length;
+  countLag.textContent = String(lagCount);
+  countLog.textContent = String(rows.length);
+  btnExport.disabled = rows.length === 0;
+
+  if (lagActive) stCatchArmed.textContent = "PAUSED (LAG)";
+  else stCatchArmed.textContent = catchArmed ? "ARMED" : "DISARMED";
+
+  stStall.textContent = lagActive ? `LAG(${lagMode})` : (stallAccumMs > 0 ? `STALL_ACCUM=${stallAccumMs}ms` : "-");
+
+  tbody.innerHTML = rows.map((r, idx) => {
+    const gps = (r.lat !== "" && r.lon !== "")
+      ? `${Number(r.lat).toFixed(6)}, ${Number(r.lon).toFixed(6)} ±${Math.round(Number(r.acc||0))}m`
+      : "";
+    const ctduStart = (r.ctStart !== "" && r.duStart !== "") ? `${Number(r.ctStart).toFixed(2)}/${Number(r.duStart).toFixed(2)}` : "";
+    const ctduResume = (r.ctResume !== "" && r.duResume !== "") ? `${Number(r.ctResume).toFixed(2)}/${Number(r.duResume).toFixed(2)}` : "";
+    const behindPair = `${r.behindStartMs !== "" ? r.behindStartMs : ""}${(r.behindStartMs!==""||r.behindResumeMs!=="") ? " / " : ""}${r.behindResumeMs !== "" ? r.behindResumeMs : ""}`;
+    const pillCls = (r.event === "lag_event" || r.event === "lag_start") ? "warn" : "ok";
+
+    const gpsTag = r.gpsType ? ` [${r.gpsType}]` : "";
+    const noteWithGps = (r.note || "") + (gpsTag && (r.note || "").indexOf("gpsType=") >= 0 ? "" : (gpsTag ? "" : ""));
+
+    return `
+      <tr>
+        <td><span class="pill ${pillCls}">${escapeHtml(r.event)}</span></td>
+        <td>${escapeHtml(r.timeTw)}</td>
+        <td>${escapeHtml(String(r.lagMs ?? ""))}</td>
+        <td>${escapeHtml(r.watchStartTw)}</td>
+        <td>${escapeHtml(r.lagStartTw)}</td>
+        <td>${escapeHtml(r.resumeTw)}</td>
+        <td>${escapeHtml(ctduStart)}</td>
+        <td>${escapeHtml(ctduResume)}</td>
+        <td>${escapeHtml(behindPair)}</td>
+        <td>${escapeHtml(gps)}${escapeHtml(gpsTag)}</td>
+        <td>
+          <textarea class="note" placeholder="可輸入備註（會寫入CSV）" oninput="window._setNote(${idx}, this.value)">${escapeHtml(r.note||"")}</textarea>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function csvCell(v) {
+  const s = (v == null) ? "" : String(v);
+  if (/[,"\n\r]/.test(s)) return `"${s.replaceAll('"','""')}"`;
+  return s;
+}
+
+function exportCsv() {
+  const cfg = getConfig();
+  const header = [
+    "event","time_tw",
+    "watch_start_tw","lag_start_tw","resume_tw",
+    "lag_ms","lag_mode",
+    "player_ct_sec","player_du_sec","behind_ms_at_start",
+    "resume_ct_sec","resume_du_sec","behind_ms_at_resume",
+    "lat","lon","accuracy_m","gps_type",
+    "video_id","source",
+    "lag_threshold_ms","catch_threshold_ms","rearm_threshold_ms",
+    "sample_interval_ms","catchup_cooldown_ms","catchup_debounce_ms",
+    "safety_ms","max_allowed_behind_ms",
+    "note"
+  ];
+  const source = inpUrl.value.trim();
+  const vid = currentVideoId || "";
+  const lines = [header.join(",")];
+
+  for (const r of rows.slice().reverse()) {
+    lines.push([
+      r.event, r.timeTw,
+      r.watchStartTw, r.lagStartTw, r.resumeTw,
+      r.lagMs, r.lagMode,
+      r.ctStart, r.duStart, r.behindStartMs,
+      r.ctResume, r.duResume, r.behindResumeMs,
+      r.lat, r.lon, r.acc, r.gpsType,
+      vid, source,
+      cfg.lagThrMs, cfg.catchThrMs, cfg.rearmMs,
+      cfg.sampleMs, cfg.cooldownMs, cfg.debounceMs,
+      cfg.safetyMs, cfg.maxBehindMs,
+      r.note || ""
+    ].map(csvCell).join(","));
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const ts = nowTwIso().replace(/[:.]/g, "-");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `yt_lag_${vid || "unknown"}_${ts}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+let ytApiPromise = null;
+function loadYTApiOnce() {
+  if (window.YT && window.YT.Player) return Promise.resolve();
+  if (ytApiPromise) return ytApiPromise;
+
+  ytApiPromise = new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    tag.onerror = () => reject(new Error("Failed to load YouTube IFrame API"));
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => resolve();
+    setTimeout(() => reject(new Error("YT API timeout")), 20000);
+  });
+  return ytApiPromise;
+}
+
+function markWatchStartIfNeeded() {
+  if (!watchStartUtcMs) {
+    watchStartUtcMs = Date.now();
+    addRow({ event: "watch_start", timeTw: nowTwIso(watchStartUtcMs), watchStartTw: nowTwIso(watchStartUtcMs) });
+  }
+}
+
+function updateBehindNow() {
+  if (!playerReady || !player) return;
+
+  const ps = safeGetPlayerState();
+  const ct = safeGetCurrentTime();
+  const du = safeGetDuration();
+
+  let computed = null;
+  if (ps === 1 && ct != null && du != null && du > 0) computed = clamp0(computeBehindMs(ct, du));
+
+  if (computed != null) {
+    lastBehindMs = computed;
+    lastBehindAtUtcMs = Date.now();
+    stBehind.textContent = String(computed);
+    stBehindTs.textContent = nowTwIso(lastBehindAtUtcMs);
+  } else {
+    if (lastBehindMs != null) {
+      stBehind.textContent = String(lastBehindMs);
+      stBehindTs.textContent = lastBehindAtUtcMs ? nowTwIso(lastBehindAtUtcMs) : "-";
+    } else {
+      stBehind.textContent = "-";
+      stBehindTs.textContent = "-";
+    }
+  }
+}
+
+/**
+ * ✅ seek helper：更穩的方式是 seek 到 duration - safetyMs
+ */
+function seekToLiveEdgeStable(safetyMs) {
+  if (!player) return { ok:false, targetSec:null };
+  const du = safeGetDuration();
+  if (du == null || !Number.isFinite(du) || du <= 0) return { ok:false, targetSec:null };
+
+  const safetySec = Math.max(0, safetyMs) / 1000;
+  const target = Math.max(0, du - Math.max(0.2, safetySec));
+  try { player.seekTo(target, true); return { ok:true, targetSec:target }; } catch { return { ok:false, targetSec:target }; }
+}
+
+/**
+ * ✅ 層2：lag 結束後立刻追（不受層1 cooldown/armed 限制）
+ */
+async function forceCatchUpAfterLagEnd(reason) {
+  if (!playerReady || !player) return;
+  if (lagActive) return;
+
+  const now = Date.now();
+  if (lastAfterLagForceUtcMs != null && (now - lastAfterLagForceUtcMs) < AFTER_LAG_FORCE_GUARD_MS) return;
+
+  const cfg = getConfig();
+  const snapBefore = snapshotCtDuBehind();
+  const { ok, targetSec } = seekToLiveEdgeStable(cfg.safetyMs);
+  lastAfterLagForceUtcMs = now;
+  stCatchupTs.textContent = nowTwIso(now);
+
+  const { geo, gpsType } = await resolveGeoForEvent();
+
+  addRow({
+    event: ok ? "catchup_seek" : "catchup_fail",
+    timeTw: nowTwIso(now),
+    ctStart: snapBefore.ct ?? "",
+    duStart: snapBefore.du ?? "",
+    behindStartMs: snapBefore.behindMs ?? "",
+    lat: geo?.lat ?? "",
+    lon: geo?.lon ?? "",
+    acc: geo?.acc ?? "",
+    gpsType,
+    note: `layer=2; reason=${reason}; seek=duration-safety; safetyMs=${cfg.safetyMs}; targetSec=${targetSec ?? ""}; behindBeforeMs=${snapBefore.behindMs ?? ""}; gpsType=${gpsType}`
+  });
+}
+
+function runCatchUp(reason) {
+  Promise.resolve(maybeCatchUpLayer1(reason)).catch((e) => console.warn("maybeCatchUpLayer1 error:", e));
+}
+
+/**
+ * ✅ 層1：保守維持 live（受 cooldown / debounce / armed / rearm）
+ */
+async function maybeCatchUpLayer1(reason) {
+  if (lagActive) return;
+  if (!playerReady || !player) return;
+
+  const cfg = getConfig();
+  const ps = safeGetPlayerState();
+  if (ps !== 1) return;
+
+  const now = Date.now();
+  if (lastPlayingEnterUtcMs != null && (now - lastPlayingEnterUtcMs) < cfg.debounceMs) return;
+
+  const snap = snapshotCtDuBehind();
+  const behindMs = snap.behindMs;
+  if (behindMs == null) return;
+
+  // rearm
+  if (!catchArmed) {
+    if (behindMs <= cfg.rearmMs) {
+      catchArmed = true;
+      render();
+      addRow({
+        event: "catchup_rearm",
+        timeTw: nowTwIso(now),
+        ctStart: snap.ct ?? "",
+        duStart: snap.du ?? "",
+        behindStartMs: behindMs,
+        note: `layer=1; behind=${behindMs}<=rearm=${cfg.rearmMs}`
+      });
+    } else return;
+  }
+
+  // 觸發條件：落後 >= catchThr 或 強制 >= maxBehind
+  const force = (cfg.maxBehindMs > 0 && behindMs >= cfg.maxBehindMs);
+  if (!force && behindMs < cfg.catchThrMs) return;
+
+  // cooldown（force 仍尊重：避免一直追）
+  if (lastCatchupUtcMs != null && (now - lastCatchupUtcMs) < cfg.cooldownMs) return;
+
+  const { ok, targetSec } = seekToLiveEdgeStable(cfg.safetyMs);
+  lastCatchupUtcMs = now;
+  stCatchupTs.textContent = nowTwIso(now);
+
+  catchArmed = false;
+  render();
+
+  const { geo, gpsType } = await resolveGeoForEvent();
+
+  addRow({
+    event: ok ? "catchup_seek" : "catchup_fail",
+    timeTw: nowTwIso(now),
+    ctStart: snap.ct ?? "",
+    duStart: snap.du ?? "",
+    behindStartMs: behindMs,
+    lat: geo?.lat ?? "",
+    lon: geo?.lon ?? "",
+    acc: geo?.acc ?? "",
+    gpsType,
+    note: `layer=1; reason=${reason}; behind=${behindMs}; catchThr=${cfg.catchThrMs}; maxBehind=${cfg.maxBehindMs}; cooldown=${cfg.cooldownMs}; safetyMs=${cfg.safetyMs}; force=${force}; targetSec=${targetSec ?? ""}; gpsType=${gpsType}`
+  });
+}
+
+function startLagSession(mode) {
+  if (lagActive) return;
+  if (!playedOnceEver) return;
+
+  lagActive = true;
+  lagMode = mode;
+  lagStartUtcMs = Date.now();
+
+  const snap = snapshotCtDuBehind();
+  lagStartCt = snap.ct;
+  lagStartDu = snap.du;
+
+  addRow({
+    event: "lag_start",
+    timeTw: nowTwIso(lagStartUtcMs),
+    lagStartTw: nowTwIso(lagStartUtcMs),
+    lagMode: mode,
+    ctStart: lagStartCt ?? "",
+    duStart: lagStartDu ?? "",
+    behindStartMs: snap.behindMs ?? "",
+    note: `lagMode=${mode}`
+  });
+  render();
+}
+
+function endLagSessionIfAny(reason) {
+  if (!lagActive) return;
+
+  const cfg = getConfig();
+  const resumeUtc = Date.now();
+  const lagMs = resumeUtc - (lagStartUtcMs || resumeUtc);
+
+  const resumeSnap = snapshotCtDuBehind();
+  const behindStart = clamp0(computeBehindMs(lagStartCt, lagStartDu));
+  const behindResume = resumeSnap.behindMs;
+
+  addRow({
+    event: "resume",
+    timeTw: nowTwIso(resumeUtc),
+    resumeTw: nowTwIso(resumeUtc),
+    lagMode: lagMode,
+    ctResume: resumeSnap.ct ?? "",
+    duResume: resumeSnap.du ?? "",
+    behindResumeMs: behindResume ?? "",
+    note: `lagMode=${lagMode}; reason=${reason}`
+  });
+
+  if (lagMs >= cfg.lagThrMs) {
+    addRow({
+      event: "lag_event",
+      timeTw: nowTwIso(resumeUtc),
+      lagMs,
+      lagMode: lagMode,
+      watchStartTw: watchStartUtcMs ? nowTwIso(watchStartUtcMs) : "",
+      lagStartTw: lagStartUtcMs ? nowTwIso(lagStartUtcMs) : "",
+      resumeTw: nowTwIso(resumeUtc),
+      ctStart: lagStartCt ?? "",
+      duStart: lagStartDu ?? "",
+      ctResume: resumeSnap.ct ?? "",
+      duResume: resumeSnap.du ?? "",
+      behindStartMs: behindStart ?? "",
+      behindResumeMs: behindResume ?? "",
+      lat: lastGeo?.lat ?? "",
+      lon: lastGeo?.lon ?? "",
+      acc: lastGeo?.acc ?? "",
+      gpsType: "lastGeo",
+      note: `lagMode=${lagMode}; reason=${reason}`
+    });
+  }
+
+  // clear lag flags
+  lagActive = false;
+  const endedMode = lagMode;
+  lagMode = "";
+  lagStartUtcMs = null;
+  lagStartCt = null;
+  lagStartDu = null;
+
+  render();
+
+  // ✅ 層2：lag 結束後立刻追（先記錄完再追）
+  setTimeout(() => { forceCatchUpAfterLagEnd(`after_lag_end(${endedMode})`); }, 0);
+}
+
+function onPlayerStateChange(e) {
+  stState.textContent = String(e.data);
+  updateBehindNow();
+
+  if (e.data === 1) { // PLAYING
+    lastPlayingEnterUtcMs = Date.now();
+    playedOnceEver = true;
+    markWatchStartIfNeeded();
+
+    if (lagActive && lagMode === "buffering") endLagSessionIfAny("buffering_to_playing");
+
+    // 層1：保守維持 live
+    runCatchUp("state_playing");
+    return;
+  }
+
+  if (e.data === 3) { // BUFFERING
+    startLagSession("buffering");
+    return;
+  }
+
+  if (lagActive && (e.data === 0 || e.data === 2 || e.data === -1)) {
+    endLagSessionIfAny("state_non_playing");
+  }
+}
+
+function stallPoll() {
+  if (!playerReady || !player) {
+    stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
+    render(); return;
+  }
+
+  const cfg = getConfig();
+  const ps = safeGetPlayerState();
+  const ct = safeGetCurrentTime();
+  const du = safeGetDuration();
+
+  if (ps !== 1 || ct == null || du == null || du <= 0) {
+    if (lagActive && lagMode === "stall") endLagSessionIfAny("stall_to_non_playing");
+    stallAccumMs = 0;
+    stallLastCt = null;
+    stallLastBehindMs = null;
+    render();
+    return;
+  }
+
+  if (lagActive && lagMode === "buffering") {
+    stallAccumMs = 0;
+    stallLastCt = ct;
+    stallLastBehindMs = clamp0(computeBehindMs(ct, du));
+    render();
+    return;
+  }
+
+  const behindMs = clamp0(computeBehindMs(ct, du));
+  if (stallLastCt == null || stallLastBehindMs == null || behindMs == null) {
+    stallLastCt = ct;
+    stallLastBehindMs = behindMs;
+    stallAccumMs = 0;
+    render();
+    return;
+  }
+
+  const deltaCt = ct - stallLastCt;
+  const deltaBehind = behindMs - stallLastBehindMs;
+
+  const ctNotMoving = deltaCt < STALL_EPSILON_SEC;
+  const behindNotDecreasing = deltaBehind >= -BEHIND_NOISE_TOL_MS;
+
+  if (ctNotMoving && behindNotDecreasing) {
+    stallAccumMs += STALL_POLL_MS;
+    if (!lagActive && playedOnceEver && stallAccumMs >= cfg.lagThrMs) startLagSession("stall");
+  } else {
+    if (lagActive && lagMode === "stall") endLagSessionIfAny("stall_recovered");
+    stallAccumMs = 0;
+  }
+
+  stallLastCt = ct;
+  stallLastBehindMs = behindMs;
+  render();
+}
+
+async function initPlayer(videoId) {
+  await loadYTApiOnce();
+  const origin = (location && location.origin && location.origin !== "null") ? location.origin : null;
+
+  if (player && typeof player.loadVideoById !== "function") {
+    try { player.destroy?.(); } catch {}
+    player = null;
+    playerReady = false;
+  }
+
+  // reset runtime state (keep logs)
+  lagActive = false; lagMode = ""; lagStartUtcMs = null; lagStartCt = null; lagStartDu = null;
+  stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
+  lastBehindMs = null; lastBehindAtUtcMs = null;
+  stBehind.textContent = "-"; stBehindTs.textContent = "-";
+  lastCatchupUtcMs = null; lastPlayingEnterUtcMs = null;
+  stCatchupTs.textContent = "-";
+  catchArmed = true;
+  lastAfterLagForceUtcMs = null;
+
+  if (player) {
+    currentVideoId = videoId;
+    stVid.textContent = currentVideoId;
+    if (!playerReady) { pendingVideoId = videoId; return; }
+    player.loadVideoById({ videoId });
+    return;
+  }
+
+  currentVideoId = videoId;
+  stVid.textContent = currentVideoId;
+  pendingVideoId = null;
+
+  player = new YT.Player("player", {
+    videoId,
+    playerVars: Object.assign({ autoplay: 1, playsinline: 1, controls: 1, rel: 0 }, origin ? { origin } : {}),
+    events: {
+      onReady: () => {
+        playerReady = true;
+        pillReady.textContent = "Player: Ready";
+        pillReady.classList.add("ok");
+        ensureGeo().then(ok => { if (ok) startGeoWatch(); });
+
+        if (pendingVideoId && typeof player.loadVideoById === "function") {
+          const vid = pendingVideoId;
+          pendingVideoId = null;
+          currentVideoId = vid;
+          stVid.textContent = currentVideoId;
+          player.loadVideoById({ videoId: vid });
+        }
+      },
+      onStateChange: onPlayerStateChange,
+      onError: (e) => {
+        const code = e?.data;
+        addRow({ event: "player_error", timeTw: nowTwIso(), note: `code=${code}` });
+        if (lagActive) endLagSessionIfAny(`player_error_code=${code}`);
+      }
+    }
+  });
+}
+
+function applyBgUi() {
+  stBg.textContent = bgMode ? "ON" : "OFF";
+  btnBg.textContent = bgMode ? "背景執行：ON" : "背景執行：OFF";
+  btnBg.classList.toggle("on", bgMode);
+}
+
+async function acquireWakeLock() {
+  if (!("wakeLock" in navigator)) return false;
+  try { wakeLock = await navigator.wakeLock.request("screen"); return true; } catch { return false; }
+}
+async function releaseWakeLock() { try { await wakeLock?.release(); } catch {} wakeLock = null; }
+async function setBgMode(on) {
+  bgMode = !!on;
+  applyBgUi();
+  saveSettings();
+  if (bgMode) await acquireWakeLock();
+  else await releaseWakeLock();
+}
+document.addEventListener("visibilitychange", async () => { if (!bgMode) return; if (document.visibilityState === "visible") await acquireWakeLock(); });
+
+function stopTick() { if (tickTimer != null) { clearInterval(tickTimer); tickTimer = null; } }
+function startTick() {
+  stopTick();
+  const cfg = getConfig();
+  tickTimer = setInterval(() => { updateBehindNow(); runCatchUp("tick"); }, cfg.sampleMs);
+}
+function restartTick() { startTick(); }
+
+function stopStallDetector() { if (stallTimer != null) { clearInterval(stallTimer); stallTimer = null; } }
+function startStallDetector() { stopStallDetector(); stallTimer = setInterval(stallPoll, STALL_POLL_MS); }
+function restartStallDetector() { startStallDetector(); }
+
+async function resetToDefaultsV9() {
+  inpUrl.value = DEFAULTS_V9.url;
+  inpLagMs.value = String(DEFAULTS_V9.lagMs);
+  inpCatchMs.value = String(DEFAULTS_V9.catchMs);
+  inpRearmMs.value = String(DEFAULTS_V9.rearmMs);
+  inpSampleMs.value = String(DEFAULTS_V9.sampleMs);
+  inpCooldownMs.value = String(DEFAULTS_V9.cooldownMs);
+  inpDebounceMs.value = String(DEFAULTS_V9.debounceMs);
+  inpSafetyMs.value = String(DEFAULTS_V9.safetyMs);
+  inpMaxBehindMs.value = String(DEFAULTS_V9.maxBehindMs);
+
+  Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
+  await setBgMode(false);
+  saveSettings();
+
+  restartTick();
+  restartStallDetector();
+
+  addRow({ event: "reset_defaults", timeTw: nowTwIso(), note: "reset to Youtube_Live_LagLogger ver 9 defaults (two-layer catchup)" });
+}
+
+btnBg.addEventListener("click", async () => { await setBgMode(!bgMode); });
+
+btnLoad.addEventListener("click", async () => {
+  saveSettings();
+  restartTick();
+  restartStallDetector();
+
+  const vid = parseVideoId(inpUrl.value);
+  if (!vid) { alert("無法解析 Video ID。"); return; }
+  try { await initPlayer(vid); updateBehindNow(); runCatchUp("after_load"); }
+  catch (e) { alert("載入 YouTube Player 失敗：" + (e?.message || e)); }
+});
+
+btnReset.addEventListener("click", async () => {
+  if (!confirm("確定要把所有設定恢復為 ver 9 預設值？（會清除已保存的設定）")) return;
+  await resetToDefaultsV9();
+});
+
+btnClear.addEventListener("click", () => {
+  if (!confirm("確定清空所有事件？")) return;
+  rows = [];
+  watchStartUtcMs = null;
+  playedOnceEver = false;
+
+  lagActive = false; lagMode = ""; lagStartUtcMs = null; lagStartCt = null; lagStartDu = null;
+  stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
+
+  lastBehindMs = null; lastBehindAtUtcMs = null;
+  stBehind.textContent = "-"; stBehindTs.textContent = "-";
+  lastCatchupUtcMs = null; stCatchupTs.textContent = "-";
+  catchArmed = true;
+  lastAfterLagForceUtcMs = null;
+
+  render();
+});
+
+btnExport.addEventListener("click", () => exportCsv());
+
+// ✅ 參數改動：同時重啟 tick + stall（讓 lagThr/sample 等改動即時生效）
+[
+  inpUrl, inpLagMs, inpCatchMs, inpRearmMs, inpSampleMs,
+  inpCooldownMs, inpDebounceMs, inpSafetyMs, inpMaxBehindMs
+].forEach(el => el.addEventListener("change", () => {
+  saveSettings();
+  restartTick();
+  restartStallDetector();
+}));
+
+(function boot(){
+  loadSettings();
+  render();
+  stState.textContent = "-";
+  stVid.textContent = "-";
+  stBehind.textContent = "-";
+  stBehindTs.textContent = "-";
+  stCatchupTs.textContent = "-";
+})();
+</script>
+
+</body>
+</html>
