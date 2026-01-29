@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Youtube_Live_LagLogger ver 9.7</title>
+  <title>Youtube_Live_LagLogger ver 9.7.2</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
@@ -49,8 +49,8 @@
 <body>
 <header>
   <h1>
-    Youtube_Live_LagLogger ver 9.7
-    <span class="ver">UTC+08:00 / ms / 兩層追直播：層1保守(門檻/冷卻)＋層2 lag結束立刻追 / cycle_id(重開續號，除非恢復預設) / GPS 1秒抓不到用lastGeo(註記)</span>
+    Youtube_Live_LagLogger ver 9.7.2
+    <span class="ver">UTC+08:00 / ms / 兩層追直播 / cycle_id(重開續號，除非恢復預設) / resume GPS 同 catchup_seek(getCurrentPosition->lastGeo) + gps_type寫入CSV</span>
   </h1>
 </header>
 
@@ -126,9 +126,10 @@
     <div class="muted" style="margin-top:8px;">
       ✅ 兩層策略：<br/>
       - <b>層1（保守維持Live）</b>：只有落後 >=「追直播門檻」或 >=「最大允許落後」才追，且受冷卻/防抖/回復門檻管控。<br/>
-      - <b>層2（lag結束立刻追）</b>：當 lag 結束（resume）且已完成記錄後，立刻追一次到最新（不受層1冷卻與armed限制），確保永遠回到直播中。<br/>
+      - <b>層2（lag結束立刻追）</b>：當 lag 結束（resume）且已完成記錄後，立刻追一次到最新（不受層1冷卻與armed限制）。<br/>
       ✅ lag 期間不追，避免污染 lag_event。<br/>
-      ✅ <b>cycle_id</b>：每次 lag_start 開新 cycle；重開網頁會續號（除非按「恢復預設」）。
+      ✅ <b>cycle_id</b>：每次 lag_start 開新 cycle；重開網頁會續號（除非按「恢復預設」）。<br/>
+      ✅ <b>gps_type</b>：事件抓 GPS 的方式（getCurrentPosition / lastGeo / none）會寫入 CSV。
     </div>
   </div>
 
@@ -184,10 +185,9 @@ const LS_KEYS = {
   safety: "ytlag_safety_ms",
   maxBehind: "ytlag_maxbehind_ms",
   bg: "ytlag_bg_mode",
-  cycleSeq: "ytlag_cycle_seq" // ✅ 新增：跨重開延續 cycle 編號
+  cycleSeq: "ytlag_cycle_seq"
 };
 
-// ✅ ver 9（兩層追直播）保守預設：主抓 >=5秒 lag，又能保持接近live
 const DEFAULTS_V9 = {
   url: "https://www.youtube.com/live/KyT4qSK8lJo?si=GudVcyxFxRcNfcqd",
   lagMs: 5000,
@@ -201,7 +201,6 @@ const DEFAULTS_V9 = {
   bgMode: false
 };
 
-// 層2：lag結束後立即追的最小間隔（避免同一波狀態抖動造成連續觸發）
 const AFTER_LAG_FORCE_GUARD_MS = 2000;
 
 const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -280,27 +279,21 @@ let rows = [];
 let lastBehindMs = null;
 let lastBehindAtUtcMs = null;
 
-// ✅ cycle_id control（會跨重開延續）
-let cycleSeq = 0;          // 1,2,3,...
-let activeCycleId = "";    // 當前 lag cycle（lag_start -> resume -> lag_event -> layer2 catchup）
+let cycleSeq = 0;
+let activeCycleId = "";
 
-// 層1：catch-up control
 let lastCatchupUtcMs = null;
 let lastPlayingEnterUtcMs = null;
 let catchArmed = true;
 
-// 層2：lag結束立刻追 guard
 let lastAfterLagForceUtcMs = null;
 
-// bg mode
 let bgMode = false;
 let wakeLock = null;
 
-// timers
 let tickTimer = null;
 let stallTimer = null;
 
-// conservative STALL detector
 const STALL_POLL_MS = 500;
 const STALL_EPSILON_SEC = 0.25;
 const BEHIND_NOISE_TOL_MS = 150;
@@ -335,9 +328,7 @@ function loadSettings() {
 
   bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS_V9.bgMode ? "1" : "0")) === "1";
 
-  // ✅ 讀回 cycleSeq（跨重開延續）
   cycleSeq = toIntOr0(localStorage.getItem(LS_KEYS.cycleSeq));
-  // 如果沒有 key，就初始化寫一次（讓後續一律有）
   if (localStorage.getItem(LS_KEYS.cycleSeq) == null) persistCycleSeq();
 
   applyBgUi();
@@ -430,6 +421,14 @@ function getFreshGeoOnce({ timeoutMs = 1000, highAccuracy = true } = {}) {
   });
 }
 
+/** ✅ 統一的 GPS 取法：先 getCurrentPosition(1s)，失敗用 lastGeo */
+async function getGeoForEvent() {
+  const fresh = await getFreshGeoOnce({ timeoutMs: 1000, highAccuracy: true });
+  if (fresh) return { geo: fresh, gpsType: "getCurrentPosition" };
+  if (lastGeo) return { geo: lastGeo, gpsType: "lastGeo" };
+  return { geo: null, gpsType: "none" };
+}
+
 function addRow(partial) {
   const r = {
     cycleId: partial.cycleId ?? "",
@@ -448,6 +447,7 @@ function addRow(partial) {
     lat: partial.lat ?? (lastGeo?.lat ?? ""),
     lon: partial.lon ?? (lastGeo?.lon ?? ""),
     acc: partial.acc ?? (lastGeo?.acc ?? ""),
+    gpsType: partial.gpsType ?? "",
     note: partial.note || ""
   };
   rows.unshift(r);
@@ -509,7 +509,7 @@ function exportCsv() {
     "lag_ms","lag_mode",
     "player_ct_sec","player_du_sec","behind_ms_at_start",
     "resume_ct_sec","resume_du_sec","behind_ms_at_resume",
-    "lat","lon","accuracy_m",
+    "gps_type","lat","lon","accuracy_m",
     "video_id","source",
     "lag_threshold_ms","catch_threshold_ms","rearm_threshold_ms",
     "sample_interval_ms","catchup_cooldown_ms","catchup_debounce_ms",
@@ -528,6 +528,7 @@ function exportCsv() {
       r.lagMs, lagModeCol,
       r.ctStart, r.duStart, r.behindStartMs,
       r.ctResume, r.duResume, r.behindResumeMs,
+      r.gpsType || "",
       r.lat, r.lon, r.acc,
       vid, source,
       cfg.lagThrMs, cfg.catchThrMs, cfg.rearmMs,
@@ -622,11 +623,7 @@ async function forceCatchUpAfterLagEnd(reason, cycleId) {
   lastAfterLagForceUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
-  const fresh = await getFreshGeoOnce({ timeoutMs: 1000, highAccuracy: true });
-  let geo = null;
-  let gpsType = "none";
-  if (fresh) { geo = fresh; gpsType = "getCurrentPosition"; }
-  else if (lastGeo) { geo = lastGeo; gpsType = "lastGeo"; }
+  const { geo, gpsType } = await getGeoForEvent();
 
   addRow({
     cycleId: cycleId || "",
@@ -635,6 +632,7 @@ async function forceCatchUpAfterLagEnd(reason, cycleId) {
     lat: geo?.lat ?? "",
     lon: geo?.lon ?? "",
     acc: geo?.acc ?? "",
+    gpsType,
     note: `layer=2; reason=${reason}; seek=duration-safety; safetyMs=${cfg.safetyMs}; gpsType=${gpsType}`
   });
 }
@@ -681,11 +679,7 @@ async function maybeCatchUpLayer1(reason) {
   catchArmed = false;
   render();
 
-  const fresh = await getFreshGeoOnce({ timeoutMs: 1000, highAccuracy: true });
-  let geo = null;
-  let gpsType = "none";
-  if (fresh) { geo = fresh; gpsType = "getCurrentPosition"; }
-  else if (lastGeo) { geo = lastGeo; gpsType = "lastGeo"; }
+  const { geo, gpsType } = await getGeoForEvent();
 
   addRow({
     event: ok ? "catchup_seek" : "catchup_fail",
@@ -693,6 +687,7 @@ async function maybeCatchUpLayer1(reason) {
     lat: geo?.lat ?? "",
     lon: geo?.lon ?? "",
     acc: geo?.acc ?? "",
+    gpsType,
     note: `layer=1; reason=${reason}; behind=${behindMs}; catchThr=${cfg.catchThrMs}; maxBehind=${cfg.maxBehindMs}; cooldown=${cfg.cooldownMs}; safetyMs=${cfg.safetyMs}; force=${force}; gpsType=${gpsType}`
   });
 }
@@ -701,7 +696,6 @@ function startLagSession(mode) {
   if (lagActive) return;
   if (!playedOnceEver) return;
 
-  // ✅ 開新 cycle + 立刻持久化（跨重開續號）
   cycleSeq += 1;
   persistCycleSeq();
   activeCycleId = String(cycleSeq);
@@ -712,6 +706,8 @@ function startLagSession(mode) {
   lagStartCt = safeGetCurrentTime();
   lagStartDu = safeGetDuration();
 
+  const gpsType = lastGeo ? "lastGeo" : "none";
+
   addRow({
     cycleId: activeCycleId,
     event: "lag_start",
@@ -719,12 +715,17 @@ function startLagSession(mode) {
     lagStartTw: nowTwIso(lagStartUtcMs),
     ctStart: lagStartCt ?? "",
     duStart: lagStartDu ?? "",
-    note: `lagMode=${mode}`
+    lat: lastGeo?.lat ?? "",
+    lon: lastGeo?.lon ?? "",
+    acc: lastGeo?.acc ?? "",
+    gpsType,
+    note: `lagMode=${mode}; gpsType=${gpsType}`
   });
   render();
 }
 
-function endLagSessionIfAny(reason) {
+/** ✅ 改成 async：讓 resume 也能「事件當下」抓 GPS（跟 catchup_seek 同規則） */
+async function endLagSessionIfAny(reason) {
   if (!lagActive) return;
 
   const cfg = getConfig();
@@ -738,6 +739,9 @@ function endLagSessionIfAny(reason) {
 
   const thisCycle = activeCycleId || "";
 
+  // ✅ resume GPS：getCurrentPosition(1s) -> lastGeo
+  const { geo, gpsType } = await getGeoForEvent();
+
   addRow({
     cycleId: thisCycle,
     event: "resume",
@@ -746,7 +750,11 @@ function endLagSessionIfAny(reason) {
     ctResume: resumeCt ?? "",
     duResume: resumeDu ?? "",
     behindResumeMs: behindResume ?? "",
-    note: `lagMode=${lagMode}; reason=${reason}`
+    lat: geo?.lat ?? "",
+    lon: geo?.lon ?? "",
+    acc: geo?.acc ?? "",
+    gpsType,
+    note: `lagMode=${lagMode}; reason=${reason}; gpsType=${gpsType}`
   });
 
   if (lagMs >= cfg.lagThrMs) {
@@ -764,10 +772,11 @@ function endLagSessionIfAny(reason) {
       duResume: resumeDu ?? "",
       behindStartMs: behindStart ?? "",
       behindResumeMs: behindResume ?? "",
-      lat: lastGeo?.lat ?? "",
-      lon: lastGeo?.lon ?? "",
-      acc: lastGeo?.acc ?? "",
-      note: `lagMode=${lagMode}; reason=${reason}`
+      lat: geo?.lat ?? "",
+      lon: geo?.lon ?? "",
+      acc: geo?.acc ?? "",
+      gpsType,
+      note: `lagMode=${lagMode}; reason=${reason}; gpsType=${gpsType}`
     });
   }
 
@@ -793,7 +802,7 @@ function onPlayerStateChange(e) {
     playedOnceEver = true;
     markWatchStartIfNeeded();
 
-    if (lagActive && lagMode === "buffering") endLagSessionIfAny("buffering_to_playing");
+    if (lagActive && lagMode === "buffering") { endLagSessionIfAny("buffering_to_playing"); }
 
     runCatchUp("state_playing");
     return;
@@ -969,7 +978,6 @@ async function resetToDefaultsV9() {
   inpSafetyMs.value = String(DEFAULTS_V9.safetyMs);
   inpMaxBehindMs.value = String(DEFAULTS_V9.maxBehindMs);
 
-  // ✅ 恢復預設：清除設定 + cycleSeq 也回到 0
   Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
   cycleSeq = 0;
   activeCycleId = "";
@@ -1017,9 +1025,7 @@ btnClear.addEventListener("click", () => {
   catchArmed = true;
   lastAfterLagForceUtcMs = null;
 
-  // ✅ 不再重置 cycleSeq / localStorage（續號）
   activeCycleId = "";
-
   render();
 });
 
