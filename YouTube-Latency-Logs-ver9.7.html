@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Youtube_Live_LagLogger ver 9.7.4</title>
+  <title>Youtube_Live_LagLogger ver 9.2.5</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
@@ -49,8 +49,8 @@
 <body>
 <header>
   <h1>
-    Youtube_Live_LagLogger ver 9.7.4
-    <span class="ver">UTC+08:00 / ms / 兩層追直播 / cycle_id(重開續號) / ✅事件先記+GPS背景回寫 / ✅e2e_recover_ms(含catchup後穩定)</span>
+    Youtube_Live_LagLogger ver 9.2.5
+    <span class="ver">UTC+08:00 / ms / cycle_id(重開續號) / 事件先記+GPS背景回寫 / ✅e2e_recover_ms 修正版</span>
   </h1>
 </header>
 
@@ -124,10 +124,10 @@
     </div>
 
     <div class="muted" style="margin-top:8px;">
-      ✅ e2e_recover_ms 定義：<br/>
-      - 起點：該 cycle 的 <b>lag_start</b><br/>
-      - 終點：catchup_seek 後若產生新的 lag_start（seek buffering），則等到最後一次 resume；否則以 catchup_seek 當下結束（觀察窗 3 秒內沒再 lag_start）。<br/>
-      - e2e_recover_ms 會回寫在該 cycle 的 <b>lag_event</b> 那列。
+      ✅ e2e_recover_ms：root cycle 的 lag_start →（catchup_seek 後穩定）<br/>
+      - catchup_seek 後 3 秒內沒新 lag_start → e2e 終點=catchup_seek<br/>
+      - 若 catchup_seek 造成 buffering → e2e 終點=最後一次 post-catchup resume<br/>
+      - 會回寫在 root cycle 的 lag_event 列（所以 lag_event 先出現，e2e 可能 3 秒後才補上）
     </div>
   </div>
 
@@ -160,7 +160,7 @@
             <th style="min-width:150px;">ct/du start</th>
             <th style="min-width:150px;">ct/du resume</th>
             <th style="min-width:140px;">behind start/resume</th>
-            <th style="min-width:200px;">gps</th>
+            <th style="min-width:220px;">gps</th>
             <th style="min-width:260px;">note</th>
           </tr>
         </thead>
@@ -195,14 +195,12 @@ const DEFAULTS_V9 = {
   sampleMs: 3000,
   cooldownMs: 15000,
   debounceMs: 2000,
-  safety: 1500,
+  safetyMs: 1500,
   maxBehindMs: 7000,
   bgMode: false
 };
 
 const AFTER_LAG_FORCE_GUARD_MS = 2000;
-
-// ✅ e2e：catchup_seek 之後觀察這段時間內是否產生新的 lag_start（seek buffering）
 const E2E_STABILIZE_WINDOW_MS = 3000;
 
 const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -287,13 +285,13 @@ let lastBehindAtUtcMs = null;
 let cycleSeq = 0;
 let activeCycleId = "";
 
-// ✅ e2e tracker（以「root cycle」為單位，回寫到 root cycle 的 lag_event）
+// ✅ 修正版 e2e tracker：只在 root lag_start 建立；post-catchup lag_start 不會覆蓋
 let e2e = null;
 // e2e = {
 //   rootCycleId, startUtcMs,
-//   catchupAtUtcMs, waitingWindow, postCatchupLagStarted,
-//   postCycleIds: Set<string>,
-//   finalized: boolean
+//   catchupAtUtcMs, waitingWindow,
+//   postCycleIds:Set<string>,
+//   finalized:boolean
 // }
 
 let lastCatchupUtcMs = null;
@@ -323,7 +321,7 @@ function getConfig() {
   const sampleMs = Math.max(500, getMs(inpSampleMs, DEFAULTS_V9.sampleMs));
   const cooldownMs = getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs);
   const debounceMs = getMs(inpDebounceMs, DEFAULTS_V9.debounceMs);
-  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safety));
+  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safetyMs));
   const maxBehindMs = getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs);
   return { lagThrMs, catchThrMs, rearmMs, sampleMs, cooldownMs, debounceMs, safetyMs, maxBehindMs };
 }
@@ -337,7 +335,7 @@ function loadSettings() {
   inpSampleMs.value   = String(Number(localStorage.getItem(LS_KEYS.sample)   || DEFAULTS_V9.sampleMs));
   inpCooldownMs.value = String(Number(localStorage.getItem(LS_KEYS.cooldown) || DEFAULTS_V9.cooldownMs));
   inpDebounceMs.value = String(Number(localStorage.getItem(LS_KEYS.debounce) || DEFAULTS_V9.debounceMs));
-  inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS_V9.safety));
+  inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS_V9.safetyMs));
   inpMaxBehindMs.value= String(Number(localStorage.getItem(LS_KEYS.maxBehind)|| DEFAULTS_V9.maxBehindMs));
 
   bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS_V9.bgMode ? "1" : "0")) === "1";
@@ -358,7 +356,7 @@ function saveSettings() {
   localStorage.setItem(LS_KEYS.sample, String(getMs(inpSampleMs, DEFAULTS_V9.sampleMs)));
   localStorage.setItem(LS_KEYS.cooldown, String(getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs)));
   localStorage.setItem(LS_KEYS.debounce, String(getMs(inpDebounceMs, DEFAULTS_V9.debounceMs)));
-  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safety)));
+  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safetyMs)));
   localStorage.setItem(LS_KEYS.maxBehind, String(getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs)));
   localStorage.setItem(LS_KEYS.bg, bgMode ? "1" : "0");
 }
@@ -435,7 +433,6 @@ function getFreshGeoOnce({ timeoutMs = 1000, highAccuracy = true } = {}) {
   });
 }
 
-/** ✅ 回寫更新指定 row（不改變順序） */
 function updateRowById(rowId, patch) {
   const idx = rows.findIndex(r => r.rowId === rowId);
   if (idx < 0) return false;
@@ -444,12 +441,10 @@ function updateRowById(rowId, patch) {
   return true;
 }
 
-/** ✅ 找某 cycle 的 lag_event row（用來回寫 e2e_recover_ms） */
 function findLagEventRowIndexByCycle(cycleId) {
   return rows.findIndex(r => r.cycleId === cycleId && r.event === "lag_event");
 }
 
-/** ✅ 背景補抓 GPS，成功就回寫該 row */
 function enrichRowGpsAsync(rowId, { timeoutMs = 1000 } = {}) {
   if (!navigator.geolocation) return;
   getFreshGeoOnce({ timeoutMs, highAccuracy: true }).then((fresh) => {
@@ -457,12 +452,7 @@ function enrichRowGpsAsync(rowId, { timeoutMs = 1000 } = {}) {
     const idx = rows.findIndex(r => r.rowId === rowId);
     if (idx < 0) return;
     if (rows[idx].gpsType === "getCurrentPosition") return;
-    updateRowById(rowId, {
-      lat: fresh.lat,
-      lon: fresh.lon,
-      acc: fresh.acc,
-      gpsType: "getCurrentPosition"
-    });
+    updateRowById(rowId, { lat: fresh.lat, lon: fresh.lon, acc: fresh.acc, gpsType: "getCurrentPosition" });
   }).catch(() => {});
 }
 
@@ -529,9 +519,7 @@ function render() {
         <td>${escapeHtml(ctduResume)}</td>
         <td>${escapeHtml(behindPair)}</td>
         <td>${escapeHtml(gps)}</td>
-        <td>
-          <textarea class="note" placeholder="可輸入備註（會寫入CSV）" oninput="window._setNote(${idx}, this.value)">${escapeHtml(r.note||"")}</textarea>
-        </td>
+        <td><textarea class="note" placeholder="可輸入備註（會寫入CSV）" oninput="window._setNote(${idx}, this.value)">${escapeHtml(r.note||"")}</textarea></td>
       </tr>
     `;
   }).join("");
@@ -570,8 +558,7 @@ function exportCsv() {
       r.lagMs, r.e2eRecoverMs, lagModeCol,
       r.ctStart, r.duStart, r.behindStartMs,
       r.ctResume, r.duResume, r.behindResumeMs,
-      r.gpsType || "",
-      r.lat, r.lon, r.acc,
+      r.gpsType || "", r.lat, r.lon, r.acc,
       vid, source,
       cfg.lagThrMs, cfg.catchThrMs, cfg.rearmMs,
       cfg.sampleMs, cfg.cooldownMs, cfg.debounceMs,
@@ -653,14 +640,14 @@ function seekToLiveEdgeStable(safetyMs) {
   try { player.seekTo(target, true); return true; } catch { return false; }
 }
 
-/** ✅ e2e finalize：回寫到 rootCycle 的 lag_event */
-function finalizeE2E(rootCycleId, endUtcMs, reason) {
+/** ✅ 修正版 finalize：一定找 rootCycle 的 lag_event 回寫 */
+function finalizeE2E(endUtcMs, reason) {
   if (!e2e || e2e.finalized) return;
-  if (e2e.rootCycleId !== rootCycleId) return;
   e2e.finalized = true;
 
+  const root = e2e.rootCycleId;
   const e2eMs = Math.max(0, Math.round(endUtcMs - e2e.startUtcMs));
-  const idx = findLagEventRowIndexByCycle(rootCycleId);
+  const idx = findLagEventRowIndexByCycle(root);
   if (idx >= 0) {
     const old = rows[idx];
     rows[idx] = Object.assign({}, old, {
@@ -673,8 +660,7 @@ function finalizeE2E(rootCycleId, endUtcMs, reason) {
   e2e = null;
 }
 
-/** ✅ 層2：lag 結束後立刻追（不 await GPS、不阻塞；GPS 背景回寫） */
-function forceCatchUpAfterLagEnd(reason, rootCycleId) {
+function forceCatchUpAfterLagEnd(reason) {
   if (!playerReady || !player) return;
   if (lagActive) return;
 
@@ -688,30 +674,26 @@ function forceCatchUpAfterLagEnd(reason, rootCycleId) {
 
   const gpsType0 = lastGeo ? "lastGeo" : "none";
   const rowId = addRow({
-    cycleId: rootCycleId || "",
+    cycleId: e2e?.rootCycleId || "",
     event: ok ? "catchup_seek" : "catchup_fail",
     timeTw: nowTwIso(now),
     lat: lastGeo?.lat ?? "",
     lon: lastGeo?.lon ?? "",
     acc: lastGeo?.acc ?? "",
     gpsType: gpsType0,
-    note: `layer=2; reason=${reason}; seek=duration-safety; safetyMs=${cfg.safetyMs}; gpsType=${gpsType0}`
+    note: `layer=2; reason=${reason}; safetyMs=${cfg.safetyMs}; gpsType=${gpsType0}`
   });
   enrichRowGpsAsync(rowId, { timeoutMs: 1000 });
 
-  // ✅ e2e：標記已做 catchup，並開啟觀察窗
-  if (e2e && e2e.rootCycleId === rootCycleId && !e2e.finalized) {
+  // ✅ 開啟穩定觀察窗：若 3 秒內沒 post-lag，就以 catchup 時間 finalize
+  if (e2e && !e2e.finalized) {
     e2e.catchupAtUtcMs = now;
     e2e.waitingWindow = true;
-    e2e.postCatchupLagStarted = false;
 
-    // 如果 3 秒內沒有新的 lag_start（seek buffering），就用 catchup 時間當 e2e 結束
     setTimeout(() => {
       if (!e2e || e2e.finalized) return;
-      if (e2e.rootCycleId !== rootCycleId) return;
-      if (e2e.waitingWindow && !e2e.postCatchupLagStarted) {
-        finalizeE2E(rootCycleId, e2e.catchupAtUtcMs, "no_post_lag_within_window");
-      }
+      if (!e2e.waitingWindow) return; // 已經被 post-lag 取消
+      finalizeE2E(e2e.catchupAtUtcMs, "no_post_lag_within_window");
     }, E2E_STABILIZE_WINDOW_MS);
   }
 }
@@ -720,7 +702,6 @@ function runCatchUp(reason) {
   Promise.resolve(maybeCatchUpLayer1(reason)).catch((e) => console.warn("maybeCatchUpLayer1 error:", e));
 }
 
-/** ✅ 層1：保守維持 live（catchup_seek 不 await GPS；GPS 背景回寫） */
 async function maybeCatchUpLayer1(reason) {
   if (lagActive) return;
   if (!playerReady || !player) return;
@@ -749,7 +730,6 @@ async function maybeCatchUpLayer1(reason) {
 
   const force = (cfg.maxBehindMs > 0 && behindMs >= cfg.maxBehindMs);
   if (!force && behindMs < cfg.catchThrMs) return;
-
   if (lastCatchupUtcMs != null && (now - lastCatchupUtcMs) < cfg.cooldownMs) return;
 
   const ok = seekToLiveEdgeStable(cfg.safetyMs);
@@ -761,17 +741,19 @@ async function maybeCatchUpLayer1(reason) {
 
   const gpsType0 = lastGeo ? "lastGeo" : "none";
   const rowId = addRow({
+    cycleId: e2e?.rootCycleId || "",
     event: ok ? "catchup_seek" : "catchup_fail",
     timeTw: nowTwIso(now),
     lat: lastGeo?.lat ?? "",
     lon: lastGeo?.lon ?? "",
     acc: lastGeo?.acc ?? "",
     gpsType: gpsType0,
-    note: `layer=1; reason=${reason}; behind=${behindMs}; catchThr=${cfg.catchThrMs}; maxBehind=${cfg.maxBehindMs}; cooldown=${cfg.cooldownMs}; safetyMs=${cfg.safetyMs}; force=${force}; gpsType=${gpsType0}`
+    note: `layer=1; reason=${reason}; behind=${behindMs}; safetyMs=${cfg.safetyMs}; force=${force}; gpsType=${gpsType0}`
   });
   enrichRowGpsAsync(rowId, { timeoutMs: 1000 });
 }
 
+/** ✅ 修正版 startLagSession：post-catchup lag 不會覆蓋 e2e root */
 function startLagSession(mode) {
   if (lagActive) return;
   if (!playedOnceEver) return;
@@ -782,28 +764,28 @@ function startLagSession(mode) {
   persistCycleSeq();
   activeCycleId = String(cycleSeq);
 
-  // ✅ e2e：如果剛做完 catchup 且仍在觀察窗，這個 lag_start 視為 post-catchup lag
-  if (e2e && !e2e.finalized && e2e.catchupAtUtcMs != null) {
+  // 判斷這個 lag_start 是否屬於「catchup 後的 post-lag」
+  let isPostCatchup = false;
+  if (e2e && !e2e.finalized && e2e.catchupAtUtcMs != null && e2e.waitingWindow) {
     const dt = now - e2e.catchupAtUtcMs;
-    if (dt >= 0 && dt <= E2E_STABILIZE_WINDOW_MS + 1500) { // 多給一點容錯
-      e2e.postCatchupLagStarted = true;
-      e2e.waitingWindow = false;
-      if (!e2e.postCycleIds) e2e.postCycleIds = new Set();
+    if (dt >= 0 && dt <= E2E_STABILIZE_WINDOW_MS + 1500) {
+      isPostCatchup = true;
+      e2e.waitingWindow = false; // 進入 post-lag 模式
       e2e.postCycleIds.add(activeCycleId);
     }
   }
 
-  // ✅ e2e：如果目前沒有 tracker，就以這個 cycle 作為 root 開始
-  // 只要進入 lag_start 就開始追 e2e（但最後回寫只有在 lag_event 存在時才會寫）
-  e2e = {
-    rootCycleId: activeCycleId,
-    startUtcMs: now,
-    catchupAtUtcMs: null,
-    waitingWindow: false,
-    postCatchupLagStarted: false,
-    postCycleIds: new Set(),
-    finalized: false
-  };
+  // ✅ 只有「不是 post-catchup」且目前沒有 active e2e 時，才建立新的 root tracker
+  if (!isPostCatchup) {
+    e2e = {
+      rootCycleId: activeCycleId,
+      startUtcMs: now,
+      catchupAtUtcMs: null,
+      waitingWindow: false,
+      postCycleIds: new Set(),
+      finalized: false
+    };
+  }
 
   lagActive = true;
   lagMode = mode;
@@ -812,7 +794,6 @@ function startLagSession(mode) {
   lagStartDu = safeGetDuration();
 
   const gpsType0 = lastGeo ? "lastGeo" : "none";
-
   addRow({
     cycleId: activeCycleId,
     event: "lag_start",
@@ -824,7 +805,7 @@ function startLagSession(mode) {
     lon: lastGeo?.lon ?? "",
     acc: lastGeo?.acc ?? "",
     gpsType: gpsType0,
-    note: `lagMode=${mode}; gpsType=${gpsType0}`
+    note: `lagMode=${mode}; isPostCatchup=${isPostCatchup}; gpsType=${gpsType0}`
   });
   render();
 }
@@ -860,10 +841,7 @@ function endLagSessionIfAny(reason) {
   });
   enrichRowGpsAsync(resumeRowId, { timeoutMs: 1000 });
 
-  let didWriteLagEvent = false;
-
   if (lagMs >= cfg.lagThrMs) {
-    didWriteLagEvent = true;
     const lagEventRowId = addRow({
       cycleId: thisCycle,
       event: "lag_event",
@@ -887,9 +865,9 @@ function endLagSessionIfAny(reason) {
     enrichRowGpsAsync(lagEventRowId, { timeoutMs: 1000 });
   }
 
-  // ✅ 如果這個 cycle 是 post-catchup lag 的一部分，這個 resume 就是 e2e 終點
+  // ✅ 如果這個 cycle 屬於 post-catchup（被加進 postCycleIds），這個 resume 就 finalize e2e
   if (e2e && !e2e.finalized && e2e.postCycleIds && e2e.postCycleIds.has(thisCycle)) {
-    finalizeE2E(e2e.rootCycleId, resumeUtc, "post_catchup_resume");
+    finalizeE2E(resumeUtc, "post_catchup_resume");
   }
 
   lagActive = false;
@@ -899,20 +877,10 @@ function endLagSessionIfAny(reason) {
   lagStartCt = null;
   lagStartDu = null;
 
-  // ✅ 這個 cycle 結束後（無論是否>=門檻），都做層2 catchup
-  //    e2e 會在 catchup 後依「是否出現 post-catchup lag」決定終點
-  const rootForCatchup = e2e ? e2e.rootCycleId : thisCycle;
-
   activeCycleId = "";
   render();
 
-  setTimeout(() => { forceCatchUpAfterLagEnd(`after_lag_end(${endedMode})`, rootForCatchup); }, 0);
-
-  // 若這次沒有寫 lag_event（lag<門檻），e2e 仍會被 finalize，但找不到 lag_event row 可回寫，會直接清掉 tracker
-  // 這是刻意的：你主要看 >=lagThr 的事件。
-  if (!didWriteLagEvent && e2e && e2e.rootCycleId === rootForCatchup) {
-    // e2e 最終仍會在 catchup window / post-catchup resume 被 finalizeE2E 清掉
-  }
+  setTimeout(() => { forceCatchUpAfterLagEnd(`after_lag_end(${endedMode})`); }, 0);
 }
 
 function onPlayerStateChange(e) {
@@ -1075,7 +1043,10 @@ async function setBgMode(on) {
   if (bgMode) await acquireWakeLock();
   else await releaseWakeLock();
 }
-document.addEventListener("visibilitychange", async () => { if (!bgMode) return; if (document.visibilityState === "visible") await acquireWakeLock(); });
+document.addEventListener("visibilitychange", async () => {
+  if (!bgMode) return;
+  if (document.visibilityState === "visible") await acquireWakeLock();
+});
 
 function stopTick() { if (tickTimer != null) { clearInterval(tickTimer); tickTimer = null; } }
 function startTick() {
@@ -1097,17 +1068,26 @@ async function resetToDefaultsV9() {
   inpSampleMs.value = String(DEFAULTS_V9.sampleMs);
   inpCooldownMs.value = String(DEFAULTS_V9.cooldownMs);
   inpDebounceMs.value = String(DEFAULTS_V9.debounceMs);
-  inpSafetyMs.value = String(DEFAULTS_V9.safety);
+  inpSafetyMs.value = String(DEFAULTS_V9.safetyMs);
   inpMaxBehindMs.value = String(DEFAULTS_V9.maxBehindMs);
 
   Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
   cycleSeq = 0;
-  activeCycleId = "";
-  e2e = null;
   localStorage.setItem(LS_KEYS.cycleSeq, "0");
 
   await setBgMode(false);
   saveSettings();
+
+  rows = [];
+  watchStartUtcMs = null;
+  playedOnceEver = false;
+  lagActive = false; lagMode = "";
+  stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
+  lastBehindMs = null; lastBehindAtUtcMs = null;
+  lastCatchupUtcMs = null; lastPlayingEnterUtcMs = null;
+  lastAfterLagForceUtcMs = null;
+  activeCycleId = "";
+  e2e = null;
 
   restartTick();
   restartStallDetector();
@@ -1129,7 +1109,7 @@ btnLoad.addEventListener("click", async () => {
 });
 
 btnReset.addEventListener("click", async () => {
-  if (!confirm("確定要把所有設定恢復為 ver 9 預設值？（會清除已保存的設定，cycle_id 也會從 1 重新開始）")) return;
+  if (!confirm("確定要把所有設定恢復為 ver 9 預設值？（cycle_id 也會從 1 重新開始）")) return;
   await resetToDefaultsV9();
 });
 
@@ -1139,7 +1119,7 @@ btnClear.addEventListener("click", () => {
   watchStartUtcMs = null;
   playedOnceEver = false;
 
-  lagActive = false; lagMode = ""; lagStartUtcMs = null; lagStartCt = null; lagStartDu = null;
+  lagActive = false; lagMode = "";
   stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
 
   lastBehindMs = null; lastBehindAtUtcMs = null;
