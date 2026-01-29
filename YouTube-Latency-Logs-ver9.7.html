@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Youtube_Live_LagLogger ver 9.7.2</title>
+  <title>Youtube_Live_LagLogger ver 9.7.3</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
@@ -49,8 +49,8 @@
 <body>
 <header>
   <h1>
-    Youtube_Live_LagLogger ver 9.7.2
-    <span class="ver">UTC+08:00 / ms / 兩層追直播 / cycle_id(重開續號，除非恢復預設) / resume GPS 同 catchup_seek(getCurrentPosition->lastGeo) + gps_type寫入CSV</span>
+    Youtube_Live_LagLogger ver 9.7.3
+    <span class="ver">UTC+08:00 / ms / 兩層追直播 / cycle_id(重開續號) / ✅事件先記、GPS背景補抓成功回寫同一筆(row) / gps_type寫入CSV</span>
   </h1>
 </header>
 
@@ -124,12 +124,10 @@
     </div>
 
     <div class="muted" style="margin-top:8px;">
-      ✅ 兩層策略：<br/>
-      - <b>層1（保守維持Live）</b>：只有落後 >=「追直播門檻」或 >=「最大允許落後」才追，且受冷卻/防抖/回復門檻管控。<br/>
-      - <b>層2（lag結束立刻追）</b>：當 lag 結束（resume）且已完成記錄後，立刻追一次到最新（不受層1冷卻與armed限制）。<br/>
-      ✅ lag 期間不追，避免污染 lag_event。<br/>
-      ✅ <b>cycle_id</b>：每次 lag_start 開新 cycle；重開網頁會續號（除非按「恢復預設」）。<br/>
-      ✅ <b>gps_type</b>：事件抓 GPS 的方式（getCurrentPosition / lastGeo / none）會寫入 CSV。
+      ✅ 本版重點：<br/>
+      - <b>事件先記</b>：resume / catchup_seek 不會 await GPS，立即落筆，避免事件順序被 GPS 阻塞打亂。<br/>
+      - <b>GPS 背景補抓</b>：同時觸發 getCurrentPosition(1000ms)，成功就回寫同一筆 row（gps_type= getCurrentPosition）。<br/>
+      - <b>gps_type</b> 寫入 CSV：getCurrentPosition / lastGeo / none。
     </div>
   </div>
 
@@ -196,7 +194,7 @@ const DEFAULTS_V9 = {
   sampleMs: 3000,
   cooldownMs: 15000,
   debounceMs: 2000,
-  safetyMs: 1500,
+  safety: 1500,
   maxBehindMs: 7000,
   bgMode: false
 };
@@ -222,8 +220,15 @@ function toIntOr0(v) {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
 }
+
 function persistCycleSeq() {
   localStorage.setItem(LS_KEYS.cycleSeq, String(cycleSeq));
+}
+
+function makeRowId() {
+  // 不需要跨次保存，只要同一頁面可定位回寫即可
+  if (crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `r_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
 const inpUrl = document.getElementById("inpUrl");
@@ -309,7 +314,7 @@ function getConfig() {
   const sampleMs = Math.max(500, getMs(inpSampleMs, DEFAULTS_V9.sampleMs));
   const cooldownMs = getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs);
   const debounceMs = getMs(inpDebounceMs, DEFAULTS_V9.debounceMs);
-  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safetyMs));
+  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safety));
   const maxBehindMs = getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs);
   return { lagThrMs, catchThrMs, rearmMs, sampleMs, cooldownMs, debounceMs, safetyMs, maxBehindMs };
 }
@@ -323,7 +328,7 @@ function loadSettings() {
   inpSampleMs.value   = String(Number(localStorage.getItem(LS_KEYS.sample)   || DEFAULTS_V9.sampleMs));
   inpCooldownMs.value = String(Number(localStorage.getItem(LS_KEYS.cooldown) || DEFAULTS_V9.cooldownMs));
   inpDebounceMs.value = String(Number(localStorage.getItem(LS_KEYS.debounce) || DEFAULTS_V9.debounceMs));
-  inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS_V9.safetyMs));
+  inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS_V9.safety));
   inpMaxBehindMs.value= String(Number(localStorage.getItem(LS_KEYS.maxBehind)|| DEFAULTS_V9.maxBehindMs));
 
   bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS_V9.bgMode ? "1" : "0")) === "1";
@@ -344,7 +349,7 @@ function saveSettings() {
   localStorage.setItem(LS_KEYS.sample, String(getMs(inpSampleMs, DEFAULTS_V9.sampleMs)));
   localStorage.setItem(LS_KEYS.cooldown, String(getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs)));
   localStorage.setItem(LS_KEYS.debounce, String(getMs(inpDebounceMs, DEFAULTS_V9.debounceMs)));
-  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safetyMs)));
+  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safety)));
   localStorage.setItem(LS_KEYS.maxBehind, String(getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs)));
   localStorage.setItem(LS_KEYS.bg, bgMode ? "1" : "0");
 }
@@ -421,16 +426,48 @@ function getFreshGeoOnce({ timeoutMs = 1000, highAccuracy = true } = {}) {
   });
 }
 
-/** ✅ 統一的 GPS 取法：先 getCurrentPosition(1s)，失敗用 lastGeo */
-async function getGeoForEvent() {
-  const fresh = await getFreshGeoOnce({ timeoutMs: 1000, highAccuracy: true });
-  if (fresh) return { geo: fresh, gpsType: "getCurrentPosition" };
-  if (lastGeo) return { geo: lastGeo, gpsType: "lastGeo" };
-  return { geo: null, gpsType: "none" };
+/** ✅ 回寫更新指定 row（不改變順序） */
+function updateRowById(rowId, patch) {
+  const idx = rows.findIndex(r => r.rowId === rowId);
+  if (idx < 0) return false;
+  rows[idx] = Object.assign({}, rows[idx], patch);
+  render();
+  return true;
+}
+
+/**
+ * ✅ 事件先記（lastGeo/none），GPS 背景補抓成功就回寫該 row：
+ * - 只在「原本不是 getCurrentPosition」時才回寫
+ * - 成功回寫：lat/lon/acc/gpsType
+ */
+function enrichRowGpsAsync(rowId, { timeoutMs = 1000 } = {}) {
+  // 如果沒定位能力或使用者沒授權，直接略過
+  if (!navigator.geolocation) return;
+
+  // 非阻塞：背景抓
+  getFreshGeoOnce({ timeoutMs, highAccuracy: true }).then((fresh) => {
+    if (!fresh) return;
+    const idx = rows.findIndex(r => r.rowId === rowId);
+    if (idx < 0) return;
+
+    // 避免把已經是 getCurrentPosition 的資料覆蓋（通常不會，但保守）
+    if (rows[idx].gpsType === "getCurrentPosition") return;
+
+    updateRowById(rowId, {
+      lat: fresh.lat,
+      lon: fresh.lon,
+      acc: fresh.acc,
+      gpsType: "getCurrentPosition",
+      // 也可把 note 補一句，便於 debug（不想污染 note 可刪）
+      note: (rows[idx].note || "") + (rows[idx].note ? "; " : "") + "gpsUpgraded=getCurrentPosition"
+    });
+  }).catch(() => {});
 }
 
 function addRow(partial) {
+  const rowId = partial.rowId || makeRowId();
   const r = {
+    rowId,
     cycleId: partial.cycleId ?? "",
     event: partial.event || "",
     timeTw: partial.timeTw || nowTwIso(),
@@ -452,7 +489,9 @@ function addRow(partial) {
   };
   rows.unshift(r);
   render();
+  return rowId;
 }
+
 window._setNote = (idx, v) => { if (rows[idx]) rows[idx].note = v; };
 
 function render() {
@@ -468,8 +507,8 @@ function render() {
 
   tbody.innerHTML = rows.map((r, idx) => {
     const gps = (r.lat !== "" && r.lon !== "")
-      ? `${Number(r.lat).toFixed(6)}, ${Number(r.lon).toFixed(6)} ±${Math.round(Number(r.acc||0))}m`
-      : "";
+      ? `${Number(r.lat).toFixed(6)}, ${Number(r.lon).toFixed(6)} ±${Math.round(Number(r.acc||0))}m (${r.gpsType || ""})`
+      : `${r.gpsType || ""}`;
     const ctduStart = (r.ctStart !== "" && r.duStart !== "") ? `${Number(r.ctStart).toFixed(2)}/${Number(r.duStart).toFixed(2)}` : "";
     const ctduResume = (r.ctResume !== "" && r.duResume !== "") ? `${Number(r.ctResume).toFixed(2)}/${Number(r.duResume).toFixed(2)}` : "";
     const behindPair = `${r.behindStartMs !== "" ? r.behindStartMs : ""}${(r.behindStartMs!==""||r.behindResumeMs!=="") ? " / " : ""}${r.behindResumeMs !== "" ? r.behindResumeMs : ""}`;
@@ -611,7 +650,8 @@ function seekToLiveEdgeStable(safetyMs) {
   try { player.seekTo(target, true); return true; } catch { return false; }
 }
 
-async function forceCatchUpAfterLagEnd(reason, cycleId) {
+/** ✅ 層2：lag 結束後立刻追（不 await GPS、不阻塞；GPS 背景回寫） */
+function forceCatchUpAfterLagEnd(reason, cycleId) {
   if (!playerReady || !player) return;
   if (lagActive) return;
 
@@ -623,24 +663,27 @@ async function forceCatchUpAfterLagEnd(reason, cycleId) {
   lastAfterLagForceUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
-  const { geo, gpsType } = await getGeoForEvent();
-
-  addRow({
+  const gpsType0 = lastGeo ? "lastGeo" : "none";
+  const rowId = addRow({
     cycleId: cycleId || "",
     event: ok ? "catchup_seek" : "catchup_fail",
     timeTw: nowTwIso(now),
-    lat: geo?.lat ?? "",
-    lon: geo?.lon ?? "",
-    acc: geo?.acc ?? "",
-    gpsType,
-    note: `layer=2; reason=${reason}; seek=duration-safety; safetyMs=${cfg.safetyMs}; gpsType=${gpsType}`
+    lat: lastGeo?.lat ?? "",
+    lon: lastGeo?.lon ?? "",
+    acc: lastGeo?.acc ?? "",
+    gpsType: gpsType0,
+    note: `layer=2; reason=${reason}; seek=duration-safety; safetyMs=${cfg.safetyMs}; gpsType=${gpsType0}`
   });
+
+  // ✅ 背景補抓新定位成功就回寫這筆
+  enrichRowGpsAsync(rowId, { timeoutMs: 1000 });
 }
 
 function runCatchUp(reason) {
   Promise.resolve(maybeCatchUpLayer1(reason)).catch((e) => console.warn("maybeCatchUpLayer1 error:", e));
 }
 
+/** ✅ 層1：保守維持 live（catchup_seek 不 await GPS；GPS 背景回寫） */
 async function maybeCatchUpLayer1(reason) {
   if (lagActive) return;
   if (!playerReady || !player) return;
@@ -679,17 +722,19 @@ async function maybeCatchUpLayer1(reason) {
   catchArmed = false;
   render();
 
-  const { geo, gpsType } = await getGeoForEvent();
-
-  addRow({
+  const gpsType0 = lastGeo ? "lastGeo" : "none";
+  const rowId = addRow({
     event: ok ? "catchup_seek" : "catchup_fail",
     timeTw: nowTwIso(now),
-    lat: geo?.lat ?? "",
-    lon: geo?.lon ?? "",
-    acc: geo?.acc ?? "",
-    gpsType,
-    note: `layer=1; reason=${reason}; behind=${behindMs}; catchThr=${cfg.catchThrMs}; maxBehind=${cfg.maxBehindMs}; cooldown=${cfg.cooldownMs}; safetyMs=${cfg.safetyMs}; force=${force}; gpsType=${gpsType}`
+    lat: lastGeo?.lat ?? "",
+    lon: lastGeo?.lon ?? "",
+    acc: lastGeo?.acc ?? "",
+    gpsType: gpsType0,
+    note: `layer=1; reason=${reason}; behind=${behindMs}; catchThr=${cfg.catchThrMs}; maxBehind=${cfg.maxBehindMs}; cooldown=${cfg.cooldownMs}; safetyMs=${cfg.safetyMs}; force=${force}; gpsType=${gpsType0}`
   });
+
+  // ✅ 背景補抓新定位成功就回寫這筆
+  enrichRowGpsAsync(rowId, { timeoutMs: 1000 });
 }
 
 function startLagSession(mode) {
@@ -706,7 +751,7 @@ function startLagSession(mode) {
   lagStartCt = safeGetCurrentTime();
   lagStartDu = safeGetDuration();
 
-  const gpsType = lastGeo ? "lastGeo" : "none";
+  const gpsType0 = lastGeo ? "lastGeo" : "none";
 
   addRow({
     cycleId: activeCycleId,
@@ -718,14 +763,14 @@ function startLagSession(mode) {
     lat: lastGeo?.lat ?? "",
     lon: lastGeo?.lon ?? "",
     acc: lastGeo?.acc ?? "",
-    gpsType,
-    note: `lagMode=${mode}; gpsType=${gpsType}`
+    gpsType: gpsType0,
+    note: `lagMode=${mode}; gpsType=${gpsType0}`
   });
   render();
 }
 
-/** ✅ 改成 async：讓 resume 也能「事件當下」抓 GPS（跟 catchup_seek 同規則） */
-async function endLagSessionIfAny(reason) {
+/** ✅ resume：先記(lastGeo/none)，再背景補抓GPS成功回寫同一筆 row */
+function endLagSessionIfAny(reason) {
   if (!lagActive) return;
 
   const cfg = getConfig();
@@ -738,11 +783,9 @@ async function endLagSessionIfAny(reason) {
   const behindResume = clamp0(computeBehindMs(resumeCt, resumeDu));
 
   const thisCycle = activeCycleId || "";
+  const gpsType0 = lastGeo ? "lastGeo" : "none";
 
-  // ✅ resume GPS：getCurrentPosition(1s) -> lastGeo
-  const { geo, gpsType } = await getGeoForEvent();
-
-  addRow({
+  const resumeRowId = addRow({
     cycleId: thisCycle,
     event: "resume",
     timeTw: nowTwIso(resumeUtc),
@@ -750,15 +793,18 @@ async function endLagSessionIfAny(reason) {
     ctResume: resumeCt ?? "",
     duResume: resumeDu ?? "",
     behindResumeMs: behindResume ?? "",
-    lat: geo?.lat ?? "",
-    lon: geo?.lon ?? "",
-    acc: geo?.acc ?? "",
-    gpsType,
-    note: `lagMode=${lagMode}; reason=${reason}; gpsType=${gpsType}`
+    lat: lastGeo?.lat ?? "",
+    lon: lastGeo?.lon ?? "",
+    acc: lastGeo?.acc ?? "",
+    gpsType: gpsType0,
+    note: `lagMode=${lagMode}; reason=${reason}; gpsType=${gpsType0}`
   });
 
+  // ✅ 背景補抓新定位成功就回寫 resume 這筆
+  enrichRowGpsAsync(resumeRowId, { timeoutMs: 1000 });
+
   if (lagMs >= cfg.lagThrMs) {
-    addRow({
+    const lagEventRowId = addRow({
       cycleId: thisCycle,
       event: "lag_event",
       timeTw: nowTwIso(resumeUtc),
@@ -772,12 +818,15 @@ async function endLagSessionIfAny(reason) {
       duResume: resumeDu ?? "",
       behindStartMs: behindStart ?? "",
       behindResumeMs: behindResume ?? "",
-      lat: geo?.lat ?? "",
-      lon: geo?.lon ?? "",
-      acc: geo?.acc ?? "",
-      gpsType,
-      note: `lagMode=${lagMode}; reason=${reason}; gpsType=${gpsType}`
+      lat: lastGeo?.lat ?? "",
+      lon: lastGeo?.lon ?? "",
+      acc: lastGeo?.acc ?? "",
+      gpsType: gpsType0,
+      note: `lagMode=${lagMode}; reason=${reason}; gpsType=${gpsType0}`
     });
+
+    // （可選）lag_event 也補抓新定位：你若只要 resume/catchup 才補，這行可刪
+    enrichRowGpsAsync(lagEventRowId, { timeoutMs: 1000 });
   }
 
   lagActive = false;
@@ -790,6 +839,7 @@ async function endLagSessionIfAny(reason) {
   activeCycleId = "";
   render();
 
+  // ✅ 層2：lag 結束後立刻追（先記錄完再追）
   setTimeout(() => { forceCatchUpAfterLagEnd(`after_lag_end(${endedMode})`, thisCycle); }, 0);
 }
 
@@ -802,7 +852,7 @@ function onPlayerStateChange(e) {
     playedOnceEver = true;
     markWatchStartIfNeeded();
 
-    if (lagActive && lagMode === "buffering") { endLagSessionIfAny("buffering_to_playing"); }
+    if (lagActive && lagMode === "buffering") endLagSessionIfAny("buffering_to_playing");
 
     runCatchUp("state_playing");
     return;
@@ -975,7 +1025,7 @@ async function resetToDefaultsV9() {
   inpSampleMs.value = String(DEFAULTS_V9.sampleMs);
   inpCooldownMs.value = String(DEFAULTS_V9.cooldownMs);
   inpDebounceMs.value = String(DEFAULTS_V9.debounceMs);
-  inpSafetyMs.value = String(DEFAULTS_V9.safetyMs);
+  inpSafetyMs.value = String(DEFAULTS_V9.safety);
   inpMaxBehindMs.value = String(DEFAULTS_V9.maxBehindMs);
 
   Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
