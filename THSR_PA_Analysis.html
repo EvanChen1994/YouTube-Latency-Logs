@@ -58,16 +58,17 @@
     }
 
     .muted { color:#666; }
-    .ok { color:#0a7; }
     .err { color:#c00; white-space:pre-wrap; }
     code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
 
-    /* H3 count label：紅底白字 */
+    /* ====== H3 polygon styles ====== */
+    .h3-red { /* by PA_data */ }
+    .h3-blue { /* by Location mapping */ }
+
+    /* 數字標籤：單格（跟隨網格中心） */
     .h3-count-label{
-      background: rgba(220, 0, 0, 0.92);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.35);
+      color:#fff;
       border-radius: 10px;
       padding: 1px 7px;
       font-size: 12px;
@@ -76,9 +77,30 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
       pointer-events: none;
       white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.35);
     }
+    .h3-count-label.red { background: rgba(220, 0, 0, 0.92); }
+    .h3-count-label.blue { background: rgba(0, 102, 204, 0.92); }
+    .h3-count-label.mix { background: rgba(128, 0, 128, 0.90); } /* 混合聚合 */
 
-    /* Tooltip 美化 */
+    /* 聚合標籤（遠視時） */
+    .agg-label{
+      color:#fff;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+      pointer-events: none;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.38);
+    }
+    .agg-label.red { background: rgba(200, 0, 0, 0.92); }
+    .agg-label.blue { background: rgba(0, 90, 190, 0.92); }
+    .agg-label.mix { background: rgba(115, 0, 115, 0.92); }
+
+    /* Tooltip */
     .h3-tip b { display:inline-block; min-width: 180px; }
     .h3-tip { line-height: 1.35; }
 
@@ -137,7 +159,7 @@
     }
 
     .modal {
-      width: min(880px, 92vw);
+      width: min(900px, 92vw);
       max-height: 86vh;
       background: #fff;
       border-radius: 12px;
@@ -163,7 +185,7 @@
       line-height: 1.45;
     }
 
-    .kv { display:grid; grid-template-columns: 140px 1fr; gap:8px 10px; }
+    .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 10px; }
     .kv div { padding: 2px 0; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
     .close-btn { border:1px solid #ddd; background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; font-weight:700; }
@@ -186,25 +208,19 @@
         <div class="btns">
           <!-- 尺標 icon 測距 -->
           <div class="btn icon-btn" id="btnMeasure" title="測距：啟用後左鍵點起點再點終點顯示距離">
-            <!-- inline SVG ruler -->
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
             </svg>
           </div>
 
-          <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">
-            🛈 系統資訊
-          </div>
-
-          <div class="btn" id="btnClear" title="清除蜂巢篩選，顯示全部事件">
-            清除篩選
-          </div>
+          <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
+          <div class="btn" id="btnClear" title="清除蜂巢篩選，顯示全部事件">清除篩選</div>
         </div>
       </div>
 
-      <!-- 提示列 -->
       <div class="hint" id="hintLine">
-        提示：點任一蜂巢格可在右側查看該格事件；hover 蜂巢可看摘要；右上 Layers 可切換 RES8~RES11。
+        紅格：PA_data（start_H3）；藍格：由 start_location_name 命中 THSR_Location.location_name 產生（與紅格重複者不畫）。
+        遠視數字會自動聚合，拉近會拆回單格數字。
       </div>
 
       <!-- 表格 -->
@@ -228,7 +244,8 @@
         <div class="kv">
           <div class="muted">Version</div><div class="mono" id="mVersion"></div>
           <div class="muted">Page URL</div><div class="mono" id="mPageUrl"></div>
-          <div class="muted">CSV URL</div><div class="mono" id="mCsvUrl"></div>
+          <div class="muted">PA CSV</div><div class="mono" id="mCsvPA"></div>
+          <div class="muted">Location CSV</div><div class="mono" id="mCsvLoc"></div>
           <div class="muted">HTTP</div><div class="mono" id="mHttp"></div>
           <div class="muted">H3</div><div class="mono" id="mH3"></div>
           <div class="muted">Status</div><div class="mono" id="mStatus"></div>
@@ -251,8 +268,8 @@
 
   <script>
     // ========= Version =========
-    // 2.0 -> 本次新增：右側明細表 + 點蜂巢篩選 + 彈窗資訊 + 測距 icon => 大功能 +1 => 3.0
-    const APP_VERSION = "ver 3.0";
+    // ver 3.0 -> 新增：第二CSV + 紅藍網格 + 遠近聚合數字 => 大功能 +1 => ver 4.0
+    const APP_VERSION = "ver 4.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // ========= Modal / status logging =========
@@ -262,7 +279,8 @@
 
     const mVersion = document.getElementById('mVersion');
     const mPageUrl = document.getElementById('mPageUrl');
-    const mCsvUrl = document.getElementById('mCsvUrl');
+    const mCsvPA = document.getElementById('mCsvPA');
+    const mCsvLoc = document.getElementById('mCsvLoc');
     const mHttp = document.getElementById('mHttp');
     const mH3 = document.getElementById('mH3');
     const mStatus = document.getElementById('mStatus');
@@ -272,6 +290,10 @@
     let lastStatus = "init";
     let lastUpdateTime = "";
     const errorLogs = [];
+    let httpInfo = "";
+    let paCsvUrlAbs = "";
+    let locCsvUrlAbs = "";
+    let h3Info = "";
 
     function openModal() { modalBackdrop.style.display = "flex"; }
     function closeModal() { modalBackdrop.style.display = "none"; }
@@ -279,9 +301,10 @@
     btnInfo.addEventListener('click', () => {
       mVersion.textContent = APP_VERSION;
       mPageUrl.textContent = location.href;
-      mCsvUrl.textContent = (window.__csvAbsUrl || '');
-      mHttp.textContent = (window.__httpInfo || '');
-      mH3.textContent = (window.__h3Info || '');
+      mCsvPA.textContent = paCsvUrlAbs;
+      mCsvLoc.textContent = locCsvUrlAbs;
+      mHttp.textContent = httpInfo;
+      mH3.textContent = h3Info;
       mStatus.textContent = lastStatus;
       mUpdate.textContent = lastUpdateTime || '';
       mErrors.textContent = errorLogs.length ? errorLogs.join("\n\n") : "(none)";
@@ -291,13 +314,8 @@
     btnModalClose.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
-    function setStatus(msg) {
-      lastStatus = msg;
-    }
-    function logError(err) {
-      const s = String(err?.stack || err);
-      errorLogs.push(s);
-    }
+    function setStatus(msg) { lastStatus = msg; }
+    function logError(err) { errorLogs.push(String(err?.stack || err)); }
 
     // ========= Utilities =========
     function escapeHtml(s) {
@@ -369,17 +387,26 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // ========= H3 overlay layers =========
-    const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
+    // ========= H3 overlay layers (polygons only) =========
+    const h3Layers = {
+      RES8:  L.layerGroup(),
+      RES9:  L.layerGroup(),
+      RES10: L.layerGroup(),
+      RES11: L.layerGroup()
+    };
+    // 預設顯示 RES9
     h3Layers.RES9.addTo(map);
 
     L.control.layers(
       { 'NLSC 彩色 (EMAP)': baseEMAP, 'NLSC 灰階 (EMAP01)': baseEMAP01 },
-      { 'H3 RES8 (start)': h3Layers.RES8, 'H3 RES9 (start)': h3Layers.RES9, 'H3 RES10 (start)': h3Layers.RES10, 'H3 RES11 (start)': h3Layers.RES11 },
+      { 'H3 RES8': h3Layers.RES8, 'H3 RES9': h3Layers.RES9, 'H3 RES10': h3Layers.RES10, 'H3 RES11': h3Layers.RES11 },
       { collapsed:false }
     ).addTo(map);
 
-    // ========= Measure tool (icon button) =========
+    // ========= Label render layer (aggregated markers) =========
+    const labelRenderLayer = L.layerGroup().addTo(map);
+
+    // ========= Measure tool =========
     const btnMeasure = document.getElementById('btnMeasure');
     let measureActive = false;
     let measureStart = null;
@@ -420,7 +447,6 @@
           .setContent(msg)
           .openOn(map);
 
-        // next measurement starts fresh (keep active)
         measureStart = null;
       }
     }
@@ -429,9 +455,7 @@
     btnMeasure.addEventListener('click', () => {
       measureActive = !measureActive;
       btnMeasure.classList.toggle('active', measureActive);
-      if (!measureActive) {
-        measureStart = null;
-      }
+      if (!measureActive) measureStart = null;
     });
 
     // ========= Right panel: event table =========
@@ -440,12 +464,11 @@
     const selectionTag = document.getElementById('selectionTag');
     const btnClear = document.getElementById('btnClear');
 
-    // 你指定的欄位（允許我縮短顯示）
     const COLS = [
       { key: 'Date', label: 'Date' },
       { key: 'PA_Num', label: 'PA#' },
       { key: 'event', label: 'Event' },
-      { key: 'time_tw', label: 'Time(TW)' },
+      { key: 'time_tw', label: 'Time' },
       { key: 'lag_start_tw', label: 'LagStart' },
       { key: 'resume_tw', label: 'Resume' },
       { key: 'lag_ms', label: 'Lag(ms)' },
@@ -491,59 +514,42 @@
       for (const c of COLS) {
         const th = document.createElement('th');
         th.textContent = c.label;
-        th.title = c.key; // 完整欄位名
+        th.title = c.key;
         evtHeadRow.appendChild(th);
       }
     }
-
     function renderTableRows(rows) {
       evtBody.innerHTML = '';
       const frag = document.createDocumentFragment();
-
       for (const r of rows) {
         const tr = document.createElement('tr');
         for (const c of COLS) {
           const td = document.createElement('td');
           const v = (r[c.key] ?? '');
           td.textContent = v;
-          td.title = v; // cell hover 顯示完整值
+          td.title = v;
           tr.appendChild(td);
         }
         frag.appendChild(tr);
       }
       evtBody.appendChild(frag);
     }
-
     renderTableHeader();
-
-    // ========= Aggregation for hover + click filtering =========
-    // 我們存兩份：
-    // 1) allRows: 全部事件列（原始 rows）
-    // 2) idxByCell[RESx].get(h3Index) -> Set(rowIndex)
-    let allRows = [];
-    const idxByCell = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-
-    let currentFilter = null; // { resKey, resNum, h3Index }
 
     function setSelectionTag(text) {
       selectionTag.textContent = text || '';
       selectionTag.title = text || '';
     }
 
-    btnClear.addEventListener('click', () => {
-      currentFilter = null;
-      setSelectionTag('');
-      renderTableRows(allRows);
-    });
+    // ========= Data stores =========
+    let allRows = [];
+    const idxByCell = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
 
-    function addRowIndex(resKey, h3Index, rowIdx) {
-      if (!h3Index) return;
-      let s = idxByCell[resKey].get(h3Index);
-      if (!s) { s = new Set(); idxByCell[resKey].set(h3Index, s); }
-      s.add(rowIdx);
-    }
+    // labelData per resKey: array of items {latlng, count, type:'red'|'blue', resKey, h3Index}
+    const labelData = { RES8:[], RES9:[], RES10:[], RES11:[] };
 
-    function buildHoverHtml(meta) {
+    // ========= Build hover HTML =========
+    function buildHoverHtmlRed(meta) {
       const resNum = meta.resNum;
       const h3Index = meta.h3Index;
 
@@ -562,22 +568,39 @@
 
       return `
         <div class="h3-tip">
-          <div><b>1. H3_res${resNum}:</b> ${escapeHtml(h3Index)}</div>
-          <div><b>2. location_name(start/end):</b> ${escapeHtml(loc)}</div>
-          <div><b>3. location_KM+M(start/end):</b> ${escapeHtml(km)}</div>
-          <div><b>4. twcounty:</b> ${escapeHtml(tw)}</div>
-          <div><b>5. Marea:</b> ${escapeHtml(area)}</div>
-          <div><b>6. Mcenter:</b> ${escapeHtml(center)}</div>
-          <div><b>7. PA_Num:</b> ${escapeHtml(pa)}</div>
+          <div><b>H3_res${resNum} (PA_data):</b> ${escapeHtml(h3Index)}</div>
+          <div><b>location_name(start/end):</b> ${escapeHtml(loc)}</div>
+          <div><b>location_KM+M(start/end):</b> ${escapeHtml(km)}</div>
+          <div><b>twcounty:</b> ${escapeHtml(tw)}</div>
+          <div><b>Marea:</b> ${escapeHtml(area)}</div>
+          <div><b>Mcenter:</b> ${escapeHtml(center)}</div>
+          <div><b>PA_Num:</b> ${escapeHtml(pa)}</div>
           <div class="muted" style="margin-top:4px;">(點此格可在右側顯示事件明細)</div>
         </div>
       `;
     }
 
-    function initMeta(resNum, h3Index) {
+    function buildHoverHtmlBlue(meta) {
+      // meta from location match results
+      const resNum = meta.resNum;
+      const h3Index = meta.h3Index;
+      const names = joinSet(meta.names, '、');
+      const kms = joinSet(meta.kms, '、');
+      return `
+        <div class="h3-tip">
+          <div><b>H3_res${resNum} (Location):</b> ${escapeHtml(h3Index)}</div>
+          <div><b>location_name:</b> ${escapeHtml(names)}</div>
+          <div><b>KM+M:</b> ${escapeHtml(kms)}</div>
+          <div><b>count (matched):</b> ${escapeHtml(meta.count)}</div>
+          <div class="muted" style="margin-top:4px;">(此格由 start_location_name 命中 THSR_Location 產生)</div>
+        </div>
+      `;
+    }
+
+    // ========= Render polygons =========
+    function initMetaRed(resNum, h3Index) {
       return {
-        resNum,
-        h3Index,
+        resNum, h3Index,
         count: 0,
         paNums: new Set(),
         locPairs: new Set(),
@@ -588,174 +611,324 @@
       };
     }
 
-    function addH3Cell(h3Index, meta, layerGroup, boundsAcc, resKey) {
+    function initMetaBlue(resNum, h3Index) {
+      return {
+        resNum, h3Index,
+        count: 0,
+        names: new Set(),
+        kms: new Set()
+      };
+    }
+
+    function addRowIndex(resKey, h3Index, rowIdx) {
+      if (!h3Index) return;
+      let s = idxByCell[resKey].get(h3Index);
+      if (!s) { s = new Set(); idxByCell[resKey].set(h3Index, s); }
+      s.add(rowIdx);
+    }
+
+    function addPolygonCell(resKey, meta, layerGroup, boundsAcc, type) {
+      const h3Index = meta.h3Index;
       const boundary = h3.cellToBoundary(h3Index);
       const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
 
-      const poly = L.polygon(latlngs, { weight:1, opacity:0.9, fillOpacity:0.10 });
-      layerGroup.addLayer(poly);
+      const style = (type === 'red')
+        ? { color:'#d00', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.12 }
+        : { color:'#0066cc', weight:1, opacity:0.95, fillColor:'#0066cc', fillOpacity:0.12 };
 
+      const poly = L.polygon(latlngs, style);
+      layerGroup.addLayer(poly);
       if (boundsAcc) boundsAcc.extend(poly.getBounds());
 
-      // count label
-      const center = h3.cellToLatLng(h3Index);
-      const labelIcon = L.divIcon({
-        className: '',
-        html: `<div class="h3-count-label">${escapeHtml(meta.count)}</div>`,
-        iconSize: null
-      });
-      layerGroup.addLayer(L.marker([center[0], center[1]], { icon: labelIcon, interactive:false }));
-
       // hover tooltip
-      const html = buildHoverHtml(meta);
+      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
       poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
 
       // hover highlight
       poly.on('mouseover', () => poly.setStyle({ weight: 2, fillOpacity: 0.18 }));
-      poly.on('mouseout',  () => poly.setStyle({ weight: 1, fillOpacity: 0.10 }));
+      poly.on('mouseout',  () => poly.setStyle({ weight: 1, fillOpacity: 0.12 }));
 
-      // click -> filter event table
+      // click -> filter table only for red (PA rows); blue cells filter by matching rows if possible
       poly.on('click', () => {
-        const resNum = meta.resNum;
-        currentFilter = { resKey, resNum, h3Index };
-
         const setIdx = idxByCell[resKey].get(h3Index) || new Set();
         const filtered = Array.from(setIdx).sort((a,b)=>a-b).map(i => allRows[i]);
-
-        setSelectionTag(`篩選中：RES${resNum} / ${h3Index}（${filtered.length} 筆）`);
+        setSelectionTag(`篩選中：${resKey} / ${h3Index}（${filtered.length} 筆）`);
         renderTableRows(filtered);
+      });
+
+      // store label item
+      const center = h3.cellToLatLng(h3Index);
+      labelData[resKey].push({
+        latlng: L.latLng(center[0], center[1]),
+        count: meta.count,
+        type, // red/blue
+        resKey,
+        h3Index
       });
     }
 
-    // ========= CSV load & draw =========
-    async function loadPAData() {
+    // ========= 聚合數字：依螢幕距離 bucket =========
+    function bucketSizeForZoom(z) {
+      // z越小(遠) bucket越大；z越大(近) bucket越小
+      // 你要「拉很遠聚合，拉近拆開」=> bucket 隨 zoom 縮小
+      const bs = Math.max(26, 92 - z * 4); // 8=>60, 10=>52, 12=>44, 16=>28
+      return bs;
+    }
+
+    function renderAggregatedLabels() {
+      labelRenderLayer.clearLayers();
+
+      const z = map.getZoom();
+      const bs = bucketSizeForZoom(z);
+
+      // 收集所有「目前顯示中的 RES layer」的 label items
+      const activeResKeys = [];
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        if (map.hasLayer(h3Layers[resKey])) activeResKeys.push(resKey);
+      }
+      if (!activeResKeys.length) return;
+
+      const buckets = new Map();
+      for (const resKey of activeResKeys) {
+        for (const item of labelData[resKey]) {
+          const p = map.latLngToContainerPoint(item.latlng);
+          const bx = Math.floor(p.x / bs);
+          const by = Math.floor(p.y / bs);
+          const key = `${bx},${by}`;
+
+          let b = buckets.get(key);
+          if (!b) {
+            b = { sum:0, reds:0, blues:0, n:0, latSum:0, lngSum:0 };
+            buckets.set(key, b);
+          }
+          b.sum += Number(item.count) || 0;
+          if (item.type === 'red') b.reds++;
+          else if (item.type === 'blue') b.blues++;
+          b.n += 1;
+          b.latSum += item.latlng.lat;
+          b.lngSum += item.latlng.lng;
+        }
+      }
+
+      for (const b of buckets.values()) {
+        if (!b.sum) continue;
+
+        const lat = b.latSum / b.n;
+        const lng = b.lngSum / b.n;
+
+        let cls = 'mix';
+        if (b.reds > 0 && b.blues === 0) cls = 'red';
+        else if (b.blues > 0 && b.reds === 0) cls = 'blue';
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="agg-label ${cls}">${escapeHtml(b.sum)}</div>`,
+          iconSize: null
+        });
+
+        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(labelRenderLayer);
+      }
+    }
+
+    // map events trigger rerender
+    map.on('zoomend moveend', () => renderAggregatedLabels());
+    map.on('overlayadd overlayremove', () => renderAggregatedLabels());
+
+    // ========= Load CSVs =========
+    async function fetchCsv(path) {
+      const url = `${path}?v=${Date.now()}`;
+      return { abs: new URL(url, location.href).toString(), url };
+    }
+
+    async function loadBothCSVsAndRender() {
       setStatus("starting...");
 
       // H3 status
       if (typeof window.h3 === 'undefined') {
-        window.__h3Info = 'NOT LOADED (window.h3 is undefined)';
+        h3Info = 'NOT LOADED (window.h3 is undefined)';
         throw new Error('h3 is not defined (h3-js 未載入成功)');
       } else {
         const v = window.h3?.versions?.h3 || window.h3?.VERSION || 'loaded';
-        window.__h3Info = `loaded (${v})`;
+        h3Info = `loaded (${v})`;
       }
 
-      // CSV URL
-      const csvPath = './PA_data.csv';
-      const url = `${csvPath}?v=${Date.now()}`;
-      const absUrl = new URL(url, location.href).toString();
-      window.__csvAbsUrl = absUrl;
+      const pa = await fetchCsv('./PA_data.csv');
+      const loc = await fetchCsv('./THSR_Location.csv');
 
-      setStatus(`fetching csv: ${absUrl}`);
+      paCsvUrlAbs = pa.abs;
+      locCsvUrlAbs = loc.abs;
 
-      const res = await fetch(absUrl, { cache:'no-store' });
-      window.__httpInfo = `${res.status} ${res.statusText}`;
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      setStatus(`fetching: PA & Location`);
+      const [resPA, resLoc] = await Promise.all([
+        fetch(pa.abs, { cache:'no-store' }),
+        fetch(loc.abs, { cache:'no-store' })
+      ]);
 
-      const text = await res.text();
-      const rows = parseCsvRobust(text);
+      httpInfo = `PA:${resPA.status} ${resPA.statusText} | LOC:${resLoc.status} ${resLoc.statusText}`;
+      if (!resPA.ok) throw new Error(`PA_data.csv HTTP ${resPA.status} ${resPA.statusText}`);
+      if (!resLoc.ok) throw new Error(`THSR_Location.csv HTTP ${resLoc.status} ${resLoc.statusText}`);
 
-      // store all rows
-      allRows = rows;
+      const [txtPA, txtLoc] = await Promise.all([resPA.text(), resLoc.text()]);
+      const rowsPA = parseCsvRobust(txtPA);
+      const rowsLoc = parseCsvRobust(txtLoc);
+
+      // store all PA rows for table
+      allRows = rowsPA;
 
       // reset indices
       for (const k of ['RES8','RES9','RES10','RES11']) idxByCell[k].clear();
-
-      // build row index map
-      for (let i = 0; i < rows.length; i++) {
-        const r = rows[i];
+      for (let i = 0; i < rowsPA.length; i++) {
+        const r = rowsPA[i];
         addRowIndex('RES8',  toClean(r.start_H3_Res_8),  i);
         addRowIndex('RES9',  toClean(r.start_H3_Res_9),  i);
         addRowIndex('RES10', toClean(r.start_H3_Res_10), i);
         addRowIndex('RES11', toClean(r.start_H3_Res_11), i);
       }
 
-      // clear map layers
+      // build location_name -> list of location rows
+      const locMap = new Map();
+      for (const r of rowsLoc) {
+        const name = toClean(r.location_name);
+        if (!name) continue;
+        if (!locMap.has(name)) locMap.set(name, []);
+        locMap.get(name).push(r);
+      }
+
+      // clear layers & label data
       Object.values(h3Layers).forEach(g => g.clearLayers());
+      for (const rk of ['RES8','RES9','RES10','RES11']) labelData[rk] = [];
+      labelRenderLayer.clearLayers();
 
-      // aggregate meta for each cell
-      const agg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+      // build red meta (PA_data start_H3) and blue meta (matched locations)
+      const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+      const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
 
-      for (const r of rows) {
-        const paNum = toClean(r.PA_Num);
+      function addRed(resKey, resNum, h3Index, paRow) {
+        if (!h3Index) return;
+        let meta = redAgg[resKey].get(h3Index);
+        if (!meta) { meta = initMetaRed(resNum, h3Index); redAgg[resKey].set(h3Index, meta); }
 
-        const startName = toClean(r.start_location_name);
-        const endName   = toClean(r.end_location_name);
+        meta.count += 1;
+
+        const paNum = toClean(paRow.PA_Num);
+        if (paNum) meta.paNums.add(paNum);
+
+        const startName = toClean(paRow.start_location_name);
+        const endName = toClean(paRow.end_location_name);
         const locPair = (startName || endName) ? `${startName}/${endName}` : '';
+        if (locPair) meta.locPairs.add(locPair);
 
-        const startKM = toClean(r["start_location_KM+M"]);
-        const endKM   = toClean(r["end_location_KM+M"]);
+        const startKM = toClean(paRow["start_location_KM+M"]);
+        const endKM = toClean(paRow["end_location_KM+M"]);
         const kmPair = (startKM || endKM) ? `${startKM}/${endKM}` : '';
+        if (kmPair) meta.kmPairs.add(kmPair);
 
-        const twcounty = toClean(r.twcounty);
-        const marea = toClean(r.Marea);
-        const mcenter = toClean(r.Mcenter);
-
-        const h8  = toClean(r.start_H3_Res_8);
-        const h9  = toClean(r.start_H3_Res_9);
-        const h10 = toClean(r.start_H3_Res_10);
-        const h11 = toClean(r.start_H3_Res_11);
-
-        function addTo(resKey, resNum, h) {
-          if (!h) return;
-          let meta = agg[resKey].get(h);
-          if (!meta) { meta = initMeta(resNum, h); agg[resKey].set(h, meta); }
-          meta.count += 1;
-          if (paNum) meta.paNums.add(paNum);
-          if (locPair) meta.locPairs.add(locPair);
-          if (kmPair) meta.kmPairs.add(kmPair);
-          if (twcounty) meta.tw.add(twcounty);
-          if (marea) meta.area.add(marea);
-          if (mcenter) meta.center.add(mcenter);
-        }
-
-        addTo('RES8',  8,  h8);
-        addTo('RES9',  9,  h9);
-        addTo('RES10', 10, h10);
-        addTo('RES11', 11, h11);
+        const tw = toClean(paRow.twcounty);
+        const area = toClean(paRow.Marea);
+        const center = toClean(paRow.Mcenter);
+        if (tw) meta.tw.add(tw);
+        if (area) meta.area.add(area);
+        if (center) meta.center.add(center);
       }
 
-      // draw
+      function addBlue(resKey, resNum, h3Index, paRow, locRow) {
+        if (!h3Index) return;
+        let meta = blueAgg[resKey].get(h3Index);
+        if (!meta) { meta = initMetaBlue(resNum, h3Index); blueAgg[resKey].set(h3Index, meta); }
+
+        meta.count += 1;
+
+        const name = toClean(locRow.location_name) || toClean(paRow.start_location_name);
+        if (name) meta.names.add(name);
+
+        // THSR_Location.csv 的 KM+M 欄位是 "KM+M"（不是 start_location_KM+M）
+        const km = toClean(locRow["KM+M"]);
+        if (km) meta.kms.add(km);
+      }
+
+      // 先填 redAgg
+      for (const r of rowsPA) {
+        addRed('RES8',  8,  toClean(r.start_H3_Res_8),  r);
+        addRed('RES9',  9,  toClean(r.start_H3_Res_9),  r);
+        addRed('RES10', 10, toClean(r.start_H3_Res_10), r);
+        addRed('RES11', 11, toClean(r.start_H3_Res_11), r);
+      }
+
+      // 再用 start_location_name 命中 location_name，填 blueAgg
+      for (const r of rowsPA) {
+        const startName = toClean(r.start_location_name);
+        if (!startName) continue;
+
+        const matches = locMap.get(startName);
+        if (!matches || !matches.length) continue;
+
+        for (const locRow of matches) {
+          // THSR_Location.csv 欄位是 H3_Res_8...（不是 start_H3_Res_8）
+          addBlue('RES8',  8,  toClean(locRow.H3_Res_8),  r, locRow);
+          addBlue('RES9',  9,  toClean(locRow.H3_Res_9),  r, locRow);
+          addBlue('RES10', 10, toClean(locRow.H3_Res_10), r, locRow);
+          addBlue('RES11', 11, toClean(locRow.H3_Res_11), r, locRow);
+        }
+      }
+
+      // ✅ 重複：若 blueAgg 的 H3Index 同時存在 redAgg，就刪掉 blueAgg（不顯示）
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        for (const h3Index of blueAgg[resKey].keys()) {
+          if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
+        }
+      }
+
+      // render polygons
       const boundsAcc = L.latLngBounds([]);
-      let totalCells = 0;
+      let cellsRed = 0, cellsBlue = 0;
 
-      const mapping = [
-        ['RES8',  h3Layers.RES8],
-        ['RES9',  h3Layers.RES9],
-        ['RES10', h3Layers.RES10],
-        ['RES11', h3Layers.RES11]
-      ];
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        const lg = h3Layers[resKey];
 
-      for (const [resKey, layerGroup] of mapping) {
-        for (const [h3Index, meta] of agg[resKey].entries()) {
+        // red
+        for (const [h3Index, meta] of redAgg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-          addH3Cell(h3Index, meta, layerGroup, boundsAcc, resKey);
-          totalCells++;
+          addPolygonCell(resKey, meta, lg, boundsAcc, 'red');
+          cellsRed++;
+        }
+
+        // blue (non-overlap)
+        for (const [h3Index, meta] of blueAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          addPolygonCell(resKey, meta, lg, boundsAcc, 'blue');
+          cellsBlue++;
         }
       }
 
-      if (totalCells > 0 && boundsAcc.isValid()) {
-        map.fitBounds(boundsAcc.pad(0.12));
-      }
-
-      // initial render: show all rows
-      currentFilter = null;
+      // initial table & view
       setSelectionTag('');
       renderTableRows(allRows);
 
+      // fit (optional)
+      if ((cellsRed + cellsBlue) > 0 && boundsAcc.isValid()) {
+        map.fitBounds(boundsAcc.pad(0.12));
+      }
+
       lastUpdateTime = new Date().toISOString();
-      setStatus(`ok: rows=${rows.length}, cells=${totalCells}`);
+      setStatus(`ok: PA_rows=${rowsPA.length}, red_cells=${cellsRed}, blue_cells=${cellsBlue}`);
+
+      // render aggregated labels for current view / active layers
+      renderAggregatedLabels();
     }
+
+    // clear filter button
+    btnClear.addEventListener('click', () => {
+      setSelectionTag('');
+      renderTableRows(allRows);
+    });
 
     // run
     (async () => {
       try {
-        await loadPAData();
+        await loadBothCSVsAndRender();
       } catch (err) {
         logError(err);
         setStatus(`FAILED: ${err.message || err}`);
-        // 不把錯誤直接塞右側，已移到彈窗
-        // 你要看錯誤就按「系統資訊」
       }
     })();
   </script>
