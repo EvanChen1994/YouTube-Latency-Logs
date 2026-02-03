@@ -5,43 +5,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>THSR PA Analysis</title>
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
-  <!-- leaflet-measure (距離/面積量測) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-measure@1.1.0/dist/leaflet-measure.css">
 
   <style>
     html, body { height: 100%; margin: 0; }
-    .app {
-      display: flex;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
-    }
-    /* 左側地圖 50% */
-    #map {
-      width: 50vw;
-      height: 100vh;
-      background: #f3f3f3;
-    }
-    /* 右側面板 50%（先留空，後續你再下指令我再做 UI） */
-    #panel {
-      width: 50vw;
-      height: 100vh;
-      overflow: auto;
-      padding: 16px;
-      box-sizing: border-box;
-      border-left: 1px solid #e5e5e5;
-    }
-    .muted { color: #666; }
-    .ok { color: #0a7; }
-    .err { color: #c00; white-space: pre-wrap; }
-    code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+    .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+    #map { width:50vw; height:100vh; background:#f3f3f3; }
+    #panel { width:50vw; height:100vh; overflow:auto; padding:16px; box-sizing:border-box; border-left:1px solid #e5e5e5; }
+    .muted { color:#666; }
+    .ok { color:#0a7; }
+    .err { color:#c00; white-space:pre-wrap; }
+    code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
+    a { color: inherit; }
 
-    /* H3 count label */
-    .h3-count-label {
+    .h3-count-label{
       background: rgba(255,255,255,0.85);
       border: 1px solid rgba(0,0,0,0.15);
       border-radius: 10px;
@@ -50,7 +28,7 @@
       font-weight: 700;
       line-height: 16px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-      pointer-events: none; /* 不擋你點蜂巢 */
+      pointer-events: none;
       white-space: nowrap;
     }
   </style>
@@ -63,40 +41,40 @@
     <div id="panel">
       <h2>THSR PA Analysis</h2>
       <div class="muted">
-        - 底圖：NLSC EMAP / EMAP01（彩色/灰階切換）<br>
-        - 功能：縮放拖曳、距離量測、H3(RES8~RES11) 疊圖層 + 每格筆數<br>
-        - CSV：<code>PA_data.csv</code>
+        底圖：NLSC EMAP / EMAP01（彩色/灰階切換）<br>
+        功能：縮放拖曳、距離量測、H3(RES8~RES11) 疊圖層 + 每格筆數<br>
+        CSV：<code>PA_data.csv</code>
       </div>
+
       <hr>
       <div id="status" class="muted">尚未讀取 CSV</div>
-      <div id="debug" class="muted"></div>
-      <hr>
-      <div class="muted">
-        目前用 <code>start_H3_Res_8~11</code> 做分組計數。<br>
-        你之後要改成用 end_H3 或同時顯示 start/end，我再幫你擴充。
+
+      <div class="muted" style="margin-top:10px;">
+        <div><b>Page URL</b>: <code id="pageUrl"></code></div>
+        <div style="margin-top:6px;"><b>CSV URL</b>: <a id="csvLink" target="_blank" rel="noopener noreferrer"><code id="csvUrl"></code></a></div>
+        <div style="margin-top:6px;"><b>HTTP</b>: <code id="httpInfo">-</code></div>
       </div>
+
+      <div id="debug" class="muted" style="margin-top:12px;"></div>
     </div>
   </div>
 
-  <!-- JS: Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- JS: leaflet-measure -->
   <script src="https://unpkg.com/leaflet-measure@1.1.0/dist/leaflet-measure.min.js"></script>
-
-  <!-- JS: h3-js (browser bundle, global = h3) -->
   <script src="https://unpkg.com/h3-js@4.4.0/dist/browser/h3-js.js"></script>
 
   <script>
-    // ========== 0) 小工具 ==========
     const statusEl = document.getElementById('status');
     const debugEl  = document.getElementById('debug');
+    const pageUrlEl = document.getElementById('pageUrl');
+    const csvUrlEl = document.getElementById('csvUrl');
+    const csvLinkEl = document.getElementById('csvLink');
+    const httpInfoEl = document.getElementById('httpInfo');
 
     function setStatus(msg, cls='muted') {
       statusEl.className = cls;
       statusEl.textContent = msg;
     }
-
     function escapeHtml(s) {
       return String(s)
         .replaceAll('&', '&amp;')
@@ -106,7 +84,6 @@
         .replaceAll("'", '&#39;');
     }
 
-    // 更耐用的 CSV 解析：支援逗號、引號（你的 note 欄位可能有逗號）
     function parseCsvRobust(text) {
       const rows = [];
       let row = [];
@@ -118,61 +95,35 @@
         const next = text[i + 1];
 
         if (inQuotes) {
-          if (ch === '"' && next === '"') { // escaped quote
-            cur += '"';
-            i++;
-          } else if (ch === '"') {
-            inQuotes = false;
-          } else {
-            cur += ch;
-          }
+          if (ch === '"' && next === '"') { cur += '"'; i++; }
+          else if (ch === '"') inQuotes = false;
+          else cur += ch;
         } else {
-          if (ch === '"') {
-            inQuotes = true;
-          } else if (ch === ',') {
-            row.push(cur);
-            cur = '';
-          } else if (ch === '\n') {
-            row.push(cur);
-            rows.push(row);
-            row = [];
-            cur = '';
-          } else if (ch === '\r') {
-            // ignore
-          } else {
-            cur += ch;
-          }
+          if (ch === '"') inQuotes = true;
+          else if (ch === ',') { row.push(cur); cur = ''; }
+          else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+          else if (ch === '\r') {}
+          else cur += ch;
         }
       }
-      // last cell
-      if (cur.length || row.length) {
-        row.push(cur);
-        rows.push(row);
-      }
+      if (cur.length || row.length) { row.push(cur); rows.push(row); }
 
-      // 去掉空白尾列
       while (rows.length && rows[rows.length - 1].every(v => (v ?? '').trim() === '')) rows.pop();
-
       if (rows.length < 2) return [];
 
       const header = rows[0].map(h => (h ?? '').trim());
       const data = [];
-
       for (let r = 1; r < rows.length; r++) {
         const cols = rows[r];
         if (!cols || cols.every(v => (v ?? '').trim() === '')) continue;
-
         const obj = {};
-        for (let c = 0; c < header.length; c++) {
-          obj[header[c]] = (cols[c] ?? '').trim();
-        }
+        for (let c = 0; c < header.length; c++) obj[header[c]] = (cols[c] ?? '').trim();
         data.push(obj);
       }
       return data;
     }
 
-    // ========== 1) 建立地圖 ==========
-    // 底圖：NLSC WMTS (GoogleMapsCompatible) — 彩色 / 灰階
+    // ===== Map =====
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -182,153 +133,99 @@
       { maxZoom: 19 }
     );
 
-    const map = L.map('map', {
-      center: [23.7, 121.0],
-      zoom: 8,
-      layers: [baseEMAP]
-    });
+    const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
+    L.control.measure({ position:'topright' }).addTo(map);
 
-    // ========== 2) 距離量測 ==========
-    L.control.measure({ position: 'topright' }).addTo(map);
-
-    // ========== 3) H3 圖層（RES8~RES11） ==========
-    const h3Layers = {
-      RES8:  L.layerGroup(),
-      RES9:  L.layerGroup(),
-      RES10: L.layerGroup(),
-      RES11: L.layerGroup()
-    };
-
-    // 預設顯示 RES9（你要改預設顯示哪層，改這行）
+    const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     h3Layers.RES9.addTo(map);
 
-    const baseLayers = {
-      'NLSC 彩色 (EMAP)': baseEMAP,
-      'NLSC 灰階 (EMAP01)': baseEMAP01
-    };
-    const overlays = {
-      'H3 RES8 (start)':  h3Layers.RES8,
-      'H3 RES9 (start)':  h3Layers.RES9,
-      'H3 RES10 (start)': h3Layers.RES10,
-      'H3 RES11 (start)': h3Layers.RES11
-    };
-    L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
+    L.control.layers(
+      { 'NLSC 彩色 (EMAP)': baseEMAP, 'NLSC 灰階 (EMAP01)': baseEMAP01 },
+      { 'H3 RES8 (start)': h3Layers.RES8, 'H3 RES9 (start)': h3Layers.RES9, 'H3 RES10 (start)': h3Layers.RES10, 'H3 RES11 (start)': h3Layers.RES11 },
+      { collapsed:false }
+    ).addTo(map);
 
-    // ========== 4) 畫蜂巢 + 文字 ==========
     function addH3CellWithCount(h3Index, count, layerGroup) {
-      // polygon
-      const boundary = h3.cellToBoundary(h3Index); // [[lat,lng]...]
+      const boundary = h3.cellToBoundary(h3Index);
       const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
 
-      const poly = L.polygon(latlngs, {
-        weight: 1,
-        opacity: 0.9,
-        fillOpacity: 0.10
-      });
-
-      // tooltip / popup（先 tooltip）
-      poly.bindTooltip(
-        `H3: ${h3Index}<br>count: ${count}`,
-        { sticky: true }
-      );
-
+      const poly = L.polygon(latlngs, { weight:1, opacity:0.9, fillOpacity:0.10 });
+      poly.bindTooltip(`H3: ${h3Index}<br>count: ${count}`, { sticky:true });
       layerGroup.addLayer(poly);
 
-      // label (center marker)
-      const center = h3.cellToLatLng(h3Index); // [lat,lng]
+      const center = h3.cellToLatLng(h3Index);
       const labelIcon = L.divIcon({
-        className: '', // 取消 Leaflet 預設 class
+        className: '',
         html: `<div class="h3-count-label">${escapeHtml(count)}</div>`,
         iconSize: null
       });
-
-      const label = L.marker([center[0], center[1]], {
-        icon: labelIcon,
-        interactive: false // 不可點，避免影響 poly 互動
-      });
-
-      layerGroup.addLayer(label);
+      layerGroup.addLayer(L.marker([center[0], center[1]], { icon: labelIcon, interactive:false }));
     }
 
-    // ========== 5) 讀取 CSV 並分組計數 ==========
     function buildCounts(rows) {
-      // 對 start_H3_Res_8~11 分別做計數
-      const counters = {
-        RES8:  new Map(),
-        RES9:  new Map(),
-        RES10: new Map(),
-        RES11: new Map()
-      };
-
+      const counters = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
       for (const r of rows) {
-        const h8  = (r.start_H3_Res_8  || '').trim();
-        const h9  = (r.start_H3_Res_9  || '').trim();
-        const h10 = (r.start_H3_Res_10 || '').trim();
-        const h11 = (r.start_H3_Res_11 || '').trim();
-
-        if (h8)  counters.RES8.set(h8,  (counters.RES8.get(h8)  || 0) + 1);
-        if (h9)  counters.RES9.set(h9,  (counters.RES9.get(h9)  || 0) + 1);
-        if (h10) counters.RES10.set(h10,(counters.RES10.get(h10) || 0) + 1);
-        if (h11) counters.RES11.set(h11,(counters.RES11.get(h11) || 0) + 1);
+        const h8=(r.start_H3_Res_8||'').trim();
+        const h9=(r.start_H3_Res_9||'').trim();
+        const h10=(r.start_H3_Res_10||'').trim();
+        const h11=(r.start_H3_Res_11||'').trim();
+        if (h8) counters.RES8.set(h8,(counters.RES8.get(h8)||0)+1);
+        if (h9) counters.RES9.set(h9,(counters.RES9.get(h9)||0)+1);
+        if (h10) counters.RES10.set(h10,(counters.RES10.get(h10)||0)+1);
+        if (h11) counters.RES11.set(h11,(counters.RES11.get(h11)||0)+1);
       }
-
       return counters;
     }
 
     async function loadPAData() {
-      const url = `./PA_data.csv?v=${Date.now()}`; // 防快取
-      setStatus(`讀取中：${url}`);
+      pageUrlEl.textContent = location.href;
+
+      // ✅ 檔名跟你 repo 完全一致：PA_data.csv
+      const csvPath = './PA_data.csv';
+      const url = `${csvPath}?v=${Date.now()}`; // 防快取
+      const absUrl = new URL(url, location.href).toString();
+
+      csvUrlEl.textContent = absUrl;
+      csvLinkEl.href = absUrl;
+
+      setStatus(`讀取中：${absUrl}`);
 
       try {
-        const res = await fetch(url, { cache: 'no-store' });
+        const res = await fetch(absUrl, { cache:'no-store' });
+        httpInfoEl.textContent = `${res.status} ${res.statusText}`;
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
         const text = await res.text();
         const rows = parseCsvRobust(text);
 
-        // 清掉舊圖層
         Object.values(h3Layers).forEach(g => g.clearLayers());
 
-        // 分組計數
         const counters = buildCounts(rows);
-
-        // 繪製
         let totalCells = 0;
+
         for (const [key, mapCounts] of Object.entries(counters)) {
-          const layerGroup = h3Layers[key];
+          const g = h3Layers[key];
           for (const [h3Index, count] of mapCounts.entries()) {
-            // 基本防呆：確保是合法 H3
             if (!h3.isValidCell(h3Index)) continue;
-            addH3CellWithCount(h3Index, count, layerGroup);
+            addH3CellWithCount(h3Index, count, g);
             totalCells++;
           }
         }
 
-        // 自動 fitBounds（如果有畫出任何格）
-        const all = L.featureGroup([
-          h3Layers.RES8, h3Layers.RES9, h3Layers.RES10, h3Layers.RES11
-        ]);
-        if (totalCells > 0 && all.getLayers().length > 0) {
-          map.fitBounds(all.getBounds().pad(0.12));
-        }
+        const all = L.featureGroup([h3Layers.RES8, h3Layers.RES9, h3Layers.RES10, h3Layers.RES11]);
+        if (totalCells > 0 && all.getLayers().length > 0) map.fitBounds(all.getBounds().pad(0.12));
 
         setStatus(`完成：事件列 ${rows.length} 筆；蜂巢格（合計）${totalCells} 格`, 'ok');
 
-        // 右側簡單顯示各解析度格數
-        const s8  = counters.RES8.size;
-        const s9  = counters.RES9.size;
-        const s10 = counters.RES10.size;
-        const s11 = counters.RES11.size;
         debugEl.innerHTML = `
           <div class="muted">
-            H3 格數：RES8=${s8}、RES9=${s9}、RES10=${s10}、RES11=${s11}<br>
+            H3 唯一格數：RES8=${counters.RES8.size}、RES9=${counters.RES9.size}、RES10=${counters.RES10.size}、RES11=${counters.RES11.size}<br>
             提示：右上 Layers 可切換彩色/灰階與 RES8~RES11 疊圖層。
           </div>
         `;
-
       } catch (err) {
         setStatus(`讀取失敗：${err.message || err}`, 'err');
-        debugEl.textContent = String(err?.stack || err);
+        debugEl.innerHTML = `<div class="err">${escapeHtml(err?.stack || err)}</div>`;
       }
     }
 
