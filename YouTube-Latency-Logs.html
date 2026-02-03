@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Youtube_Live_LagLogger ver 9.8.1</title>
+  <title>Youtube_Live_LagLogger ver 9.8</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
@@ -30,32 +30,13 @@
     button:disabled { opacity:.45; }
     .btn-bg { border-color:#3a5aa0; background:#1a2a4a; }
     .btn-bg.on { border-color:#2d6a4f; background:#163a2b; }
+    .btn-hard { border-color:#9c6644; background:#2b1e14; }
+    .btn-hard.on { border-color:#e9c46a; background:#3a2d16; }
     .muted { color:#a9b8cc; font-size:12px; line-height:1.55; }
     .kv { display:grid; grid-template-columns: 190px 1fr; gap:6px 10px; font-size:12px; }
     .kv div:nth-child(odd) { color:#a9b8cc; }
-
-    /* ✅ clip-path 圓角裁切，避免 Android Chrome iframe 控制層點擊失效 */
-    #playerClip{
-      width:100%;
-      aspect-ratio:16/9;
-      background:#000;
-      border:1px solid #1d2a3a;
-      border-radius:12px;
-      -webkit-clip-path: inset(0 round 12px);
-      clip-path: inset(0 round 12px);
-      position: relative;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #playerWrap{
-      position:absolute;
-      inset:0;
-    }
-    #player{
-      width:100%;
-      height:100%;
-    }
-
+    #playerWrap { aspect-ratio: 16/9; width:100%; background:#000; border-radius:12px; overflow:hidden; border:1px solid #1d2a3a; }
+    #player { width:100%; height:100%; }
     table { width:100%; border-collapse:collapse; font-size:12px; }
     th, td { border-bottom:1px solid #1d2a3a; padding:8px 6px; vertical-align:top; }
     th { text-align:left; color:#a9b8cc; font-weight:700; background:#0d141e; position: sticky; top: 56px; z-index:5; }
@@ -71,8 +52,8 @@
 <body>
 <header>
   <h1>
-    Youtube_Live_LagLogger ver 9.8.1
-    <span class="ver">UTC+08:00 / ms / cycle_id(重開續號) / 事件先記+GPS背景回寫 / ✅e2e_recover_ms + e2e_recover_time / ✅齒輪點擊修復 / ✅畫質下拉+低頻鎖畫質 / ✅監測當前畫質(不寫log)</span>
+    Youtube_Live_LagLogger ver 9.8
+    <span class="ver">UTC+08:00 / ms / cycle_id(重開續號) / 事件先記+GPS背景回寫 / ✅e2e_recover_ms + e2e_recover_time / ✅外部畫質選單+強硬鎖畫質開關 / ✅顯示畫質狀態（不寫 log）</span>
   </h1>
 </header>
 
@@ -83,6 +64,28 @@
       <div style="flex:1; min-width:260px;">
         <label>YouTube 直播網址 / Video ID</label>
         <input id="inpUrl" type="text" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>畫質（預設：Advanced / 1080p）</label>
+        <select id="selQuality">
+          <option value="hd1080" selected>Advanced (1080p / hd1080)</option>
+          <option value="highres">highres</option>
+          <option value="hd2160">hd2160 (4K)</option>
+          <option value="hd1440">hd1440</option>
+          <option value="hd720">hd720</option>
+          <option value="large">large (約 480p)</option>
+          <option value="medium">medium (約 360p)</option>
+          <option value="small">small (約 240p)</option>
+          <option value="tiny">tiny (約 144p)</option>
+          <option value="auto">auto</option>
+        </select>
+      </div>
+      <div style="flex:1; min-width:260px;">
+        <label>外部「齒輪」替代（在 YouTube 開啟即可用齒輪）</label>
+        <button id="btnOpenYT">在 YouTube 開啟（可用齒輪）</button>
       </div>
     </div>
 
@@ -122,23 +125,11 @@
         <label>最大允許落後(ms)（層1：>= 就強制追）</label>
         <input id="inpMaxBehindMs" type="number" min="0" step="500" value="7000" />
       </div>
-      <div>
-        <label>畫質鎖定（預設 1080p；追進度時也會維持）</label>
-        <select id="selQuality">
-          <option value="hd1080">1080p (hd1080)</option>
-          <option value="hd720">720p (hd720)</option>
-          <option value="large">480p (large)</option>
-          <option value="medium">360p (medium)</option>
-          <option value="small">240p (small)</option>
-          <option value="tiny">144p (tiny)</option>
-          <option value="highres">最高 (highres)</option>
-          <option value="default">自動 (default)</option>
-        </select>
-      </div>
     </div>
 
     <div class="row" style="margin-top:10px; align-items:center;">
       <button id="btnBg" class="btn-bg">背景執行：OFF</button>
+      <button id="btnHard" class="btn-hard">強硬鎖畫質：OFF</button>
       <button id="btnLoad">載入/播放</button>
       <button id="btnReset">恢復預設</button>
       <button id="btnClear">清空事件</button>
@@ -153,24 +144,22 @@
       <div>追直播(上次)</div><div id="stCatchupTs">-</div>
       <div>追直播狀態</div><div id="stCatchArmed">ARMED</div>
       <div>LAG/STALL</div><div id="stStall">-</div>
-      <div>畫質(目前/可用)</div><div id="stQ">-</div>
       <div>GPS</div><div id="stGps">未授權</div>
       <div>背景模式</div><div id="stBg">OFF</div>
+      <div>畫質狀態</div><div id="stQuality" class="mono">now=- / pref=- / avail=-</div>
       <div>時間時區</div><div class="mono">UTC+08:00（台灣時間）</div>
     </div>
 
     <div class="muted" style="margin-top:8px;">
-      ✅ e2e_recover_ms / e2e_recover_time：寫在 root cycle 的 lag_event 列（lag_event 先出現，e2e 可能 3 秒後才補上）<br/>
-      - catchup_seek 後 3 秒內沒新 lag_start → e2e 終點=catchup_seek<br/>
-      - 若 catchup_seek 造成 buffering → e2e 終點=最後一次 post-catchup resume<br/>
-      ✅ ver 9.8.1：每 15 秒低頻「監測 + 補鎖畫質」，並在狀態列顯示當前畫質（不記錄事件）
+      ✅ 畫質鎖定（不寫入 log）：<br/>
+      - 溫和鎖：低頻巡航檢查；追進度 / PLAYING 後補鎖一次。<br/>
+      - 強硬鎖：若 avail 有目標畫質且 now!=pref，會更積極補鎖（仍有節流避免狂打）。<br/>
+      ✅ e2e_recover_ms/time：回寫到 root cycle 的 lag_event 列（lag_event 先出現，e2e 可能稍後補上）
     </div>
   </div>
 
-  <div id="playerClip">
-    <div id="playerWrap">
-      <div id="player"></div>
-    </div>
+  <div id="playerWrap">
+    <div id="player"></div>
   </div>
 
   <div class="card">
@@ -224,10 +213,11 @@ const LS_KEYS = {
   maxBehind: "ytlag_maxbehind_ms",
   bg: "ytlag_bg_mode",
   cycleSeq: "ytlag_cycle_seq",
-  quality: "ytlag_quality"
+  prefQ: "ytlag_pref_quality",
+  hardQ: "ytlag_hard_quality_lock"
 };
 
-const DEFAULTS_V9 = {
+const DEFAULTS = {
   url: "https://www.youtube.com/live/KyT4qSK8lJo?si=GudVcyxFxRcNfcqd",
   lagMs: 5000,
   catchMs: 4500,
@@ -238,16 +228,12 @@ const DEFAULTS_V9 = {
   safetyMs: 1500,
   maxBehindMs: 7000,
   bgMode: false,
-  quality: "hd1080"
+  prefQuality: "hd1080",
+  hardQualityLock: false
 };
 
 const AFTER_LAG_FORCE_GUARD_MS = 2000;
 const E2E_STABILIZE_WINDOW_MS = 3000;
-
-// ✅ 低頻巡航：監測+補鎖畫質（不寫 log）
-const QUALITY_CRUISE_MS = 15000;
-// ✅ 追進度/切換狀態後，多補幾次鎖畫質
-const QUALITY_RELOCK_DELAYS_MS = [200, 800, 1800];
 
 const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
 function nowTwIso(ms = Date.now()) {
@@ -276,6 +262,8 @@ function makeRowId() {
 }
 
 const inpUrl = document.getElementById("inpUrl");
+const selQuality = document.getElementById("selQuality");
+
 const inpLagMs = document.getElementById("inpLagMs");
 const inpCatchMs = document.getElementById("inpCatchMs");
 const inpRearmMs = document.getElementById("inpRearmMs");
@@ -284,9 +272,10 @@ const inpCooldownMs = document.getElementById("inpCooldownMs");
 const inpDebounceMs = document.getElementById("inpDebounceMs");
 const inpSafetyMs = document.getElementById("inpSafetyMs");
 const inpMaxBehindMs = document.getElementById("inpMaxBehindMs");
-const selQuality = document.getElementById("selQuality");
 
+const btnOpenYT = document.getElementById("btnOpenYT");
 const btnBg = document.getElementById("btnBg");
+const btnHard = document.getElementById("btnHard");
 const btnLoad = document.getElementById("btnLoad");
 const btnReset = document.getElementById("btnReset");
 const btnClear = document.getElementById("btnClear");
@@ -297,11 +286,11 @@ const stState = document.getElementById("stState");
 const stBehind = document.getElementById("stBehind");
 const stGps = document.getElementById("stGps");
 const stBg = document.getElementById("stBg");
+const stQuality = document.getElementById("stQuality");
 const stBehindTs = document.getElementById("stBehindTs");
 const stCatchupTs = document.getElementById("stCatchupTs");
 const stCatchArmed = document.getElementById("stCatchArmed");
 const stStall = document.getElementById("stStall");
-const stQ = document.getElementById("stQ");
 
 const pillReady = document.getElementById("pillReady");
 const countLag = document.getElementById("countLag");
@@ -335,6 +324,7 @@ let activeCycleId = "";
 
 // e2e tracker
 let e2e = null;
+// e2e = { rootCycleId, startUtcMs, catchupAtUtcMs, waitingWindow, postCycleIds:Set, finalized }
 
 let lastCatchupUtcMs = null;
 let lastPlayingEnterUtcMs = null;
@@ -345,10 +335,16 @@ let lastAfterLagForceUtcMs = null;
 let bgMode = false;
 let wakeLock = null;
 
+let hardQualityLock = false;
+let prefQuality = "hd1080";
+let lastQualitySetUtcMs = null;
+let qualityCruiseTimer = null;
+
+// timers
 let tickTimer = null;
 let stallTimer = null;
-let qualityTimer = null;
 
+// conservative STALL detector
 const STALL_POLL_MS = 500;
 const STALL_EPSILON_SEC = 0.25;
 const BEHIND_NOISE_TOL_MS = 150;
@@ -357,60 +353,60 @@ let stallAccumMs = 0;
 let stallLastCt = null;
 let stallLastBehindMs = null;
 
-// ✅ 畫質監測狀態（只顯示，不寫 log）
-let lastQualitySnapshot = { q: "", avail: [] };
-
 function getConfig() {
-  const lagThrMs = getMs(inpLagMs, DEFAULTS_V9.lagMs);
-  const catchThrMs = getMs(inpCatchMs, DEFAULTS_V9.catchMs);
-  const rearmMs = getMs(inpRearmMs, DEFAULTS_V9.rearmMs);
-  const sampleMs = Math.max(500, getMs(inpSampleMs, DEFAULTS_V9.sampleMs));
-  const cooldownMs = getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs);
-  const debounceMs = getMs(inpDebounceMs, DEFAULTS_V9.debounceMs);
-  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safetyMs));
-  const maxBehindMs = getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs);
-  const quality = (selQuality.value || DEFAULTS_V9.quality);
-  return { lagThrMs, catchThrMs, rearmMs, sampleMs, cooldownMs, debounceMs, safetyMs, maxBehindMs, quality };
+  const lagThrMs = getMs(inpLagMs, DEFAULTS.lagMs);
+  const catchThrMs = getMs(inpCatchMs, DEFAULTS.catchMs);
+  const rearmMs = getMs(inpRearmMs, DEFAULTS.rearmMs);
+  const sampleMs = Math.max(500, getMs(inpSampleMs, DEFAULTS.sampleMs));
+  const cooldownMs = getMs(inpCooldownMs, DEFAULTS.cooldownMs);
+  const debounceMs = getMs(inpDebounceMs, DEFAULTS.debounceMs);
+  const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS.safetyMs));
+  const maxBehindMs = getMs(inpMaxBehindMs, DEFAULTS.maxBehindMs);
+  return { lagThrMs, catchThrMs, rearmMs, sampleMs, cooldownMs, debounceMs, safetyMs, maxBehindMs };
 }
 
 function loadSettings() {
-  inpUrl.value = localStorage.getItem(LS_KEYS.url) || DEFAULTS_V9.url;
+  inpUrl.value = localStorage.getItem(LS_KEYS.url) || DEFAULTS.url;
 
-  inpLagMs.value       = String(Number(localStorage.getItem(LS_KEYS.lag)       || DEFAULTS_V9.lagMs));
-  inpCatchMs.value     = String(Number(localStorage.getItem(LS_KEYS.catch)     || DEFAULTS_V9.catchMs));
-  inpRearmMs.value     = String(Number(localStorage.getItem(LS_KEYS.rearm)     || DEFAULTS_V9.rearmMs));
-  inpSampleMs.value    = String(Number(localStorage.getItem(LS_KEYS.sample)    || DEFAULTS_V9.sampleMs));
-  inpCooldownMs.value  = String(Number(localStorage.getItem(LS_KEYS.cooldown)  || DEFAULTS_V9.cooldownMs));
-  inpDebounceMs.value  = String(Number(localStorage.getItem(LS_KEYS.debounce)  || DEFAULTS_V9.debounceMs));
-  inpSafetyMs.value    = String(Number(localStorage.getItem(LS_KEYS.safety)    || DEFAULTS_V9.safetyMs));
-  inpMaxBehindMs.value = String(Number(localStorage.getItem(LS_KEYS.maxBehind) || DEFAULTS_V9.maxBehindMs));
+  inpLagMs.value      = String(Number(localStorage.getItem(LS_KEYS.lag)      || DEFAULTS.lagMs));
+  inpCatchMs.value    = String(Number(localStorage.getItem(LS_KEYS.catch)    || DEFAULTS.catchMs));
+  inpRearmMs.value    = String(Number(localStorage.getItem(LS_KEYS.rearm)    || DEFAULTS.rearmMs));
+  inpSampleMs.value   = String(Number(localStorage.getItem(LS_KEYS.sample)   || DEFAULTS.sampleMs));
+  inpCooldownMs.value = String(Number(localStorage.getItem(LS_KEYS.cooldown) || DEFAULTS.cooldownMs));
+  inpDebounceMs.value = String(Number(localStorage.getItem(LS_KEYS.debounce) || DEFAULTS.debounceMs));
+  inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS.safetyMs));
+  inpMaxBehindMs.value= String(Number(localStorage.getItem(LS_KEYS.maxBehind)|| DEFAULTS.maxBehindMs));
 
-  selQuality.value = (localStorage.getItem(LS_KEYS.quality) || DEFAULTS_V9.quality);
-
-  bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS_V9.bgMode ? "1" : "0")) === "1";
+  bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS.bgMode ? "1" : "0")) === "1";
 
   cycleSeq = toIntOr0(localStorage.getItem(LS_KEYS.cycleSeq));
   if (localStorage.getItem(LS_KEYS.cycleSeq) == null) persistCycleSeq();
+
+  prefQuality = localStorage.getItem(LS_KEYS.prefQ) || DEFAULTS.prefQuality;
+  selQuality.value = prefQuality;
+
+  hardQualityLock = (localStorage.getItem(LS_KEYS.hardQ) || (DEFAULTS.hardQualityLock ? "1":"0")) === "1";
+  applyHardUi();
 
   applyBgUi();
   restartTick();
   restartStallDetector();
   restartQualityCruise();
-  updateQualityUi(); // init
 }
 
 function saveSettings() {
   localStorage.setItem(LS_KEYS.url, inpUrl.value.trim());
-  localStorage.setItem(LS_KEYS.lag, String(getMs(inpLagMs, DEFAULTS_V9.lagMs)));
-  localStorage.setItem(LS_KEYS.catch, String(getMs(inpCatchMs, DEFAULTS_V9.catchMs)));
-  localStorage.setItem(LS_KEYS.rearm, String(getMs(inpRearmMs, DEFAULTS_V9.rearmMs)));
-  localStorage.setItem(LS_KEYS.sample, String(getMs(inpSampleMs, DEFAULTS_V9.sampleMs)));
-  localStorage.setItem(LS_KEYS.cooldown, String(getMs(inpCooldownMs, DEFAULTS_V9.cooldownMs)));
-  localStorage.setItem(LS_KEYS.debounce, String(getMs(inpDebounceMs, DEFAULTS_V9.debounceMs)));
-  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safetyMs)));
-  localStorage.setItem(LS_KEYS.maxBehind, String(getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs)));
+  localStorage.setItem(LS_KEYS.lag, String(getMs(inpLagMs, DEFAULTS.lagMs)));
+  localStorage.setItem(LS_KEYS.catch, String(getMs(inpCatchMs, DEFAULTS.catchMs)));
+  localStorage.setItem(LS_KEYS.rearm, String(getMs(inpRearmMs, DEFAULTS.rearmMs)));
+  localStorage.setItem(LS_KEYS.sample, String(getMs(inpSampleMs, DEFAULTS.sampleMs)));
+  localStorage.setItem(LS_KEYS.cooldown, String(getMs(inpCooldownMs, DEFAULTS.cooldownMs)));
+  localStorage.setItem(LS_KEYS.debounce, String(getMs(inpDebounceMs, DEFAULTS.debounceMs)));
+  localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS.safetyMs)));
+  localStorage.setItem(LS_KEYS.maxBehind, String(getMs(inpMaxBehindMs, DEFAULTS.maxBehindMs)));
   localStorage.setItem(LS_KEYS.bg, bgMode ? "1" : "0");
-  localStorage.setItem(LS_KEYS.quality, selQuality.value || DEFAULTS_V9.quality);
+  localStorage.setItem(LS_KEYS.prefQ, prefQuality);
+  localStorage.setItem(LS_KEYS.hardQ, hardQualityLock ? "1" : "0");
 }
 
 function parseVideoId(input) {
@@ -594,7 +590,7 @@ function exportCsv() {
     "lag_threshold_ms","catch_threshold_ms","rearm_threshold_ms",
     "sample_interval_ms","catchup_cooldown_ms","catchup_debounce_ms",
     "safety_ms","max_allowed_behind_ms",
-    "quality_pref",
+    "pref_quality","hard_quality_lock",
     "note"
   ];
   const source = inpUrl.value.trim();
@@ -614,7 +610,7 @@ function exportCsv() {
       cfg.lagThrMs, cfg.catchThrMs, cfg.rearmMs,
       cfg.sampleMs, cfg.cooldownMs, cfg.debounceMs,
       cfg.safetyMs, cfg.maxBehindMs,
-      cfg.quality,
+      prefQuality, hardQualityLock ? "1" : "0",
       r.note || ""
     ].map(csvCell).join(","));
   }
@@ -648,97 +644,8 @@ function loadYTApiOnce() {
 function safeGetCurrentTime() { try { return player ? Number(player.getCurrentTime()) : null; } catch { return null; } }
 function safeGetDuration()    { try { return player ? Number(player.getDuration()) : null; } catch { return null; } }
 function safeGetPlayerState() { try { return player && typeof player.getPlayerState === "function" ? player.getPlayerState() : null; } catch { return null; } }
-
-/* =========================
-   ✅ 畫質監測 & UI 顯示（不寫 log）
-   ========================= */
-function safeGetPlaybackQuality() {
-  try { return player && typeof player.getPlaybackQuality === "function" ? String(player.getPlaybackQuality() || "") : ""; }
-  catch { return ""; }
-}
-function safeGetAvailableQualities() {
-  try { return player && typeof player.getAvailableQualityLevels === "function" ? (player.getAvailableQualityLevels() || []) : []; }
-  catch { return []; }
-}
-function updateQualitySnapshot() {
-  if (!playerReady || !player) { lastQualitySnapshot = { q:"", avail:[] }; updateQualityUi(); return; }
-  const q = safeGetPlaybackQuality();
-  const avail = safeGetAvailableQualities();
-  lastQualitySnapshot = { q: q || "", avail: Array.isArray(avail) ? avail : [] };
-  updateQualityUi();
-}
-function updateQualityUi() {
-  const pref = (selQuality.value || DEFAULTS_V9.quality);
-  const q = lastQualitySnapshot.q || "-";
-  const avail = (lastQualitySnapshot.avail && lastQualitySnapshot.avail.length)
-    ? lastQualitySnapshot.avail.join(" ")
-    : "-";
-  stQ.textContent = `now=${q} / pref=${pref} / avail=${avail}`;
-}
-
-/* ✅ 鎖畫質（不記錄 log） */
-function applyQualityLockOnce(reason = "") {
-  if (!playerReady || !player) return;
-  const q = (selQuality.value || DEFAULTS_V9.quality);
-  if (!q || q === "default") return;
-
-  try {
-    if (typeof player.setPlaybackQualityRange === "function") {
-      player.setPlaybackQualityRange(q);
-    }
-  } catch {}
-  try {
-    if (typeof player.setPlaybackQuality === "function") {
-      player.setPlaybackQuality(q);
-    }
-  } catch {}
-}
-
-/* ✅ 監測 + 不符才補鎖（不記錄 log） */
-function ensureQualityPrefNoLog(reason = "") {
-  if (!playerReady || !player) return;
-  const pref = (selQuality.value || DEFAULTS_V9.quality);
-  updateQualitySnapshot();
-
-  if (!pref || pref === "default") return;
-
-  const nowQ = lastQualitySnapshot.q || "";
-  const avail = lastQualitySnapshot.avail || [];
-
-  // 如果 YouTube 回傳空字串，就先不做判斷
-  if (!nowQ) return;
-
-  // 若偏好畫質不在可用清單，通常代表當下直播源不提供
-  if (avail.length && !avail.includes(pref)) return;
-
-  if (nowQ !== pref) {
-    applyQualityLockOnce("ensure:" + reason);
-    // 補鎖後再更新一次狀態列（不寫 log）
-    setTimeout(() => updateQualitySnapshot(), 250);
-  }
-}
-
-function relockQualityBurst(reason = "") {
-  for (const d of QUALITY_RELOCK_DELAYS_MS) {
-    setTimeout(() => {
-      applyQualityLockOnce(reason);
-      // burst 同時更新監測顯示
-      setTimeout(() => updateQualitySnapshot(), 120);
-    }, d);
-  }
-}
-
-function stopQualityCruise() { if (qualityTimer != null) { clearInterval(qualityTimer); qualityTimer = null; } }
-function startQualityCruise() {
-  stopQualityCruise();
-  qualityTimer = setInterval(() => {
-    const ps = safeGetPlayerState();
-    // 只在 PLAYING 且非 lagActive 時做「監測 + 不符才補鎖」
-    if (ps === 1 && !lagActive) ensureQualityPrefNoLog("cruise");
-    else updateQualitySnapshot(); // 非 playing 也更新顯示，讓狀態列不 stale
-  }, QUALITY_CRUISE_MS);
-}
-function restartQualityCruise() { startQualityCruise(); }
+function safeGetAvailQual()   { try { return player && typeof player.getAvailableQualityLevels === "function" ? (player.getAvailableQualityLevels() || []) : []; } catch { return []; } }
+function safeGetNowQual()     { try { return player && typeof player.getPlaybackQuality === "function" ? String(player.getPlaybackQuality() || "") : ""; } catch { return ""; } }
 
 function markWatchStartIfNeeded() {
   if (!watchStartUtcMs) {
@@ -771,6 +678,20 @@ function updateBehindNow() {
       stBehindTs.textContent = "-";
     }
   }
+
+  // 更新畫質狀態（不寫入 log）
+  updateQualityStatus();
+}
+
+function updateQualityStatus() {
+  if (!playerReady || !player) {
+    stQuality.textContent = `now=- / pref=${prefQuality} / avail=-`;
+    return;
+  }
+  const nowQ = safeGetNowQual() || "-";
+  const av = safeGetAvailQual();
+  const avStr = av.length ? av.join(" ") : "-";
+  stQuality.textContent = `now=${nowQ} / pref=${prefQuality} / avail=${avStr}`;
 }
 
 function seekToLiveEdgeStable(safetyMs) {
@@ -781,6 +702,66 @@ function seekToLiveEdgeStable(safetyMs) {
   const safetySec = Math.max(0, safetyMs) / 1000;
   const target = Math.max(0, du - Math.max(0.2, safetySec));
   try { player.seekTo(target, true); return true; } catch { return false; }
+}
+
+/**
+ * 畫質鎖定（不寫入 log）
+ * - 溫和：只在特定點 / 巡航低頻補鎖
+ * - 強硬：now!=pref 且 avail 有 pref 就更積極補鎖（仍節流）
+ */
+function applyPreferredQuality(tag, { aggressive = false } = {}) {
+  if (!playerReady || !player) return false;
+
+  const av = safeGetAvailQual();
+  const nowQ = safeGetNowQual();
+  updateQualityStatus();
+
+  // auto 不強制
+  if (!prefQuality || prefQuality === "auto") return false;
+
+  // 如果 avail 沒有 pref（直播當下不提供），就不硬做
+  const hasPref = av.includes(prefQuality) || av.length === 0; // 有些時候 API 會晚回 avail，允許先嘗試一次
+  if (!hasPref) return false;
+
+  const now = Date.now();
+  const MIN_SET_INTERVAL_MS = aggressive ? 2500 : 12000; // 強硬也不要狂打
+  if (lastQualitySetUtcMs != null && (now - lastQualitySetUtcMs) < MIN_SET_INTERVAL_MS) return false;
+
+  // 溫和模式下，如果 now 已經是 pref 就不動
+  if (!aggressive && nowQ === prefQuality) return false;
+
+  try {
+    if (typeof player.setPlaybackQuality === "function") {
+      player.setPlaybackQuality(prefQuality);
+      lastQualitySetUtcMs = now;
+      // 不寫 log，只更新狀態
+      setTimeout(updateQualityStatus, 300);
+      setTimeout(updateQualityStatus, 1500);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+// 低頻巡航（不寫 log）
+function qualityCruise() {
+  if (!playerReady || !player) return;
+  const ps = safeGetPlayerState();
+  if (ps !== 1) { updateQualityStatus(); return; }
+
+  // 溫和：每次巡航只補鎖一次（頻率低）
+  // 強硬：若 now!=pref 且 avail 有 pref，就補鎖（仍有 MIN_SET_INTERVAL_MS 節流）
+  const aggressive = !!hardQualityLock;
+  applyPreferredQuality("cruise", { aggressive });
+}
+
+function stopQualityCruise() {
+  if (qualityCruiseTimer != null) { clearInterval(qualityCruiseTimer); qualityCruiseTimer = null; }
+}
+function restartQualityCruise() {
+  stopQualityCruise();
+  // 低頻巡航：15 秒檢查一次（符合你先前偏保守的想法）
+  qualityCruiseTimer = setInterval(qualityCruise, 15000);
 }
 
 function finalizeE2E(endUtcMs, reason) {
@@ -816,9 +797,8 @@ function forceCatchUpAfterLagEnd(reason) {
   lastAfterLagForceUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
-  // ✅ 追進度後：補鎖 + 監測更新（不記錄事件）
-  relockQualityBurst("after_lag_end_seek");
-  setTimeout(() => ensureQualityPrefNoLog("after_lag_end_seek"), 1200);
+  // 追進度後補鎖畫質（不寫 log）
+  setTimeout(() => applyPreferredQuality("after_lag_force_seek", { aggressive: hardQualityLock }), 100);
 
   const gpsType0 = lastGeo ? "lastGeo" : "none";
   const rowId = addRow({
@@ -883,9 +863,8 @@ async function maybeCatchUpLayer1(reason) {
   lastCatchupUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
-  // ✅ 追進度後：補鎖 + 監測更新（不記錄事件）
-  relockQualityBurst("layer1_seek");
-  setTimeout(() => ensureQualityPrefNoLog("layer1_seek"), 1200);
+  // 追進度後補鎖畫質（不寫 log）
+  setTimeout(() => applyPreferredQuality("layer1_seek", { aggressive: hardQualityLock }), 100);
 
   catchArmed = false;
   render();
@@ -1034,19 +1013,16 @@ function onPlayerStateChange(e) {
   stState.textContent = String(e.data);
   updateBehindNow();
 
-  // ✅ 狀態改變也立即刷新畫質顯示（不寫 log）
-  updateQualitySnapshot();
-
   if (e.data === 1) { // PLAYING
     lastPlayingEnterUtcMs = Date.now();
     playedOnceEver = true;
     markWatchStartIfNeeded();
 
-    // ✅ PLAYING 時：補鎖 + 確認（不寫 log）
-    relockQualityBurst("state_playing");
-    setTimeout(() => ensureQualityPrefNoLog("state_playing"), 1200);
+    // PLAYING 後補鎖畫質（不寫 log）
+    setTimeout(() => applyPreferredQuality("on_playing", { aggressive: hardQualityLock }), 200);
 
     if (lagActive && lagMode === "buffering") endLagSessionIfAny("buffering_to_playing");
+
     runCatchUp("state_playing");
     return;
   }
@@ -1078,7 +1054,6 @@ function stallPoll() {
     stallLastCt = null;
     stallLastBehindMs = null;
     render();
-    updateQualitySnapshot();
     return;
   }
 
@@ -1087,7 +1062,6 @@ function stallPoll() {
     stallLastCt = ct;
     stallLastBehindMs = clamp0(computeBehindMs(ct, du));
     render();
-    updateQualitySnapshot();
     return;
   }
 
@@ -1097,7 +1071,6 @@ function stallPoll() {
     stallLastBehindMs = behindMs;
     stallAccumMs = 0;
     render();
-    updateQualitySnapshot();
     return;
   }
 
@@ -1118,7 +1091,6 @@ function stallPoll() {
   stallLastCt = ct;
   stallLastBehindMs = behindMs;
   render();
-  updateQualitySnapshot();
 }
 
 async function initPlayer(videoId) {
@@ -1131,6 +1103,7 @@ async function initPlayer(videoId) {
     playerReady = false;
   }
 
+  // reset runtime state (keep logs)
   lagActive = false; lagMode = ""; lagStartUtcMs = null; lagStartCt = null; lagStartDu = null;
   stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
   lastBehindMs = null; lastBehindAtUtcMs = null;
@@ -1143,8 +1116,9 @@ async function initPlayer(videoId) {
   activeCycleId = "";
   e2e = null;
 
-  lastQualitySnapshot = { q:"", avail:[] };
-  updateQualityUi();
+  // quality runtime
+  lastQualitySetUtcMs = null;
+  updateQualityStatus();
 
   if (player) {
     currentVideoId = videoId;
@@ -1161,7 +1135,12 @@ async function initPlayer(videoId) {
   player = new YT.Player("player", {
     videoId,
     playerVars: Object.assign(
-      { autoplay: 1, playsinline: 1, controls: 1, rel: 0 },
+      {
+        autoplay: 1,
+        playsinline: 1,
+        controls: 1,
+        rel: 0
+      },
       origin ? { origin } : {}
     ),
     events: {
@@ -1171,10 +1150,8 @@ async function initPlayer(videoId) {
         pillReady.classList.add("ok");
         ensureGeo().then(ok => { if (ok) startGeoWatch(); });
 
-        // ✅ ready：補鎖 + 監測刷新（不寫 log）
-        relockQualityBurst("onReady");
-        setTimeout(() => ensureQualityPrefNoLog("onReady"), 1200);
-        setTimeout(() => updateQualitySnapshot(), 200);
+        // ready 後先更新畫質狀態 & 補鎖一次（不寫 log）
+        setTimeout(() => { updateQualityStatus(); applyPreferredQuality("on_ready", { aggressive: false }); }, 300);
 
         if (pendingVideoId && typeof player.loadVideoById === "function") {
           const vid = pendingVideoId;
@@ -1198,6 +1175,11 @@ function applyBgUi() {
   stBg.textContent = bgMode ? "ON" : "OFF";
   btnBg.textContent = bgMode ? "背景執行：ON" : "背景執行：OFF";
   btnBg.classList.toggle("on", bgMode);
+}
+
+function applyHardUi() {
+  btnHard.textContent = hardQualityLock ? "強硬鎖畫質：ON" : "強硬鎖畫質：OFF";
+  btnHard.classList.toggle("on", hardQualityLock);
 }
 
 async function acquireWakeLock() {
@@ -1229,17 +1211,21 @@ function stopStallDetector() { if (stallTimer != null) { clearInterval(stallTime
 function startStallDetector() { stopStallDetector(); stallTimer = setInterval(stallPoll, STALL_POLL_MS); }
 function restartStallDetector() { startStallDetector(); }
 
-async function resetToDefaultsV9() {
-  inpUrl.value = DEFAULTS_V9.url;
-  inpLagMs.value = String(DEFAULTS_V9.lagMs);
-  inpCatchMs.value = String(DEFAULTS_V9.catchMs);
-  inpRearmMs.value = String(DEFAULTS_V9.rearmMs);
-  inpSampleMs.value = String(DEFAULTS_V9.sampleMs);
-  inpCooldownMs.value = String(DEFAULTS_V9.cooldownMs);
-  inpDebounceMs.value = String(DEFAULTS_V9.debounceMs);
-  inpSafetyMs.value = String(DEFAULTS_V9.safetyMs);
-  inpMaxBehindMs.value = String(DEFAULTS_V9.maxBehindMs);
-  selQuality.value = DEFAULTS_V9.quality;
+async function resetToDefaults() {
+  inpUrl.value = DEFAULTS.url;
+  inpLagMs.value = String(DEFAULTS.lagMs);
+  inpCatchMs.value = String(DEFAULTS.catchMs);
+  inpRearmMs.value = String(DEFAULTS.rearmMs);
+  inpSampleMs.value = String(DEFAULTS.sampleMs);
+  inpCooldownMs.value = String(DEFAULTS.cooldownMs);
+  inpDebounceMs.value = String(DEFAULTS.debounceMs);
+  inpSafetyMs.value = String(DEFAULTS.safetyMs);
+  inpMaxBehindMs.value = String(DEFAULTS.maxBehindMs);
+
+  prefQuality = DEFAULTS.prefQuality;
+  selQuality.value = prefQuality;
+  hardQualityLock = DEFAULTS.hardQualityLock;
+  applyHardUi();
 
   Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
   cycleSeq = 0;
@@ -1259,17 +1245,42 @@ async function resetToDefaultsV9() {
   activeCycleId = "";
   e2e = null;
 
-  lastQualitySnapshot = { q:"", avail:[] };
-  updateQualityUi();
+  lastQualitySetUtcMs = null;
+  updateQualityStatus();
 
   restartTick();
   restartStallDetector();
   restartQualityCruise();
 
-  addRow({ event: "reset_defaults", timeTw: nowTwIso(), note: "reset to Youtube_Live_LagLogger ver 9.8.1 defaults" });
+  addRow({ event: "reset_defaults", timeTw: nowTwIso(), note: "reset to ver 9.8 defaults (quality lock OFF)" });
 }
 
 btnBg.addEventListener("click", async () => { await setBgMode(!bgMode); });
+
+btnHard.addEventListener("click", () => {
+  hardQualityLock = !hardQualityLock;
+  applyHardUi();
+  saveSettings();
+  // 切到 ON 後立刻補鎖一次（不寫 log）
+  setTimeout(() => applyPreferredQuality("toggle_hard", { aggressive: hardQualityLock }), 0);
+});
+
+selQuality.addEventListener("change", () => {
+  prefQuality = selQuality.value || "hd1080";
+  saveSettings();
+  updateQualityStatus();
+  // 改畫質立刻補鎖一次（不寫 log）
+  setTimeout(() => applyPreferredQuality("quality_change", { aggressive: hardQualityLock }), 0);
+});
+
+btnOpenYT.addEventListener("click", () => {
+  const vid = currentVideoId || parseVideoId(inpUrl.value);
+  if (!vid) { alert("無法解析 Video ID。"); return; }
+  const ct = safeGetCurrentTime();
+  const t = (ct != null && Number.isFinite(ct) && ct > 0) ? `&t=${Math.floor(ct)}s` : "";
+  const url = `https://www.youtube.com/watch?v=${encodeURIComponent(vid)}${t}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+});
 
 btnLoad.addEventListener("click", async () => {
   saveSettings();
@@ -1282,20 +1293,17 @@ btnLoad.addEventListener("click", async () => {
   try {
     await initPlayer(vid);
     updateBehindNow();
-
-    // ✅ 載入後：補鎖 + 確認（不寫 log）
-    relockQualityBurst("after_load");
-    setTimeout(() => ensureQualityPrefNoLog("after_load"), 1200);
-
     runCatchUp("after_load");
+    // load 後補鎖畫質（不寫 log）
+    setTimeout(() => applyPreferredQuality("after_load", { aggressive: false }), 500);
   } catch (e) {
     alert("載入 YouTube Player 失敗：" + (e?.message || e));
   }
 });
 
 btnReset.addEventListener("click", async () => {
-  if (!confirm("確定要把所有設定恢復為 ver 9.8.1 預設值？（cycle_id 也會從 1 重新開始）")) return;
-  await resetToDefaultsV9();
+  if (!confirm("確定要把所有設定恢復為 ver 9.8 預設值？（cycle_id 也會從 1 重新開始）")) return;
+  await resetToDefaults();
 });
 
 btnClear.addEventListener("click", () => {
@@ -1323,17 +1331,8 @@ btnExport.addEventListener("click", () => exportCsv());
 
 [
   inpUrl, inpLagMs, inpCatchMs, inpRearmMs, inpSampleMs,
-  inpCooldownMs, inpDebounceMs, inpSafetyMs, inpMaxBehindMs,
-  selQuality
-].forEach(el => el.addEventListener("change", () => {
-  saveSettings();
-  restartTick();
-  restartQualityCruise();
-
-  // ✅ 使用者改畫質：立刻補鎖 + 監測刷新（不寫 log）
-  relockQualityBurst("quality_changed");
-  setTimeout(() => ensureQualityPrefNoLog("quality_changed"), 1200);
-}));
+  inpCooldownMs, inpDebounceMs, inpSafetyMs, inpMaxBehindMs
+].forEach(el => el.addEventListener("change", () => { saveSettings(); restartTick(); }));
 
 (function boot(){
   loadSettings();
@@ -1343,6 +1342,7 @@ btnExport.addEventListener("click", () => exportCsv());
   stBehind.textContent = "-";
   stBehindTs.textContent = "-";
   stCatchupTs.textContent = "-";
+  updateQualityStatus();
 })();
 </script>
 
