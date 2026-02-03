@@ -53,15 +53,21 @@
         <div><b>Page URL</b>: <code id="pageUrl"></code></div>
         <div style="margin-top:6px;"><b>CSV URL</b>: <a id="csvLink" target="_blank" rel="noopener noreferrer"><code id="csvUrl"></code></a></div>
         <div style="margin-top:6px;"><b>HTTP</b>: <code id="httpInfo">-</code></div>
+        <div style="margin-top:6px;"><b>H3</b>: <code id="h3Info">loading...</code></div>
       </div>
 
       <div id="debug" class="muted" style="margin-top:12px;"></div>
     </div>
   </div>
 
+  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- leaflet-measure -->
   <script src="https://unpkg.com/leaflet-measure@1.1.0/dist/leaflet-measure.min.js"></script>
-  <script src="https://unpkg.com/h3-js@4.4.0/dist/browser/h3-js.js"></script>
+
+  <!-- ✅ h3-js (UMD，保證提供全域 h3) -->
+  <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
 
   <script>
     const statusEl = document.getElementById('status');
@@ -70,6 +76,7 @@
     const csvUrlEl = document.getElementById('csvUrl');
     const csvLinkEl = document.getElementById('csvLink');
     const httpInfoEl = document.getElementById('httpInfo');
+    const h3InfoEl = document.getElementById('h3Info');
 
     function setStatus(msg, cls='muted') {
       statusEl.className = cls;
@@ -180,9 +187,17 @@
     async function loadPAData() {
       pageUrlEl.textContent = location.href;
 
-      // ✅ 檔名跟你 repo 完全一致：PA_data.csv
+      // 顯示 H3 載入狀態
+      if (typeof window.h3 === 'undefined') {
+        h3InfoEl.textContent = 'NOT LOADED (window.h3 is undefined)';
+        throw new Error('h3 is not defined (h3-js 未載入成功)');
+      } else {
+        const v = window.h3?.versions?.h3 || window.h3?.VERSION || 'loaded';
+        h3InfoEl.textContent = `loaded (${v})`;
+      }
+
       const csvPath = './PA_data.csv';
-      const url = `${csvPath}?v=${Date.now()}`; // 防快取
+      const url = `${csvPath}?v=${Date.now()}`;
       const absUrl = new URL(url, location.href).toString();
 
       csvUrlEl.textContent = absUrl;
@@ -190,46 +205,48 @@
 
       setStatus(`讀取中：${absUrl}`);
 
-      try {
-        const res = await fetch(absUrl, { cache:'no-store' });
-        httpInfoEl.textContent = `${res.status} ${res.statusText}`;
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      const res = await fetch(absUrl, { cache:'no-store' });
+      httpInfoEl.textContent = `${res.status} ${res.statusText}`;
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
-        const text = await res.text();
-        const rows = parseCsvRobust(text);
+      const text = await res.text();
+      const rows = parseCsvRobust(text);
 
-        Object.values(h3Layers).forEach(g => g.clearLayers());
+      Object.values(h3Layers).forEach(g => g.clearLayers());
 
-        const counters = buildCounts(rows);
-        let totalCells = 0;
+      const counters = buildCounts(rows);
+      let totalCells = 0;
 
-        for (const [key, mapCounts] of Object.entries(counters)) {
-          const g = h3Layers[key];
-          for (const [h3Index, count] of mapCounts.entries()) {
-            if (!h3.isValidCell(h3Index)) continue;
-            addH3CellWithCount(h3Index, count, g);
-            totalCells++;
-          }
+      for (const [key, mapCounts] of Object.entries(counters)) {
+        const g = h3Layers[key];
+        for (const [h3Index, count] of mapCounts.entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          addH3CellWithCount(h3Index, count, g);
+          totalCells++;
         }
+      }
 
-        const all = L.featureGroup([h3Layers.RES8, h3Layers.RES9, h3Layers.RES10, h3Layers.RES11]);
-        if (totalCells > 0 && all.getLayers().length > 0) map.fitBounds(all.getBounds().pad(0.12));
+      const all = L.featureGroup([h3Layers.RES8, h3Layers.RES9, h3Layers.RES10, h3Layers.RES11]);
+      if (totalCells > 0 && all.getLayers().length > 0) map.fitBounds(all.getBounds().pad(0.12));
 
-        setStatus(`完成：事件列 ${rows.length} 筆；蜂巢格（合計）${totalCells} 格`, 'ok');
+      setStatus(`完成：事件列 ${rows.length} 筆；蜂巢格（合計）${totalCells} 格`, 'ok');
+      debugEl.innerHTML = `
+        <div class="muted">
+          H3 唯一格數：RES8=${counters.RES8.size}、RES9=${counters.RES9.size}、RES10=${counters.RES10.size}、RES11=${counters.RES11.size}<br>
+          提示：右上 Layers 可切換彩色/灰階與 RES8~RES11 疊圖層。
+        </div>
+      `;
+    }
 
-        debugEl.innerHTML = `
-          <div class="muted">
-            H3 唯一格數：RES8=${counters.RES8.size}、RES9=${counters.RES9.size}、RES10=${counters.RES10.size}、RES11=${counters.RES11.size}<br>
-            提示：右上 Layers 可切換彩色/灰階與 RES8~RES11 疊圖層。
-          </div>
-        `;
+    // 主程式：包 try/catch 讓錯誤顯示在右側
+    (async () => {
+      try {
+        await loadPAData();
       } catch (err) {
         setStatus(`讀取失敗：${err.message || err}`, 'err');
         debugEl.innerHTML = `<div class="err">${escapeHtml(err?.stack || err)}</div>`;
       }
-    }
-
-    loadPAData();
+    })();
   </script>
 </body>
 </html>
