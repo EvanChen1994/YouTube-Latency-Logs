@@ -10,8 +10,53 @@
   <style>
     html, body { height: 100%; margin: 0; }
     .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+
+    /* 左側地圖 50% */
     #map { width:50vw; height:100vh; background:#f3f3f3; }
-    #panel { width:50vw; height:100vh; overflow:auto; padding:16px; box-sizing:border-box; border-left:1px solid #e5e5e5; }
+
+    /* 右側面板 50%：上方工具列 + 下方表格 */
+    #panel {
+      width:50vw; height:100vh; overflow:hidden;
+      box-sizing:border-box; border-left:1px solid #e5e5e5;
+      display:flex; flex-direction:column;
+      background:#fff;
+    }
+
+    .topbar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px;
+      border-bottom:1px solid #eee;
+      gap:10px;
+    }
+
+    .title-wrap { display:flex; align-items:baseline; gap:10px; min-width: 0; }
+    .title-wrap h2 { margin:0; font-size:18px; white-space:nowrap; }
+    .verTag { color:#666; font-weight:700; white-space:nowrap; }
+    .selectionTag { color:#666; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 24vw; }
+
+    .btns { display:flex; gap:8px; align-items:center; }
+    .btn {
+      border:1px solid #ddd;
+      background:#fafafa;
+      border-radius:8px;
+      padding:6px 10px;
+      cursor:pointer;
+      font-weight:700;
+      user-select:none;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      white-space:nowrap;
+    }
+    .btn:hover { background:#f2f2f2; }
+    .btn.active { background:#ffe9e9; border-color:#d00; color:#b00; }
+
+    .icon-btn {
+      width:36px; height:34px;
+      padding:0;
+      justify-content:center;
+    }
+
     .muted { color:#666; }
     .ok { color:#0a7; }
     .err { color:#c00; white-space:pre-wrap; }
@@ -33,31 +78,95 @@
       white-space: nowrap;
     }
 
-    /* 測距按鈕 */
-    .leaflet-control.custom-measure {
-      background: #fff;
-      padding: 6px;
-      border-radius: 4px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
-    }
-    .measure-btn {
-      cursor: pointer;
-      user-select: none;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 6px 10px;
-      font-weight: 700;
-      background: #fafafa;
-    }
-    .measure-btn.active {
-      background: #ffe9e9;
-      border-color: #d00;
-      color: #b00;
+    /* Tooltip 美化 */
+    .h3-tip b { display:inline-block; min-width: 180px; }
+    .h3-tip { line-height: 1.35; }
+
+    /* 表格區域 */
+    .table-wrap {
+      flex:1;
+      overflow:auto;
+      padding: 8px 10px 12px 10px;
     }
 
-    /* Tooltip 內容稍微美化 */
-    .h3-tip b { display:inline-block; min-width: 160px; }
-    .h3-tip { line-height: 1.35; }
+    table {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      font-size: 12px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f7f7f7;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    tbody tr:hover { background:#fafafa; }
+
+    .hint {
+      padding: 6px 12px;
+      color:#666;
+      font-size:12px;
+      border-bottom:1px solid #f0f0f0;
+      background:#fff;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal {
+      width: min(880px, 92vw);
+      max-height: 86vh;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      overflow: hidden;
+      display:flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 10px 12px;
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      border-bottom: 1px solid #eee;
+      background:#fafafa;
+    }
+
+    .modal-body {
+      padding: 12px;
+      overflow:auto;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .kv { display:grid; grid-template-columns: 140px 1fr; gap:8px 10px; }
+    .kv div { padding: 2px 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .close-btn { border:1px solid #ddd; background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; font-weight:700; }
   </style>
 </head>
 
@@ -66,28 +175,71 @@
     <div id="map"></div>
 
     <div id="panel">
-      <div style="display:flex; align-items:baseline; gap:10px;">
-        <h2 style="margin:0;">THSR PA Analysis</h2>
-        <div class="muted" id="verTag" style="font-weight:700;"></div>
+      <!-- 右側第一排：按鈕列 -->
+      <div class="topbar">
+        <div class="title-wrap">
+          <h2>THSR PA Analysis</h2>
+          <div class="verTag" id="verTag"></div>
+          <div class="selectionTag" id="selectionTag" title=""></div>
+        </div>
+
+        <div class="btns">
+          <!-- 尺標 icon 測距 -->
+          <div class="btn icon-btn" id="btnMeasure" title="測距：啟用後左鍵點起點再點終點顯示距離">
+            <!-- inline SVG ruler -->
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
+            </svg>
+          </div>
+
+          <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">
+            🛈 系統資訊
+          </div>
+
+          <div class="btn" id="btnClear" title="清除蜂巢篩選，顯示全部事件">
+            清除篩選
+          </div>
+        </div>
       </div>
 
-      <div class="muted" style="margin-top:8px;">
-        底圖：NLSC EMAP / EMAP01（彩色/灰階切換）<br>
-        功能：縮放拖曳、H3(RES8~RES11) 疊圖層 + 每格筆數、Hover 資訊窗口、點兩下測距<br>
-        CSV：<code>PA_data.csv</code>
+      <!-- 提示列 -->
+      <div class="hint" id="hintLine">
+        提示：點任一蜂巢格可在右側查看該格事件；hover 蜂巢可看摘要；右上 Layers 可切換 RES8~RES11。
       </div>
 
-      <hr>
-      <div id="status" class="muted">尚未讀取 CSV</div>
-
-      <div class="muted" style="margin-top:10px;">
-        <div><b>Page URL</b>: <code id="pageUrl"></code></div>
-        <div style="margin-top:6px;"><b>CSV URL</b>: <a id="csvLink" target="_blank" rel="noopener noreferrer"><code id="csvUrl"></code></a></div>
-        <div style="margin-top:6px;"><b>HTTP</b>: <code id="httpInfo">-</code></div>
-        <div style="margin-top:6px;"><b>H3</b>: <code id="h3Info">loading...</code></div>
+      <!-- 表格 -->
+      <div class="table-wrap">
+        <table id="evtTable">
+          <thead><tr id="evtHeadRow"></tr></thead>
+          <tbody id="evtBody"></tbody>
+        </table>
       </div>
+    </div>
+  </div>
 
-      <div id="debug" class="muted" style="margin-top:12px;"></div>
+  <!-- Modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="系統資訊">
+      <div class="modal-header">
+        <div style="font-weight:800;">系統資訊（狀態 / 更新 / 錯誤）</div>
+        <button class="close-btn" id="btnModalClose">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="kv">
+          <div class="muted">Version</div><div class="mono" id="mVersion"></div>
+          <div class="muted">Page URL</div><div class="mono" id="mPageUrl"></div>
+          <div class="muted">CSV URL</div><div class="mono" id="mCsvUrl"></div>
+          <div class="muted">HTTP</div><div class="mono" id="mHttp"></div>
+          <div class="muted">H3</div><div class="mono" id="mH3"></div>
+          <div class="muted">Status</div><div class="mono" id="mStatus"></div>
+          <div class="muted">Last Update</div><div class="mono" id="mUpdate"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0;">
+
+        <div style="font-weight:800;margin-bottom:6px;">Errors</div>
+        <div class="mono err" id="mErrors" style="white-space:pre-wrap;"></div>
+      </div>
     </div>
   </div>
 
@@ -99,23 +251,55 @@
 
   <script>
     // ========= Version =========
-    // 你規則：小修 +0.1；大修/新增功能 +1
-    // 1.1 -> (新增 hover 資訊 + 新測距工具) => +1 => 2.0
-    const APP_VERSION = "ver 2.0";
+    // 2.0 -> 本次新增：右側明細表 + 點蜂巢篩選 + 彈窗資訊 + 測距 icon => 大功能 +1 => 3.0
+    const APP_VERSION = "ver 3.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
-    const statusEl = document.getElementById('status');
-    const debugEl  = document.getElementById('debug');
-    const pageUrlEl = document.getElementById('pageUrl');
-    const csvUrlEl = document.getElementById('csvUrl');
-    const csvLinkEl = document.getElementById('csvLink');
-    const httpInfoEl = document.getElementById('httpInfo');
-    const h3InfoEl = document.getElementById('h3Info');
+    // ========= Modal / status logging =========
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const btnInfo = document.getElementById('btnInfo');
+    const btnModalClose = document.getElementById('btnModalClose');
 
-    function setStatus(msg, cls='muted') {
-      statusEl.className = cls;
-      statusEl.textContent = msg;
+    const mVersion = document.getElementById('mVersion');
+    const mPageUrl = document.getElementById('mPageUrl');
+    const mCsvUrl = document.getElementById('mCsvUrl');
+    const mHttp = document.getElementById('mHttp');
+    const mH3 = document.getElementById('mH3');
+    const mStatus = document.getElementById('mStatus');
+    const mUpdate = document.getElementById('mUpdate');
+    const mErrors = document.getElementById('mErrors');
+
+    let lastStatus = "init";
+    let lastUpdateTime = "";
+    const errorLogs = [];
+
+    function openModal() { modalBackdrop.style.display = "flex"; }
+    function closeModal() { modalBackdrop.style.display = "none"; }
+
+    btnInfo.addEventListener('click', () => {
+      mVersion.textContent = APP_VERSION;
+      mPageUrl.textContent = location.href;
+      mCsvUrl.textContent = (window.__csvAbsUrl || '');
+      mHttp.textContent = (window.__httpInfo || '');
+      mH3.textContent = (window.__h3Info || '');
+      mStatus.textContent = lastStatus;
+      mUpdate.textContent = lastUpdateTime || '';
+      mErrors.textContent = errorLogs.length ? errorLogs.join("\n\n") : "(none)";
+      openModal();
+    });
+
+    btnModalClose.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+    function setStatus(msg) {
+      lastStatus = msg;
     }
+    function logError(err) {
+      const s = String(err?.stack || err);
+      errorLogs.push(s);
+    }
+
+    // ========= Utilities =========
     function escapeHtml(s) {
       return String(s ?? '')
         .replaceAll('&', '&amp;')
@@ -133,7 +317,7 @@
       return arr.length ? arr.join(sep) : '';
     }
 
-    // Robust CSV 解析：支援逗號/引號
+    // Robust CSV parser (supports quoted commas)
     function parseCsvRobust(text) {
       const rows = [];
       let row = [];
@@ -173,7 +357,7 @@
       return data;
     }
 
-    // ===== Map / Base Layers =====
+    // ========= Map / base layers =========
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -185,7 +369,7 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // ===== H3 Overlay Layers =====
+    // ========= H3 overlay layers =========
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     h3Layers.RES9.addTo(map);
 
@@ -195,10 +379,11 @@
       { collapsed:false }
     ).addTo(map);
 
-    // ===== 自製測距工具（點起點、點終點顯示距離）=====
+    // ========= Measure tool (icon button) =========
+    const btnMeasure = document.getElementById('btnMeasure');
     let measureActive = false;
-    let measureStart = null;          // L.LatLng
-    let measureStartMarker = null;    // marker
+    let measureStart = null;
+    let measureStartMarker = null;
     let measureEndMarker = null;
     let measureLine = null;
 
@@ -208,23 +393,19 @@
       if (measureLine)        { map.removeLayer(measureLine);        measureLine = null; }
       measureStart = null;
     }
-
     function formatDistance(meters) {
       if (meters >= 1000) return `${(meters/1000).toFixed(3)} km`;
       return `${meters.toFixed(1)} m`;
     }
-
     function onMapClickMeasure(e) {
       if (!measureActive) return;
 
       if (!measureStart) {
-        // 開始點：先清掉上一條
         clearMeasureGraphics();
         measureStart = e.latlng;
         measureStartMarker = L.circleMarker(measureStart, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
         measureStartMarker.bindTooltip("起點", { permanent: false, direction: 'top' });
       } else {
-        // 終止點
         const end = e.latlng;
         measureEndMarker = L.circleMarker(end, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
         measureEndMarker.bindTooltip("終點", { permanent: false, direction: 'top' });
@@ -234,59 +415,145 @@
         const dist = map.distance(measureStart, end);
         const msg = `距離：${formatDistance(dist)}`;
 
-        // 在終點顯示 popup
         L.popup({ closeButton: true, autoClose: true })
           .setLatLng(end)
           .setContent(msg)
           .openOn(map);
 
-        // 下一次量測：讓下一次點擊重新開始（但保留 measureActive）
+        // next measurement starts fresh (keep active)
         measureStart = null;
       }
     }
-
     map.on('click', onMapClickMeasure);
 
-    const MeasureControl = L.Control.extend({
-      options: { position: 'topright' },
-      onAdd: function() {
-        const div = L.DomUtil.create('div', 'leaflet-control custom-measure');
-        const btn = L.DomUtil.create('div', 'measure-btn', div);
-        btn.textContent = '測距';
-        btn.title = '點一下啟用/停用測距；啟用後左鍵點起點再點終點顯示距離';
-
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.on(btn, 'click', (ev) => {
-          L.DomEvent.stop(ev);
-          measureActive = !measureActive;
-          btn.classList.toggle('active', measureActive);
-
-          if (!measureActive) {
-            // 停用測距時清除暫存起點（保留線/點也可以；你若要停用就清掉，把下一行打開）
-            measureStart = null;
-          }
-        });
-
-        return div;
+    btnMeasure.addEventListener('click', () => {
+      measureActive = !measureActive;
+      btnMeasure.classList.toggle('active', measureActive);
+      if (!measureActive) {
+        measureStart = null;
       }
     });
-    map.addControl(new MeasureControl());
 
-    // ===== H3: 畫蜂巢 + 累積 bounds + hover 資訊 =====
+    // ========= Right panel: event table =========
+    const evtHeadRow = document.getElementById('evtHeadRow');
+    const evtBody = document.getElementById('evtBody');
+    const selectionTag = document.getElementById('selectionTag');
+    const btnClear = document.getElementById('btnClear');
+
+    // 你指定的欄位（允許我縮短顯示）
+    const COLS = [
+      { key: 'Date', label: 'Date' },
+      { key: 'PA_Num', label: 'PA#' },
+      { key: 'event', label: 'Event' },
+      { key: 'time_tw', label: 'Time(TW)' },
+      { key: 'lag_start_tw', label: 'LagStart' },
+      { key: 'resume_tw', label: 'Resume' },
+      { key: 'lag_ms', label: 'Lag(ms)' },
+      { key: 'e2e_recover_ms', label: 'E2E(ms)' },
+      { key: 'e2e_recover_time', label: 'E2E(Time)' },
+      { key: 'lag_end_tw', label: 'LagEnd' },
+      { key: 'lag_mode', label: 'LagMode' },
+      { key: 'gps_type', label: 'GPS' },
+      { key: 'start_lat', label: 'S.lat' },
+      { key: 'start_lon', label: 'S.lon' },
+      { key: 'end_lat', label: 'E.lat' },
+      { key: 'end_lon', label: 'E.lon' },
+      { key: 'end_action', label: 'EndAct' },
+      { key: 'accuracy_m', label: 'Acc(m)' },
+
+      { key: 'start_H3_Res_8', label: 'S.H3(8)' },
+      { key: 'start_H3_Res_9', label: 'S.H3(9)' },
+      { key: 'start_H3_Res_10', label: 'S.H3(10)' },
+      { key: 'start_H3_Res_11', label: 'S.H3(11)' },
+
+      { key: 'end_H3_Res_8', label: 'E.H3(8)' },
+      { key: 'end_H3_Res_9', label: 'E.H3(9)' },
+      { key: 'end_H3_Res_10', label: 'E.H3(10)' },
+      { key: 'end_H3_Res_11', label: 'E.H3(11)' },
+
+      { key: 'measurement_Type', label: 'Type' },
+      { key: 'measurement_Path', label: 'Path' },
+      { key: 'measurement_NetWork', label: 'Net' },
+      { key: 'measurement_Script', label: 'Script' },
+
+      { key: 'start_location_name', label: 'S.loc' },
+      { key: 'end_location_name', label: 'E.loc' },
+      { key: 'start_location_KM+M', label: 'S.KM+M' },
+      { key: 'end_location_KM+M', label: 'E.KM+M' },
+
+      { key: 'twcounty', label: 'County' },
+      { key: 'Marea', label: 'Area' },
+      { key: 'Mcenter', label: 'Center' },
+    ];
+
+    function renderTableHeader() {
+      evtHeadRow.innerHTML = '';
+      for (const c of COLS) {
+        const th = document.createElement('th');
+        th.textContent = c.label;
+        th.title = c.key; // 完整欄位名
+        evtHeadRow.appendChild(th);
+      }
+    }
+
+    function renderTableRows(rows) {
+      evtBody.innerHTML = '';
+      const frag = document.createDocumentFragment();
+
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        for (const c of COLS) {
+          const td = document.createElement('td');
+          const v = (r[c.key] ?? '');
+          td.textContent = v;
+          td.title = v; // cell hover 顯示完整值
+          tr.appendChild(td);
+        }
+        frag.appendChild(tr);
+      }
+      evtBody.appendChild(frag);
+    }
+
+    renderTableHeader();
+
+    // ========= Aggregation for hover + click filtering =========
+    // 我們存兩份：
+    // 1) allRows: 全部事件列（原始 rows）
+    // 2) idxByCell[RESx].get(h3Index) -> Set(rowIndex)
+    let allRows = [];
+    const idxByCell = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+
+    let currentFilter = null; // { resKey, resNum, h3Index }
+
+    function setSelectionTag(text) {
+      selectionTag.textContent = text || '';
+      selectionTag.title = text || '';
+    }
+
+    btnClear.addEventListener('click', () => {
+      currentFilter = null;
+      setSelectionTag('');
+      renderTableRows(allRows);
+    });
+
+    function addRowIndex(resKey, h3Index, rowIdx) {
+      if (!h3Index) return;
+      let s = idxByCell[resKey].get(h3Index);
+      if (!s) { s = new Set(); idxByCell[resKey].set(h3Index, s); }
+      s.add(rowIdx);
+    }
+
     function buildHoverHtml(meta) {
-      // meta: {resNum, h3Index, locPairs:Set, kmPairs:Set, tw:Set, area:Set, center:Set, paNums:Set}
       const resNum = meta.resNum;
       const h3Index = meta.h3Index;
 
-      const loc = joinSet(meta.locPairs, '、');     // 若同格多種 start/end 組合，用 、 分隔
+      const loc = joinSet(meta.locPairs, '、');
       const km  = joinSet(meta.kmPairs, '、');
 
       const tw = joinSet(meta.tw, '、');
       const area = joinSet(meta.area, '、');
       const center = joinSet(meta.center, '、');
 
-      // PA_Num：照你需求用 、 連接
-      // 盡量維持數字排序
       const paArr = Array.from(meta.paNums)
         .filter(Boolean)
         .map(x => String(x))
@@ -302,60 +569,111 @@
           <div><b>5. Marea:</b> ${escapeHtml(area)}</div>
           <div><b>6. Mcenter:</b> ${escapeHtml(center)}</div>
           <div><b>7. PA_Num:</b> ${escapeHtml(pa)}</div>
+          <div class="muted" style="margin-top:4px;">(點此格可在右側顯示事件明細)</div>
         </div>
       `;
     }
 
-    function addH3CellWithCountAndMeta(h3Index, count, layerGroup, boundsAcc, meta) {
-      const boundary = h3.cellToBoundary(h3Index);
-      const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
-
-      const poly = L.polygon(latlngs, { weight:1, opacity:0.9, fillOpacity:0.10 });
-      layerGroup.addLayer(poly);
-
-      // bounds
-      if (boundsAcc) boundsAcc.extend(poly.getBounds());
-
-      // count label
-      const center = h3.cellToLatLng(h3Index);
-      const labelIcon = L.divIcon({
-        className: '',
-        html: `<div class="h3-count-label">${escapeHtml(count)}</div>`,
-        iconSize: null
-      });
-      layerGroup.addLayer(L.marker([center[0], center[1]], { icon: labelIcon, interactive:false }));
-
-      // ✅ hover 資訊窗口（sticky tooltip）
-      const html = buildHoverHtml(meta);
-      poly.bindTooltip(html, {
-        sticky: true,
-        direction: 'top',
-        opacity: 0.95,
-        className: '' // 用預設 tooltip 框即可
-      });
-
-      // 也可以加上 hover highlight（更直覺）
-      poly.on('mouseover', () => poly.setStyle({ weight: 2, fillOpacity: 0.18 }));
-      poly.on('mouseout',  () => poly.setStyle({ weight: 1, fillOpacity: 0.10 }));
-    }
-
-    // ===== 聚合：對每個 RES 的 H3 cell 收集你要的資訊 =====
     function initMeta(resNum, h3Index) {
       return {
         resNum,
         h3Index,
         count: 0,
         paNums: new Set(),
-        locPairs: new Set(),   // "start/end"
-        kmPairs: new Set(),    // "startKM/endKM"
+        locPairs: new Set(),
+        kmPairs: new Set(),
         tw: new Set(),
         area: new Set(),
         center: new Set()
       };
     }
 
-    function buildAgg(rows) {
-      // 回傳：{ RES8: Map(h3->meta), RES9: ..., RES10: ..., RES11: ... }
+    function addH3Cell(h3Index, meta, layerGroup, boundsAcc, resKey) {
+      const boundary = h3.cellToBoundary(h3Index);
+      const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
+
+      const poly = L.polygon(latlngs, { weight:1, opacity:0.9, fillOpacity:0.10 });
+      layerGroup.addLayer(poly);
+
+      if (boundsAcc) boundsAcc.extend(poly.getBounds());
+
+      // count label
+      const center = h3.cellToLatLng(h3Index);
+      const labelIcon = L.divIcon({
+        className: '',
+        html: `<div class="h3-count-label">${escapeHtml(meta.count)}</div>`,
+        iconSize: null
+      });
+      layerGroup.addLayer(L.marker([center[0], center[1]], { icon: labelIcon, interactive:false }));
+
+      // hover tooltip
+      const html = buildHoverHtml(meta);
+      poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
+
+      // hover highlight
+      poly.on('mouseover', () => poly.setStyle({ weight: 2, fillOpacity: 0.18 }));
+      poly.on('mouseout',  () => poly.setStyle({ weight: 1, fillOpacity: 0.10 }));
+
+      // click -> filter event table
+      poly.on('click', () => {
+        const resNum = meta.resNum;
+        currentFilter = { resKey, resNum, h3Index };
+
+        const setIdx = idxByCell[resKey].get(h3Index) || new Set();
+        const filtered = Array.from(setIdx).sort((a,b)=>a-b).map(i => allRows[i]);
+
+        setSelectionTag(`篩選中：RES${resNum} / ${h3Index}（${filtered.length} 筆）`);
+        renderTableRows(filtered);
+      });
+    }
+
+    // ========= CSV load & draw =========
+    async function loadPAData() {
+      setStatus("starting...");
+
+      // H3 status
+      if (typeof window.h3 === 'undefined') {
+        window.__h3Info = 'NOT LOADED (window.h3 is undefined)';
+        throw new Error('h3 is not defined (h3-js 未載入成功)');
+      } else {
+        const v = window.h3?.versions?.h3 || window.h3?.VERSION || 'loaded';
+        window.__h3Info = `loaded (${v})`;
+      }
+
+      // CSV URL
+      const csvPath = './PA_data.csv';
+      const url = `${csvPath}?v=${Date.now()}`;
+      const absUrl = new URL(url, location.href).toString();
+      window.__csvAbsUrl = absUrl;
+
+      setStatus(`fetching csv: ${absUrl}`);
+
+      const res = await fetch(absUrl, { cache:'no-store' });
+      window.__httpInfo = `${res.status} ${res.statusText}`;
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+      const text = await res.text();
+      const rows = parseCsvRobust(text);
+
+      // store all rows
+      allRows = rows;
+
+      // reset indices
+      for (const k of ['RES8','RES9','RES10','RES11']) idxByCell[k].clear();
+
+      // build row index map
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        addRowIndex('RES8',  toClean(r.start_H3_Res_8),  i);
+        addRowIndex('RES9',  toClean(r.start_H3_Res_9),  i);
+        addRowIndex('RES10', toClean(r.start_H3_Res_10), i);
+        addRowIndex('RES11', toClean(r.start_H3_Res_11), i);
+      }
+
+      // clear map layers
+      Object.values(h3Layers).forEach(g => g.clearLayers());
+
+      // aggregate meta for each cell
       const agg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
 
       for (const r of rows) {
@@ -397,42 +715,7 @@
         addTo('RES11', 11, h11);
       }
 
-      return agg;
-    }
-
-    // ===== 讀取 CSV & 畫圖 =====
-    async function loadPAData() {
-      pageUrlEl.textContent = location.href;
-
-      // H3 狀態
-      if (typeof window.h3 === 'undefined') {
-        h3InfoEl.textContent = 'NOT LOADED (window.h3 is undefined)';
-        throw new Error('h3 is not defined (h3-js 未載入成功)');
-      } else {
-        const v = window.h3?.versions?.h3 || window.h3?.VERSION || 'loaded';
-        h3InfoEl.textContent = `loaded (${v})`;
-      }
-
-      const csvPath = './PA_data.csv';
-      const url = `${csvPath}?v=${Date.now()}`;
-      const absUrl = new URL(url, location.href).toString();
-
-      csvUrlEl.textContent = absUrl;
-      csvLinkEl.href = absUrl;
-
-      setStatus(`讀取中：${absUrl}`);
-
-      const res = await fetch(absUrl, { cache:'no-store' });
-      httpInfoEl.textContent = `${res.status} ${res.statusText}`;
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
-      const text = await res.text();
-      const rows = parseCsvRobust(text);
-
-      Object.values(h3Layers).forEach(g => g.clearLayers());
-
-      const agg = buildAgg(rows);
-
+      // draw
       const boundsAcc = L.latLngBounds([]);
       let totalCells = 0;
 
@@ -443,10 +726,10 @@
         ['RES11', h3Layers.RES11]
       ];
 
-      for (const [key, layerGroup] of mapping) {
-        for (const [h3Index, meta] of agg[key].entries()) {
+      for (const [resKey, layerGroup] of mapping) {
+        for (const [h3Index, meta] of agg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-          addH3CellWithCountAndMeta(h3Index, meta.count, layerGroup, boundsAcc, meta);
+          addH3Cell(h3Index, meta, layerGroup, boundsAcc, resKey);
           totalCells++;
         }
       }
@@ -455,23 +738,24 @@
         map.fitBounds(boundsAcc.pad(0.12));
       }
 
-      setStatus(`完成：事件列 ${rows.length} 筆；蜂巢格（合計）${totalCells} 格`, 'ok');
-      debugEl.innerHTML = `
-        <div class="muted">
-          ${APP_VERSION}<br>
-          H3 唯一格數：RES8=${agg.RES8.size}、RES9=${agg.RES9.size}、RES10=${agg.RES10.size}、RES11=${agg.RES11.size}<br>
-          測距：右上角按「測距」啟用後，左鍵點起點再點終點顯示距離（下一次點起點會清除上一條線）。<br>
-          提示：右上 Layers 可切換彩色/灰階與 RES8~RES11 疊圖層。
-        </div>
-      `;
+      // initial render: show all rows
+      currentFilter = null;
+      setSelectionTag('');
+      renderTableRows(allRows);
+
+      lastUpdateTime = new Date().toISOString();
+      setStatus(`ok: rows=${rows.length}, cells=${totalCells}`);
     }
 
+    // run
     (async () => {
       try {
         await loadPAData();
       } catch (err) {
-        setStatus(`讀取失敗：${err.message || err}`, 'err');
-        debugEl.innerHTML = `<div class="err">${escapeHtml(err?.stack || err)}</div>`;
+        logError(err);
+        setStatus(`FAILED: ${err.message || err}`);
+        // 不把錯誤直接塞右側，已移到彈窗
+        // 你要看錯誤就按「系統資訊」
       }
     })();
   </script>
