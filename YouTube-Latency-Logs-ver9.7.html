@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Youtube_Live_LagLogger ver 9.7.6</title>
+  <title>Youtube_Live_LagLogger ver 9.7.7</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
@@ -13,14 +13,15 @@
     .wrap { padding: 12px 14px; display:flex; flex-direction:column; gap:12px; }
     .card { background:#0f1620; border:1px solid #1d2a3a; border-radius:12px; padding:12px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-    label { font-size:12px; color:#a9b8cc; }
-    input[type="text"], input[type="number"] {
+    label { font-size:12px; color:#a9b8cc; display:block; margin-bottom:4px; }
+    input[type="text"], input[type="number"], select {
       width: 100%; box-sizing:border-box;
       padding:10px 10px; border-radius:10px;
       border:1px solid #223247; background:#0b0f14; color:#e8eef7;
       outline:none;
     }
     input[type="number"] { max-width: 280px; }
+    select { max-width: 280px; }
     button {
       padding:10px 12px; border-radius:10px;
       border:1px solid #2a3c55; background:#162235; color:#e8eef7;
@@ -49,8 +50,8 @@
 <body>
 <header>
   <h1>
-    Youtube_Live_LagLogger ver 9.7.6
-    <span class="ver">UTC+08:00 / ms / cycle_id(重開續號) / 事件先記+GPS背景回寫 / ✅e2e_recover_ms + e2e_recover_time</span>
+    Youtube_Live_LagLogger ver 9.7.7
+    <span class="ver">UTC+08:00 / ms / cycle_id(重開續號) / 事件先記+GPS背景回寫 / ✅e2e_recover_ms + e2e_recover_time / ✅低頻巡航鎖畫質(不記錄log)</span>
   </h1>
 </header>
 
@@ -102,6 +103,28 @@
       </div>
     </div>
 
+    <!-- ✅ 畫質選擇 -->
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>畫質模式</label>
+        <select id="selQMode">
+          <option value="advanced">Advanced（嘗試鎖畫質）</option>
+          <option value="auto">Auto（交給 YouTube）</option>
+        </select>
+      </div>
+      <div>
+        <label>目標畫質</label>
+        <select id="selQuality">
+          <option value="hd1080">1080p</option>
+          <option value="hd720">720p</option>
+          <option value="large">480p</option>
+          <option value="medium">360p</option>
+          <option value="small">240p</option>
+          <option value="tiny">144p</option>
+        </select>
+      </div>
+    </div>
+
     <div class="row" style="margin-top:10px; align-items:center;">
       <button id="btnBg" class="btn-bg">背景執行：OFF</button>
       <button id="btnLoad">載入/播放</button>
@@ -120,13 +143,15 @@
       <div>LAG/STALL</div><div id="stStall">-</div>
       <div>GPS</div><div id="stGps">未授權</div>
       <div>背景模式</div><div id="stBg">OFF</div>
+      <div>畫質</div><div id="stQ">-</div>
       <div>時間時區</div><div class="mono">UTC+08:00（台灣時間）</div>
     </div>
 
     <div class="muted" style="margin-top:8px;">
       ✅ e2e_recover_ms / e2e_recover_time：寫在 root cycle 的 lag_event 列（lag_event 先出現，e2e 可能 3 秒後才補上）<br/>
       - catchup_seek 後 3 秒內沒新 lag_start → e2e 終點=catchup_seek<br/>
-      - 若 catchup_seek 造成 buffering → e2e 終點=最後一次 post-catchup resume
+      - 若 catchup_seek 造成 buffering → e2e 終點=最後一次 post-catchup resume<br/>
+      ✅ 低頻巡航鎖畫質：不會寫入任何 event（只影響 player）。
     </div>
   </div>
 
@@ -184,7 +209,9 @@ const LS_KEYS = {
   safety: "ytlag_safety_ms",
   maxBehind: "ytlag_maxbehind_ms",
   bg: "ytlag_bg_mode",
-  cycleSeq: "ytlag_cycle_seq"
+  cycleSeq: "ytlag_cycle_seq",
+  qMode: "ytlag_quality_mode",
+  quality: "ytlag_quality_value"
 };
 
 const DEFAULTS_V9 = {
@@ -197,11 +224,20 @@ const DEFAULTS_V9 = {
   debounceMs: 2000,
   safetyMs: 1500,
   maxBehindMs: 7000,
-  bgMode: false
+  bgMode: false,
+  qualityMode: "advanced",
+  qualityValue: "hd1080"
 };
 
+// guards / windows
 const AFTER_LAG_FORCE_GUARD_MS = 2000;
 const E2E_STABILIZE_WINDOW_MS = 3000;
+
+// ✅ 低頻巡航鎖畫質（不寫入 log）
+// - 巡航頻率：15秒（低頻）
+// - 節流：1.2秒（避免 seek 後連續補套）
+const QUALITY_PATROL_MS = 15000;
+const QUALITY_APPLY_GUARD_MS = 1200;
 
 const TZ_OFFSET_MS = 8 * 60 * 60 * 1000;
 function nowTwIso(ms = Date.now()) {
@@ -225,7 +261,8 @@ function toIntOr0(v) {
 function persistCycleSeq() { localStorage.setItem(LS_KEYS.cycleSeq, String(cycleSeq)); }
 
 function makeRowId() {
-  if (crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  // 避免 crypto 未定義造成 ReferenceError
+  if (typeof crypto !== "undefined" && crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return `r_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
@@ -238,6 +275,9 @@ const inpCooldownMs = document.getElementById("inpCooldownMs");
 const inpDebounceMs = document.getElementById("inpDebounceMs");
 const inpSafetyMs = document.getElementById("inpSafetyMs");
 const inpMaxBehindMs = document.getElementById("inpMaxBehindMs");
+
+const selQMode = document.getElementById("selQMode");
+const selQuality = document.getElementById("selQuality");
 
 const btnBg = document.getElementById("btnBg");
 const btnLoad = document.getElementById("btnLoad");
@@ -254,6 +294,7 @@ const stBehindTs = document.getElementById("stBehindTs");
 const stCatchupTs = document.getElementById("stCatchupTs");
 const stCatchArmed = document.getElementById("stCatchArmed");
 const stStall = document.getElementById("stStall");
+const stQ = document.getElementById("stQ");
 
 const pillReady = document.getElementById("pillReady");
 const countLag = document.getElementById("countLag");
@@ -300,7 +341,9 @@ let wakeLock = null;
 
 let tickTimer = null;
 let stallTimer = null;
+let qualityTimer = null;
 
+// conservative STALL detector
 const STALL_POLL_MS = 500;
 const STALL_EPSILON_SEC = 0.25;
 const BEHIND_NOISE_TOL_MS = 150;
@@ -308,6 +351,9 @@ const BEHIND_NOISE_TOL_MS = 150;
 let stallAccumMs = 0;
 let stallLastCt = null;
 let stallLastBehindMs = null;
+
+// ✅ 畫質套用節流
+let lastQualityApplyUtcMs = 0;
 
 function getConfig() {
   const lagThrMs = getMs(inpLagMs, DEFAULTS_V9.lagMs);
@@ -319,6 +365,56 @@ function getConfig() {
   const safetyMs = Math.max(0, getMs(inpSafetyMs, DEFAULTS_V9.safetyMs));
   const maxBehindMs = getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs);
   return { lagThrMs, catchThrMs, rearmMs, sampleMs, cooldownMs, debounceMs, safetyMs, maxBehindMs };
+}
+
+/** ✅ 畫質偏好（不寫入 log） */
+function getQualityPref() {
+  const mode = (selQMode.value || DEFAULTS_V9.qualityMode);
+  const q = (selQuality.value || DEFAULTS_V9.qualityValue);
+  return { mode, q };
+}
+
+function applyPreferredQuality(reason = "") {
+  try {
+    if (!playerReady || !player) return;
+    const { mode, q } = getQualityPref();
+    if (mode !== "advanced") return;
+
+    // setPlaybackQuality 是 best-effort：可能被忽略或稍後覆寫
+    if (typeof player.setPlaybackQuality === "function") {
+      player.setPlaybackQuality(q);
+    } else if (typeof player.setPlaybackQualityRange === "function") {
+      player.setPlaybackQualityRange(q);
+    }
+    // 更新 UI 顯示（不記錄 log）
+    const cur = (typeof player.getPlaybackQuality === "function") ? player.getPlaybackQuality() : "-";
+    stQ.textContent = `pref=${q} | cur=${cur || "-"}` + (reason ? ` | ${reason}` : "");
+  } catch {
+    // ignore
+  }
+}
+
+function applyPreferredQualityGuarded(reason = "") {
+  const now = Date.now();
+  if (now - lastQualityApplyUtcMs < QUALITY_APPLY_GUARD_MS) return;
+  lastQualityApplyUtcMs = now;
+  applyPreferredQuality(reason);
+}
+
+/** ✅ 低頻巡航鎖畫質（不寫入 log） */
+function qualityPatrol(reason = "patrol") {
+  if (!playerReady || !player) return;
+  const ps = safeGetPlayerState();
+  if (ps !== 1) return; // 只在 PLAYING 時巡航
+  const { mode, q } = getQualityPref();
+  if (mode !== "advanced") return;
+
+  try {
+    const cur = (typeof player.getPlaybackQuality === "function") ? player.getPlaybackQuality() : null;
+    // 若不是目標畫質就補套（節流）
+    if (cur && cur !== q) applyPreferredQualityGuarded(`${reason}; cur=${cur}`);
+    else stQ.textContent = `pref=${q} | cur=${cur || "-"}` + (reason ? ` | ${reason}` : "");
+  } catch {}
 }
 
 function loadSettings() {
@@ -333,6 +429,9 @@ function loadSettings() {
   inpSafetyMs.value   = String(Number(localStorage.getItem(LS_KEYS.safety)   || DEFAULTS_V9.safetyMs));
   inpMaxBehindMs.value= String(Number(localStorage.getItem(LS_KEYS.maxBehind)|| DEFAULTS_V9.maxBehindMs));
 
+  selQMode.value = localStorage.getItem(LS_KEYS.qMode) || DEFAULTS_V9.qualityMode;
+  selQuality.value = localStorage.getItem(LS_KEYS.quality) || DEFAULTS_V9.qualityValue;
+
   bgMode = (localStorage.getItem(LS_KEYS.bg) || (DEFAULTS_V9.bgMode ? "1" : "0")) === "1";
 
   cycleSeq = toIntOr0(localStorage.getItem(LS_KEYS.cycleSeq));
@@ -341,6 +440,7 @@ function loadSettings() {
   applyBgUi();
   restartTick();
   restartStallDetector();
+  restartQualityPatrol();
 }
 
 function saveSettings() {
@@ -354,6 +454,9 @@ function saveSettings() {
   localStorage.setItem(LS_KEYS.safety, String(getMs(inpSafetyMs, DEFAULTS_V9.safetyMs)));
   localStorage.setItem(LS_KEYS.maxBehind, String(getMs(inpMaxBehindMs, DEFAULTS_V9.maxBehindMs)));
   localStorage.setItem(LS_KEYS.bg, bgMode ? "1" : "0");
+
+  localStorage.setItem(LS_KEYS.qMode, selQMode.value || DEFAULTS_V9.qualityMode);
+  localStorage.setItem(LS_KEYS.quality, selQuality.value || DEFAULTS_V9.qualityValue);
 }
 
 function parseVideoId(input) {
@@ -434,10 +537,6 @@ function updateRowById(rowId, patch) {
   rows[idx] = Object.assign({}, rows[idx], patch);
   render();
   return true;
-}
-
-function findLagEventRowIndexByCycle(cycleId) {
-  return rows.findIndex(r => r.cycleId === cycleId && r.event === "lag_event");
 }
 
 function enrichRowGpsAsync(rowId, { timeoutMs = 1000 } = {}) {
@@ -541,11 +640,14 @@ function exportCsv() {
     "lag_threshold_ms","catch_threshold_ms","rearm_threshold_ms",
     "sample_interval_ms","catchup_cooldown_ms","catchup_debounce_ms",
     "safety_ms","max_allowed_behind_ms",
+    "quality_mode","quality_pref",
     "note"
   ];
   const source = inpUrl.value.trim();
   const vid = currentVideoId || "";
   const lines = [header.join(",")];
+
+  const qpref = getQualityPref();
 
   for (const r of rows.slice().reverse()) {
     const lagModeCol = (r.note || "").includes("lagMode=") ? (r.note.match(/lagMode=([a-z_]+)/)?.[1] || "") : "";
@@ -560,6 +662,7 @@ function exportCsv() {
       cfg.lagThrMs, cfg.catchThrMs, cfg.rearmMs,
       cfg.sampleMs, cfg.cooldownMs, cfg.debounceMs,
       cfg.safetyMs, cfg.maxBehindMs,
+      qpref.mode, qpref.q,
       r.note || ""
     ].map(csvCell).join(","));
   }
@@ -627,6 +730,10 @@ function updateBehindNow() {
   }
 }
 
+/**
+ * ✅ seek helper：更穩的方式是 seek 到 duration - safetyMs
+ * ✅ 並且：seek 後補套畫質（不記錄 event）
+ */
 function seekToLiveEdgeStable(safetyMs) {
   if (!player) return false;
   const du = safeGetDuration();
@@ -634,7 +741,17 @@ function seekToLiveEdgeStable(safetyMs) {
 
   const safetySec = Math.max(0, safetyMs) / 1000;
   const target = Math.max(0, du - Math.max(0.2, safetySec));
-  try { player.seekTo(target, true); return true; } catch { return false; }
+  try {
+    player.seekTo(target, true);
+
+    // seek 後：YouTube 常回落畫質 → 延遲補套（有 guard）
+    setTimeout(() => applyPreferredQualityGuarded("after_seek_250ms"), 250);
+    setTimeout(() => applyPreferredQualityGuarded("after_seek_1200ms"), 1200);
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** ✅ finalize：回寫到 root cycle 的 lag_event（同時寫 e2e_recover_ms + e2e_recover_time） */
@@ -659,6 +776,7 @@ function finalizeE2E(endUtcMs, reason) {
   e2e = null;
 }
 
+/** ✅ 層2：lag 結束後立刻追 */
 function forceCatchUpAfterLagEnd(reason) {
   if (!playerReady || !player) return;
   if (lagActive) return;
@@ -668,6 +786,10 @@ function forceCatchUpAfterLagEnd(reason) {
 
   const cfg = getConfig();
   const ok = seekToLiveEdgeStable(cfg.safetyMs);
+
+  // 追進度後也補套一次（不記錄 event）
+  applyPreferredQualityGuarded("after_catchup_seek_layer2");
+
   lastAfterLagForceUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
@@ -684,6 +806,7 @@ function forceCatchUpAfterLagEnd(reason) {
   });
   enrichRowGpsAsync(rowId, { timeoutMs: 1000 });
 
+  // e2e：開 window 等待 post-catchup 是否再 lag
   if (e2e && !e2e.finalized) {
     e2e.catchupAtUtcMs = now;
     e2e.waitingWindow = true;
@@ -700,6 +823,7 @@ function runCatchUp(reason) {
   Promise.resolve(maybeCatchUpLayer1(reason)).catch((e) => console.warn("maybeCatchUpLayer1 error:", e));
 }
 
+/** ✅ 層1：保守維持 live（受 cooldown / debounce / armed / rearm） */
 async function maybeCatchUpLayer1(reason) {
   if (lagActive) return;
   if (!playerReady || !player) return;
@@ -731,6 +855,10 @@ async function maybeCatchUpLayer1(reason) {
   if (lastCatchupUtcMs != null && (now - lastCatchupUtcMs) < cfg.cooldownMs) return;
 
   const ok = seekToLiveEdgeStable(cfg.safetyMs);
+
+  // 追進度後補套一次（不記錄 event）
+  applyPreferredQualityGuarded("after_catchup_seek_layer1");
+
   lastCatchupUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
@@ -874,6 +1002,7 @@ function endLagSessionIfAny(reason) {
   activeCycleId = "";
   render();
 
+  // lag 結束後：立刻追回 live
   setTimeout(() => { forceCatchUpAfterLagEnd(`after_lag_end(${endedMode})`); }, 0);
 }
 
@@ -881,17 +1010,23 @@ function onPlayerStateChange(e) {
   stState.textContent = String(e.data);
   updateBehindNow();
 
-  if (e.data === 1) {
+  if (e.data === 1) { // PLAYING
     lastPlayingEnterUtcMs = Date.now();
     playedOnceEver = true;
     markWatchStartIfNeeded();
 
+    // ✅ 進入 PLAYING 時：補套畫質（不記錄 event）
+    applyPreferredQualityGuarded("on_playing");
+
     if (lagActive && lagMode === "buffering") endLagSessionIfAny("buffering_to_playing");
+
     runCatchUp("state_playing");
+    // ✅ 跟隨 catchup 機制一起巡航檢查（低成本）
+    qualityPatrol("state_playing");
     return;
   }
 
-  if (e.data === 3) {
+  if (e.data === 3) { // BUFFERING
     startLagSession("buffering");
     return;
   }
@@ -993,6 +1128,7 @@ async function initPlayer(videoId) {
 
   player = new YT.Player("player", {
     videoId,
+    // controls=1 仍會有設定齒輪，但是否能點到會受手機瀏覽器/iframe 手勢影響
     playerVars: Object.assign({ autoplay: 1, playsinline: 1, controls: 1, rel: 0 }, origin ? { origin } : {}),
     events: {
       onReady: () => {
@@ -1000,6 +1136,10 @@ async function initPlayer(videoId) {
         pillReady.textContent = "Player: Ready";
         pillReady.classList.add("ok");
         ensureGeo().then(ok => { if (ok) startGeoWatch(); });
+
+        // ✅ Ready 後先補套一次畫質（不記錄 event）
+        setTimeout(() => applyPreferredQualityGuarded("on_ready_300ms"), 300);
+        setTimeout(() => applyPreferredQualityGuarded("on_ready_1200ms"), 1200);
 
         if (pendingVideoId && typeof player.loadVideoById === "function") {
           const vid = pendingVideoId;
@@ -1042,17 +1182,30 @@ document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible") await acquireWakeLock();
 });
 
+// timers
 function stopTick() { if (tickTimer != null) { clearInterval(tickTimer); tickTimer = null; } }
 function startTick() {
   stopTick();
   const cfg = getConfig();
-  tickTimer = setInterval(() => { updateBehindNow(); runCatchUp("tick"); }, cfg.sampleMs);
+  tickTimer = setInterval(() => {
+    updateBehindNow();
+    runCatchUp("tick");
+    // ✅ 跟隨 tick：順便低成本巡航檢查畫質（不寫入 event）
+    qualityPatrol("tick");
+  }, cfg.sampleMs);
 }
 function restartTick() { startTick(); }
 
 function stopStallDetector() { if (stallTimer != null) { clearInterval(stallTimer); stallTimer = null; } }
 function startStallDetector() { stopStallDetector(); stallTimer = setInterval(stallPoll, STALL_POLL_MS); }
 function restartStallDetector() { startStallDetector(); }
+
+function stopQualityPatrol() { if (qualityTimer != null) { clearInterval(qualityTimer); qualityTimer = null; } }
+function startQualityPatrol() {
+  stopQualityPatrol();
+  qualityTimer = setInterval(() => qualityPatrol("patrol"), QUALITY_PATROL_MS);
+}
+function restartQualityPatrol() { startQualityPatrol(); }
 
 async function resetToDefaultsV9() {
   inpUrl.value = DEFAULTS_V9.url;
@@ -1064,6 +1217,9 @@ async function resetToDefaultsV9() {
   inpDebounceMs.value = String(DEFAULTS_V9.debounceMs);
   inpSafetyMs.value = String(DEFAULTS_V9.safetyMs);
   inpMaxBehindMs.value = String(DEFAULTS_V9.maxBehindMs);
+
+  selQMode.value = DEFAULTS_V9.qualityMode;
+  selQuality.value = DEFAULTS_V9.qualityValue;
 
   Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k));
   cycleSeq = 0;
@@ -1083,8 +1239,12 @@ async function resetToDefaultsV9() {
   activeCycleId = "";
   e2e = null;
 
+  lastQualityApplyUtcMs = 0;
+  stQ.textContent = "-";
+
   restartTick();
   restartStallDetector();
+  restartQualityPatrol();
 
   addRow({ event: "reset_defaults", timeTw: nowTwIso(), note: "reset to Youtube_Live_LagLogger ver 9 defaults" });
 }
@@ -1095,10 +1255,17 @@ btnLoad.addEventListener("click", async () => {
   saveSettings();
   restartTick();
   restartStallDetector();
+  restartQualityPatrol();
 
   const vid = parseVideoId(inpUrl.value);
   if (!vid) { alert("無法解析 Video ID。"); return; }
-  try { await initPlayer(vid); updateBehindNow(); runCatchUp("after_load"); }
+  try {
+    await initPlayer(vid);
+    updateBehindNow();
+    runCatchUp("after_load");
+    // ✅ 載入後先補套一次畫質（不記錄 event）
+    setTimeout(() => applyPreferredQualityGuarded("after_load_600ms"), 600);
+  }
   catch (e) { alert("載入 YouTube Player 失敗：" + (e?.message || e)); }
 });
 
@@ -1130,10 +1297,17 @@ btnClear.addEventListener("click", () => {
 
 btnExport.addEventListener("click", () => exportCsv());
 
+// settings change
 [
   inpUrl, inpLagMs, inpCatchMs, inpRearmMs, inpSampleMs,
-  inpCooldownMs, inpDebounceMs, inpSafetyMs, inpMaxBehindMs
-].forEach(el => el.addEventListener("change", () => { saveSettings(); restartTick(); }));
+  inpCooldownMs, inpDebounceMs, inpSafetyMs, inpMaxBehindMs,
+  selQMode, selQuality
+].forEach(el => el.addEventListener("change", () => {
+  saveSettings();
+  restartTick();
+  // 畫質設定改了 → 立即補套一次（不記錄 event）
+  applyPreferredQualityGuarded("ui_change");
+}));
 
 (function boot(){
   loadSettings();
@@ -1143,6 +1317,7 @@ btnExport.addEventListener("click", () => exportCsv());
   stBehind.textContent = "-";
   stBehindTs.textContent = "-";
   stCatchupTs.textContent = "-";
+  stQ.textContent = "-";
 })();
 </script>
 
