@@ -10,11 +10,7 @@
   <style>
     html, body { height: 100%; margin: 0; }
     .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
-
-    /* 左側地圖 50% */
     #map { width:50vw; height:100vh; background:#f3f3f3; }
-
-    /* 右側面板 50%：上方工具列 + 下方表格 */
     #panel {
       width:50vw; height:100vh; overflow:hidden;
       box-sizing:border-box; border-left:1px solid #e5e5e5;
@@ -51,39 +47,13 @@
     .btn:hover { background:#f2f2f2; }
     .btn.active { background:#ffe9e9; border-color:#d00; color:#b00; }
 
-    .icon-btn {
-      width:36px; height:34px;
-      padding:0;
-      justify-content:center;
-    }
-
+    .icon-btn { width:36px; height:34px; padding:0; justify-content:center; }
     .muted { color:#666; }
     .err { color:#c00; white-space:pre-wrap; }
     code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
 
-    /* ====== H3 polygon styles ====== */
-    .h3-red { /* by PA_data */ }
-    .h3-blue { /* by Location mapping */ }
-
-    /* 數字標籤：單格（跟隨網格中心） */
-    .h3-count-label{
-      color:#fff;
-      border-radius: 10px;
-      padding: 1px 7px;
-      font-size: 12px;
-      font-weight: 800;
-      line-height: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-      pointer-events: none;
-      white-space: nowrap;
-      border: 1px solid rgba(255,255,255,0.35);
-    }
-    .h3-count-label.red { background: rgba(220, 0, 0, 0.92); }
-    .h3-count-label.blue { background: rgba(0, 102, 204, 0.92); }
-    .h3-count-label.mix { background: rgba(128, 0, 128, 0.90); } /* 混合聚合 */
-
-    /* 聚合標籤（遠視時） */
+    /* ====== 數字（只給紅色網格用） ====== */
     .agg-label{
       color:#fff;
       border-radius: 12px;
@@ -95,37 +65,42 @@
       pointer-events: none;
       white-space: nowrap;
       border: 1px solid rgba(255,255,255,0.38);
+      background: rgba(200, 0, 0, 0.92);
     }
-    .agg-label.red { background: rgba(200, 0, 0, 0.92); }
-    .agg-label.blue { background: rgba(0, 90, 190, 0.92); }
-    .agg-label.mix { background: rgba(115, 0, 115, 0.92); }
+
+    /* ====== 網格名稱長方形標籤（紅色） ====== */
+    .name-label{
+      color:#fff;
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+      pointer-events: none;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.38);
+      background: rgba(200, 0, 0, 0.92);
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     /* Tooltip */
-    .h3-tip b { display:inline-block; min-width: 180px; }
+    .h3-tip b { display:inline-block; min-width: 170px; }
     .h3-tip { line-height: 1.35; }
 
-    /* 表格區域 */
-    .table-wrap {
-      flex:1;
-      overflow:auto;
-      padding: 8px 10px 12px 10px;
+    /* 表格 */
+    .hint {
+      padding: 6px 12px;
+      color:#666;
+      font-size:12px;
+      border-bottom:1px solid #f0f0f0;
+      background:#fff;
     }
-
-    table {
-      border-collapse: collapse;
-      width: max-content;
-      min-width: 100%;
-      font-size: 12px;
-    }
-
-    thead th {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: #f7f7f7;
-      border-bottom: 1px solid #ddd;
-    }
-
+    .table-wrap { flex:1; overflow:auto; padding: 8px 10px 12px 10px; }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    thead th { position: sticky; top: 0; z-index: 2; background: #f7f7f7; border-bottom: 1px solid #ddd; }
     th, td {
       border-bottom: 1px solid #eee;
       padding: 6px 8px;
@@ -135,17 +110,11 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      cursor: default;
     }
-
     tbody tr:hover { background:#fafafa; }
-
-    .hint {
-      padding: 6px 12px;
-      color:#666;
-      font-size:12px;
-      border-bottom:1px solid #f0f0f0;
-      background:#fff;
-    }
+    tbody tr.row-clickable { cursor: pointer; }
+    tbody tr.row-clickable:hover { background:#fff3f3; }
 
     /* Modal */
     .modal-backdrop {
@@ -157,7 +126,6 @@
       justify-content: center;
       z-index: 9999;
     }
-
     .modal {
       width: min(900px, 92vw);
       max-height: 86vh;
@@ -168,7 +136,6 @@
       display:flex;
       flex-direction: column;
     }
-
     .modal-header {
       padding: 10px 12px;
       display:flex;
@@ -177,18 +144,30 @@
       border-bottom: 1px solid #eee;
       background:#fafafa;
     }
-
     .modal-body {
       padding: 12px;
       overflow:auto;
       font-size: 12px;
       line-height: 1.45;
     }
-
     .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 10px; }
     .kv div { padding: 2px 0; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
     .close-btn { border:1px solid #ddd; background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; font-weight:700; }
+
+    /* ====== 自製 RES 單選控制器 ====== */
+    .res-ctrl {
+      background:#fff;
+      border:1px solid #ddd;
+      border-radius:10px;
+      padding:8px 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      font-size:12px;
+      line-height:1.2;
+    }
+    .res-ctrl .ttl { font-weight:900; margin-bottom:6px; }
+    .res-ctrl label { display:flex; align-items:center; gap:6px; margin:4px 0; cursor:pointer; user-select:none; }
+    .res-ctrl input { cursor:pointer; }
   </style>
 </head>
 
@@ -197,7 +176,6 @@
     <div id="map"></div>
 
     <div id="panel">
-      <!-- 右側第一排：按鈕列 -->
       <div class="topbar">
         <div class="title-wrap">
           <h2>THSR PA Analysis</h2>
@@ -206,7 +184,6 @@
         </div>
 
         <div class="btns">
-          <!-- 尺標 icon 測距 -->
           <div class="btn icon-btn" id="btnMeasure" title="測距：啟用後左鍵點起點再點終點顯示距離">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
@@ -214,16 +191,15 @@
           </div>
 
           <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
-          <div class="btn" id="btnClear" title="清除蜂巢篩選，顯示全部事件">清除篩選</div>
+          <div class="btn" id="btnClear" title="清除篩選，顯示全部事件">清除篩選</div>
         </div>
       </div>
 
-      <div class="hint" id="hintLine">
-        紅格：PA_data（start_H3）；藍格：由 start_location_name 命中 THSR_Location.location_name 產生（與紅格重複者不畫）。
-        遠視數字會自動聚合，拉近會拆回單格數字。
+      <div class="hint">
+        RES 單選顯示網格。紅格＝PA_data(start_H3)；藍格＝start_location_name 命中 THSR_Location(location_name) 產生（與紅格重複者不畫）。
+        <br>數字與聚合統計：只計紅格；滑鼠移到格子會高亮同 start_location_name 的所有格；點右側列可定位。
       </div>
 
-      <!-- 表格 -->
       <div class="table-wrap">
         <table id="evtTable">
           <thead><tr id="evtHeadRow"></tr></thead>
@@ -260,19 +236,20 @@
     </div>
   </div>
 
-  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- h3-js UMD (global h3) -->
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
 
   <script>
-    // ========= Version =========
-    // ver 3.0 -> 新增：第二CSV + 紅藍網格 + 遠近聚合數字 => 大功能 +1 => ver 4.0
-    const APP_VERSION = "ver 4.0";
+    // =============================
+    // Version
+    // =============================
+    // ver 4.0 -> 修正：紅格才計數/顯示數字、RES 單選、hover 同名高亮、表格欄位調整、點列定位、紅格加 name rectangle => ver 5.0
+    const APP_VERSION = "ver 5.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
-    // ========= Modal / status logging =========
+    // =============================
+    // Modal / status
+    // =============================
     const modalBackdrop = document.getElementById('modalBackdrop');
     const btnInfo = document.getElementById('btnInfo');
     const btnModalClose = document.getElementById('btnModalClose');
@@ -317,7 +294,9 @@
     function setStatus(msg) { lastStatus = msg; }
     function logError(err) { errorLogs.push(String(err?.stack || err)); }
 
-    // ========= Utilities =========
+    // =============================
+    // Utils
+    // =============================
     function escapeHtml(s) {
       return String(s ?? '')
         .replaceAll('&', '&amp;')
@@ -330,12 +309,14 @@
       const t = String(s ?? '').trim();
       return t === '' ? '' : t;
     }
-    function joinSet(set, sep='、') {
-      const arr = Array.from(set).filter(Boolean);
-      return arr.length ? arr.join(sep) : '';
+    function uniqPreview(arr, max=2) {
+      const a = Array.from(new Set(arr.filter(Boolean)));
+      if (!a.length) return '';
+      if (a.length <= max) return a.join('、');
+      return `${a.slice(0,max).join('、')} +${a.length - max}`;
     }
 
-    // Robust CSV parser (supports quoted commas)
+    // Robust CSV parser (supports quoted commas) + BOM header fix
     function parseCsvRobust(text) {
       const rows = [];
       let row = [];
@@ -363,7 +344,9 @@
       while (rows.length && rows[rows.length - 1].every(v => (v ?? '').trim() === '')) rows.pop();
       if (rows.length < 2) return [];
 
-      const header = rows[0].map(h => (h ?? '').trim());
+      let header = rows[0].map(h => (h ?? '').trim());
+      if (header.length && header[0] && header[0].charCodeAt(0) === 0xFEFF) header[0] = header[0].replace('\uFEFF','');
+
       const data = [];
       for (let r = 1; r < rows.length; r++) {
         const cols = rows[r];
@@ -375,7 +358,15 @@
       return data;
     }
 
-    // ========= Map / base layers =========
+    async function fetchNoStore(absUrl) {
+      const res = await fetch(absUrl, { cache:'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} (${absUrl})`);
+      return res.text();
+    }
+
+    // =============================
+    // Leaflet map + base layers
+    // =============================
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -387,26 +378,64 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // ========= H3 overlay layers (polygons only) =========
-    const h3Layers = {
-      RES8:  L.layerGroup(),
-      RES9:  L.layerGroup(),
-      RES10: L.layerGroup(),
-      RES11: L.layerGroup()
-    };
-    // 預設顯示 RES9
-    h3Layers.RES9.addTo(map);
-
     L.control.layers(
       { 'NLSC 彩色 (EMAP)': baseEMAP, 'NLSC 灰階 (EMAP01)': baseEMAP01 },
-      { 'H3 RES8': h3Layers.RES8, 'H3 RES9': h3Layers.RES9, 'H3 RES10': h3Layers.RES10, 'H3 RES11': h3Layers.RES11 },
+      null,
       { collapsed:false }
     ).addTo(map);
 
-    // ========= Label render layer (aggregated markers) =========
-    const labelRenderLayer = L.layerGroup().addTo(map);
+    // =============================
+    // H3 layers (polygons)
+    // =============================
+    const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
+    // Labels: aggregated red counts (only)
+    const aggLabelLayer = L.layerGroup().addTo(map);
+    // Name rectangle labels (red only, non-aggregated; show when zoom>=12)
+    const nameLabelLayer = L.layerGroup().addTo(map);
 
-    // ========= Measure tool =========
+    // Current RES (single select)
+    let currentResKey = 'RES9';
+
+    function showOnlyRes(resKey) {
+      for (const k of ['RES8','RES9','RES10','RES11']) {
+        if (map.hasLayer(h3Layers[k])) map.removeLayer(h3Layers[k]);
+      }
+      map.addLayer(h3Layers[resKey]);
+      currentResKey = resKey;
+      renderAggLabels();
+      renderNameLabels();
+      clearHoverHighlights();
+    }
+
+    // Custom RES radio control
+    const ResControl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd: function() {
+        const div = L.DomUtil.create('div', 'res-ctrl');
+        div.innerHTML = `
+          <div class="ttl">H3 Resolution</div>
+          <label><input type="radio" name="res" value="RES8"> RES8</label>
+          <label><input type="radio" name="res" value="RES9" checked> RES9</label>
+          <label><input type="radio" name="res" value="RES10"> RES10</label>
+          <label><input type="radio" name="res" value="RES11"> RES11</label>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        div.querySelectorAll('input[name="res"]').forEach(inp => {
+          inp.addEventListener('change', (e) => {
+            if (e.target.checked) showOnlyRes(e.target.value);
+          });
+        });
+        return div;
+      }
+    });
+    map.addControl(new ResControl());
+
+    // Default show RES9
+    showOnlyRes('RES9');
+
+    // =============================
+    // Measure tool
+    // =============================
     const btnMeasure = document.getElementById('btnMeasure');
     let measureActive = false;
     let measureStart = null;
@@ -440,11 +469,9 @@
         measureLine = L.polyline([measureStart, end], { weight:3, opacity:0.9 }).addTo(map);
 
         const dist = map.distance(measureStart, end);
-        const msg = `距離：${formatDistance(dist)}`;
-
         L.popup({ closeButton: true, autoClose: true })
           .setLatLng(end)
-          .setContent(msg)
+          .setContent(`距離：${formatDistance(dist)}`)
           .openOn(map);
 
         measureStart = null;
@@ -458,14 +485,20 @@
       if (!measureActive) measureStart = null;
     });
 
-    // ========= Right panel: event table =========
+    // =============================
+    // Right table
+    // =============================
     const evtHeadRow = document.getElementById('evtHeadRow');
     const evtBody = document.getElementById('evtBody');
     const selectionTag = document.getElementById('selectionTag');
     const btnClear = document.getElementById('btnClear');
 
+    // Date 後面插 start/end location
     const COLS = [
       { key: 'Date', label: 'Date' },
+      { key: 'start_location_name', label: 'S.loc' },
+      { key: 'end_location_name', label: 'E.loc' },
+
       { key: 'PA_Num', label: 'PA#' },
       { key: 'event', label: 'Event' },
       { key: 'time_tw', label: 'Time' },
@@ -499,11 +532,8 @@
       { key: 'measurement_NetWork', label: 'Net' },
       { key: 'measurement_Script', label: 'Script' },
 
-      { key: 'start_location_name', label: 'S.loc' },
-      { key: 'end_location_name', label: 'E.loc' },
       { key: 'start_location_KM+M', label: 'S.KM+M' },
       { key: 'end_location_KM+M', label: 'E.KM+M' },
-
       { key: 'twcounty', label: 'County' },
       { key: 'Marea', label: 'Area' },
       { key: 'Mcenter', label: 'Center' },
@@ -518,11 +548,25 @@
         evtHeadRow.appendChild(th);
       }
     }
+
+    function setSelectionTag(text) {
+      selectionTag.textContent = text || '';
+      selectionTag.title = text || '';
+    }
+
+    let allRows = [];
+    let displayedRows = []; // current view in table (for click indexing)
+
     function renderTableRows(rows) {
+      displayedRows = rows;
       evtBody.innerHTML = '';
       const frag = document.createDocumentFragment();
-      for (const r of rows) {
+
+      rows.forEach((r, idx) => {
         const tr = document.createElement('tr');
+        tr.classList.add('row-clickable');
+        tr.dataset.rowIndex = String(idx);
+
         for (const c of COLS) {
           const td = document.createElement('td');
           const v = (r[c.key] ?? '');
@@ -530,96 +574,342 @@
           td.title = v;
           tr.appendChild(td);
         }
+
+        tr.addEventListener('click', () => onRowClick(idx));
         frag.appendChild(tr);
-      }
+      });
+
       evtBody.appendChild(frag);
     }
+
     renderTableHeader();
 
-    function setSelectionTag(text) {
-      selectionTag.textContent = text || '';
-      selectionTag.title = text || '';
+    btnClear.addEventListener('click', () => {
+      setSelectionTag('');
+      renderTableRows(allRows);
+    });
+
+    // =============================
+    // Data for grids + interactions
+    // =============================
+    // locMap: location_name -> array of THSR_Location rows
+    const locMap = new Map();
+
+    // For each RES: redAgg (PA start_H3) + blueAgg (Location derived)
+    const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+
+    // For each RES: red label items for aggregation only
+    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
+
+    // For hover highlight by start_location_name:
+    // location_name -> Set<LeafletPolygonLayer>
+    const layersByLocName = new Map();
+
+    // To restore highlight
+    let highlightedLayers = new Set();
+
+    function clearHoverHighlights() {
+      for (const ly of highlightedLayers) {
+        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
+      }
+      highlightedLayers.clear();
     }
 
-    // ========= Data stores =========
-    let allRows = [];
-    const idxByCell = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    function highlightByLocationNames(names) {
+      clearHoverHighlights();
+      for (const nm of names) {
+        const set = layersByLocName.get(nm);
+        if (!set) continue;
+        for (const ly of set) {
+          if (!ly.__baseStyle) continue;
+          ly.setStyle({ weight: 3, color: '#ffd400', opacity: 1.0 });
+          highlightedLayers.add(ly);
+        }
+      }
+    }
 
-    // labelData per resKey: array of items {latlng, count, type:'red'|'blue', resKey, h3Index}
-    const labelData = { RES8:[], RES9:[], RES10:[], RES11:[] };
+    function resNumOfKey(resKey) {
+      return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11;
+    }
 
-    // ========= Build hover HTML =========
+    function initMetaRed(resKey, h3Index) {
+      return {
+        resKey,
+        resNum: resNumOfKey(resKey),
+        h3Index,
+        count: 0,
+        paNums: new Set(),
+        startNames: new Set(),
+        endNames: new Set(),
+        locPairs: new Set(), // start/end pairs for label
+      };
+    }
+
+    function initMetaBlue(resKey, h3Index) {
+      return {
+        resKey,
+        resNum: resNumOfKey(resKey),
+        h3Index,
+        names: new Set() // location_name(s)
+      };
+    }
+
     function buildHoverHtmlRed(meta) {
-      const resNum = meta.resNum;
-      const h3Index = meta.h3Index;
+      const startNames = Array.from(meta.startNames);
+      const endNames = Array.from(meta.endNames);
+      const pairs = Array.from(meta.locPairs);
 
-      const loc = joinSet(meta.locPairs, '、');
-      const km  = joinSet(meta.kmPairs, '、');
-
-      const tw = joinSet(meta.tw, '、');
-      const area = joinSet(meta.area, '、');
-      const center = joinSet(meta.center, '、');
-
-      const paArr = Array.from(meta.paNums)
-        .filter(Boolean)
-        .map(x => String(x))
-        .sort((a,b) => (Number(a)-Number(b)));
-      const pa = paArr.join('、');
-
+      const paArr = Array.from(meta.paNums).map(x=>String(x)).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
       return `
         <div class="h3-tip">
-          <div><b>H3_res${resNum} (PA_data):</b> ${escapeHtml(h3Index)}</div>
-          <div><b>location_name(start/end):</b> ${escapeHtml(loc)}</div>
-          <div><b>location_KM+M(start/end):</b> ${escapeHtml(km)}</div>
-          <div><b>twcounty:</b> ${escapeHtml(tw)}</div>
-          <div><b>Marea:</b> ${escapeHtml(area)}</div>
-          <div><b>Mcenter:</b> ${escapeHtml(center)}</div>
-          <div><b>PA_Num:</b> ${escapeHtml(pa)}</div>
-          <div class="muted" style="margin-top:4px;">(點此格可在右側顯示事件明細)</div>
+          <div><b>H3_res${meta.resNum} (PA):</b> ${escapeHtml(meta.h3Index)}</div>
+          <div><b>count:</b> ${escapeHtml(meta.count)}</div>
+          <div><b>start_location_name:</b> ${escapeHtml(uniqPreview(startNames, 3))}</div>
+          <div><b>end_location_name:</b> ${escapeHtml(uniqPreview(endNames, 3))}</div>
+          <div><b>start/end pairs:</b> ${escapeHtml(uniqPreview(pairs, 2))}</div>
+          <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
+          <div class="muted" style="margin-top:4px;">(hover 會高亮同 start_location_name 的格；點此格可篩選表格)</div>
         </div>
       `;
     }
 
     function buildHoverHtmlBlue(meta) {
-      // meta from location match results
-      const resNum = meta.resNum;
-      const h3Index = meta.h3Index;
-      const names = joinSet(meta.names, '、');
-      const kms = joinSet(meta.kms, '、');
+      const names = Array.from(meta.names);
       return `
         <div class="h3-tip">
-          <div><b>H3_res${resNum} (Location):</b> ${escapeHtml(h3Index)}</div>
-          <div><b>location_name:</b> ${escapeHtml(names)}</div>
-          <div><b>KM+M:</b> ${escapeHtml(kms)}</div>
-          <div><b>count (matched):</b> ${escapeHtml(meta.count)}</div>
-          <div class="muted" style="margin-top:4px;">(此格由 start_location_name 命中 THSR_Location 產生)</div>
+          <div><b>H3_res${meta.resNum} (Location):</b> ${escapeHtml(meta.h3Index)}</div>
+          <div><b>location_name:</b> ${escapeHtml(uniqPreview(names, 4))}</div>
+          <div class="muted" style="margin-top:4px;">(此格由 start_location_name 命中 THSR_Location 產生；不顯示數字/不列統計)</div>
         </div>
       `;
     }
 
-    // ========= Render polygons =========
-    function initMetaRed(resNum, h3Index) {
-      return {
-        resNum, h3Index,
-        count: 0,
-        paNums: new Set(),
-        locPairs: new Set(),
-        kmPairs: new Set(),
-        tw: new Set(),
-        area: new Set(),
-        center: new Set()
-      };
+    function addLayerToLocIndex(locationNames, polygonLayer) {
+      for (const nm of locationNames) {
+        if (!nm) continue;
+        if (!layersByLocName.has(nm)) layersByLocName.set(nm, new Set());
+        layersByLocName.get(nm).add(polygonLayer);
+      }
     }
 
-    function initMetaBlue(resNum, h3Index) {
-      return {
-        resNum, h3Index,
-        count: 0,
-        names: new Set(),
-        kms: new Set()
-      };
+    function addPolygonCell(meta, layerGroup, type /* red|blue */) {
+      const h3Index = meta.h3Index;
+      const boundary = h3.cellToBoundary(h3Index);
+      const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
+
+      const baseStyle = (type === 'red')
+        ? { color:'#d00', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.12 }
+        : { color:'#0066cc', weight:1, opacity:0.95, fillColor:'#0066cc', fillOpacity:0.12 };
+
+      const poly = L.polygon(latlngs, baseStyle);
+      poly.__baseStyle = baseStyle;
+      poly.__type = type;
+      poly.__meta = meta;
+      layerGroup.addLayer(poly);
+
+      // Tooltip + hover highlight
+      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
+      poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
+
+      poly.on('mouseover', () => {
+        poly.setStyle({ weight: 2, fillOpacity: 0.18 });
+        // 以 start_location_name 做同名高亮：紅格用 meta.startNames；藍格用 meta.names
+        const names = (type === 'red') ? Array.from(meta.startNames) : Array.from(meta.names);
+        highlightByLocationNames(names);
+      });
+      poly.on('mouseout', () => {
+        // 回復自身樣式（其他高亮也清掉）
+        clearHoverHighlights();
+        poly.setStyle(baseStyle);
+      });
+
+      // Click: filter table rows by this h3Index (red cell only; blue也能篩，但就以同 H3 的事件列為準)
+      poly.on('click', () => {
+        const resKey = meta.resKey;
+        const setIdx = idxByCell[resKey].get(h3Index) || new Set();
+        const filtered = Array.from(setIdx).sort((a,b)=>a-b).map(i => allRows[i]);
+        setSelectionTag(`篩選中：${resKey} / ${h3Index}（${filtered.length} 筆）`);
+        renderTableRows(filtered);
+      });
+
+      // Index for hover-highlighting by location_name:
+      if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
+      else addLayerToLocIndex(Array.from(meta.names), poly);
+
+      return poly;
     }
 
+    // =============================
+    // Aggregated number labels (RED ONLY)
+    // =============================
+    function bucketSizeForZoom(z) {
+      const bs = Math.max(26, 92 - z * 4);
+      return bs;
+    }
+
+    function renderAggLabels() {
+      aggLabelLayer.clearLayers();
+
+      // only current RES + only red items
+      const items = redLabelItems[currentResKey] || [];
+      if (!items.length) return;
+
+      const z = map.getZoom();
+      const bs = bucketSizeForZoom(z);
+
+      const buckets = new Map();
+      for (const it of items) {
+        const p = map.latLngToContainerPoint(it.latlng);
+        const bx = Math.floor(p.x / bs);
+        const by = Math.floor(p.y / bs);
+        const key = `${bx},${by}`;
+
+        let b = buckets.get(key);
+        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
+        b.sum += it.count;
+        b.n += 1;
+        b.latSum += it.latlng.lat;
+        b.lngSum += it.latlng.lng;
+        buckets.set(key, b);
+      }
+
+      for (const b of buckets.values()) {
+        if (!b.sum) continue;
+        const lat = b.latSum / b.n;
+        const lng = b.lngSum / b.n;
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="agg-label">${escapeHtml(b.sum)}</div>`,
+          iconSize: null
+        });
+
+        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
+      }
+    }
+
+    // =============================
+    // Name rectangle labels (RED ONLY, show when zoom>=12)
+    // =============================
+    function renderNameLabels() {
+      nameLabelLayer.clearLayers();
+      const z = map.getZoom();
+      if (z < 12) return;
+
+      const items = redLabelItems[currentResKey] || [];
+      if (!items.length) return;
+
+      for (const it of items) {
+        if (!it.nameText) continue;
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="name-label" title="${escapeHtml(it.nameText)}">${escapeHtml(it.nameText)}</div>`,
+          iconSize: null
+        });
+
+        // 讓文字框略高於數字
+        const latlng = it.latlng;
+        const shifted = L.latLng(latlng.lat + 0.00015, latlng.lng);
+
+        L.marker(shifted, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
+      }
+    }
+
+    map.on('zoomend moveend', () => { renderAggLabels(); renderNameLabels(); });
+
+    // =============================
+    // Row click -> fly to cell by start_location_name
+    // =============================
+    let lastFocusLayer = null;
+
+    function clearFocus() {
+      if (lastFocusLayer && lastFocusLayer.__baseStyle) {
+        lastFocusLayer.setStyle(lastFocusLayer.__baseStyle);
+      }
+      lastFocusLayer = null;
+    }
+
+    function focusCellByH3Index(resKey, h3Index) {
+      if (!h3Index || !h3.isValidCell(h3Index)) return false;
+
+      // ensure correct RES visible
+      showOnlyRes(resKey);
+
+      // find polygon layer inside that layerGroup
+      let found = null;
+      h3Layers[resKey].eachLayer((ly) => {
+        if (ly && ly.__meta && ly.__meta.h3Index === h3Index) found = ly;
+      });
+      if (!found) {
+        // no polygon? still fly to center
+        const c = h3.cellToLatLng(h3Index);
+        map.flyTo([c[0], c[1]], Math.max(map.getZoom(), 14), { duration: 0.8 });
+        return true;
+      }
+
+      clearFocus();
+      const b = found.getBounds();
+      map.fitBounds(b.pad(0.6), { animate:true, duration: 0.8 });
+
+      // emphasize
+      found.setStyle({ weight: 4, color: '#00ff66', opacity: 1.0 });
+      lastFocusLayer = found;
+
+      // also highlight same start_location_name group
+      const names = (found.__type === 'red') ? Array.from(found.__meta.startNames) : Array.from(found.__meta.names);
+      highlightByLocationNames(names);
+
+      return true;
+    }
+
+    function onRowClick(displayIdx) {
+      const row = displayedRows[displayIdx];
+      if (!row) return;
+
+      // use start_location_name for navigation
+      const startName = toClean(row.start_location_name);
+      const resKey = currentResKey;
+
+      const hKey = resKey === 'RES8' ? 'start_H3_Res_8'
+                : resKey === 'RES9' ? 'start_H3_Res_9'
+                : resKey === 'RES10' ? 'start_H3_Res_10'
+                : 'start_H3_Res_11';
+
+      // 1) try row's own start_H3
+      let h3Index = toClean(row[hKey]);
+
+      // 2) fallback: THSR_Location mapping by start_location_name -> H3_Res_X
+      if (!h3Index && startName && locMap.has(startName)) {
+        const locRows = locMap.get(startName);
+        const locRow = locRows && locRows.length ? locRows[0] : null;
+        if (locRow) {
+          const lk = resKey === 'RES8' ? 'H3_Res_8'
+                  : resKey === 'RES9' ? 'H3_Res_9'
+                  : resKey === 'RES10' ? 'H3_Res_10'
+                  : 'H3_Res_11';
+          h3Index = toClean(locRow[lk]);
+        }
+      }
+
+      if (!h3Index) {
+        setSelectionTag(`定位失敗：此列缺少 start_H3 且 THSR_Location 找不到 start_location_name=${startName || '(empty)'}`);
+        return;
+      }
+
+      const ok = focusCellByH3Index(resKey, h3Index);
+      if (ok) {
+        setSelectionTag(`定位：${resKey} / ${h3Index}（start_location_name=${startName || '(empty)'}）`);
+      } else {
+        setSelectionTag(`定位失敗：H3 index 無效 ${h3Index}`);
+      }
+    }
+
+    // =============================
+    // Index: resKey -> h3Index -> Set(rowIndex)
+    // =============================
+    const idxByCell = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     function addRowIndex(resKey, h3Index, rowIdx) {
       if (!h3Index) return;
       let s = idxByCell[resKey].get(h3Index);
@@ -627,123 +917,12 @@
       s.add(rowIdx);
     }
 
-    function addPolygonCell(resKey, meta, layerGroup, boundsAcc, type) {
-      const h3Index = meta.h3Index;
-      const boundary = h3.cellToBoundary(h3Index);
-      const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
-
-      const style = (type === 'red')
-        ? { color:'#d00', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.12 }
-        : { color:'#0066cc', weight:1, opacity:0.95, fillColor:'#0066cc', fillOpacity:0.12 };
-
-      const poly = L.polygon(latlngs, style);
-      layerGroup.addLayer(poly);
-      if (boundsAcc) boundsAcc.extend(poly.getBounds());
-
-      // hover tooltip
-      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
-      poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
-
-      // hover highlight
-      poly.on('mouseover', () => poly.setStyle({ weight: 2, fillOpacity: 0.18 }));
-      poly.on('mouseout',  () => poly.setStyle({ weight: 1, fillOpacity: 0.12 }));
-
-      // click -> filter table only for red (PA rows); blue cells filter by matching rows if possible
-      poly.on('click', () => {
-        const setIdx = idxByCell[resKey].get(h3Index) || new Set();
-        const filtered = Array.from(setIdx).sort((a,b)=>a-b).map(i => allRows[i]);
-        setSelectionTag(`篩選中：${resKey} / ${h3Index}（${filtered.length} 筆）`);
-        renderTableRows(filtered);
-      });
-
-      // store label item
-      const center = h3.cellToLatLng(h3Index);
-      labelData[resKey].push({
-        latlng: L.latLng(center[0], center[1]),
-        count: meta.count,
-        type, // red/blue
-        resKey,
-        h3Index
-      });
-    }
-
-    // ========= 聚合數字：依螢幕距離 bucket =========
-    function bucketSizeForZoom(z) {
-      // z越小(遠) bucket越大；z越大(近) bucket越小
-      // 你要「拉很遠聚合，拉近拆開」=> bucket 隨 zoom 縮小
-      const bs = Math.max(26, 92 - z * 4); // 8=>60, 10=>52, 12=>44, 16=>28
-      return bs;
-    }
-
-    function renderAggregatedLabels() {
-      labelRenderLayer.clearLayers();
-
-      const z = map.getZoom();
-      const bs = bucketSizeForZoom(z);
-
-      // 收集所有「目前顯示中的 RES layer」的 label items
-      const activeResKeys = [];
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        if (map.hasLayer(h3Layers[resKey])) activeResKeys.push(resKey);
-      }
-      if (!activeResKeys.length) return;
-
-      const buckets = new Map();
-      for (const resKey of activeResKeys) {
-        for (const item of labelData[resKey]) {
-          const p = map.latLngToContainerPoint(item.latlng);
-          const bx = Math.floor(p.x / bs);
-          const by = Math.floor(p.y / bs);
-          const key = `${bx},${by}`;
-
-          let b = buckets.get(key);
-          if (!b) {
-            b = { sum:0, reds:0, blues:0, n:0, latSum:0, lngSum:0 };
-            buckets.set(key, b);
-          }
-          b.sum += Number(item.count) || 0;
-          if (item.type === 'red') b.reds++;
-          else if (item.type === 'blue') b.blues++;
-          b.n += 1;
-          b.latSum += item.latlng.lat;
-          b.lngSum += item.latlng.lng;
-        }
-      }
-
-      for (const b of buckets.values()) {
-        if (!b.sum) continue;
-
-        const lat = b.latSum / b.n;
-        const lng = b.lngSum / b.n;
-
-        let cls = 'mix';
-        if (b.reds > 0 && b.blues === 0) cls = 'red';
-        else if (b.blues > 0 && b.reds === 0) cls = 'blue';
-
-        const icon = L.divIcon({
-          className: '',
-          html: `<div class="agg-label ${cls}">${escapeHtml(b.sum)}</div>`,
-          iconSize: null
-        });
-
-        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(labelRenderLayer);
-      }
-    }
-
-    // map events trigger rerender
-    map.on('zoomend moveend', () => renderAggregatedLabels());
-    map.on('overlayadd overlayremove', () => renderAggregatedLabels());
-
-    // ========= Load CSVs =========
-    async function fetchCsv(path) {
-      const url = `${path}?v=${Date.now()}`;
-      return { abs: new URL(url, location.href).toString(), url };
-    }
-
+    // =============================
+    // Load CSVs + render
+    // =============================
     async function loadBothCSVsAndRender() {
       setStatus("starting...");
 
-      // H3 status
       if (typeof window.h3 === 'undefined') {
         h3Info = 'NOT LOADED (window.h3 is undefined)';
         throw new Error('h3 is not defined (h3-js 未載入成功)');
@@ -752,28 +931,31 @@
         h3Info = `loaded (${v})`;
       }
 
-      const pa = await fetchCsv('./PA_data.csv');
-      const loc = await fetchCsv('./THSR_Location.csv');
+      const paAbs = new URL(`./PA_data.csv?v=${Date.now()}`, location.href).toString();
+      const locAbs = new URL(`./THSR_Location.csv?v=${Date.now()}`, location.href).toString();
+      paCsvUrlAbs = paAbs;
+      locCsvUrlAbs = locAbs;
 
-      paCsvUrlAbs = pa.abs;
-      locCsvUrlAbs = loc.abs;
-
-      setStatus(`fetching: PA & Location`);
-      const [resPA, resLoc] = await Promise.all([
-        fetch(pa.abs, { cache:'no-store' }),
-        fetch(loc.abs, { cache:'no-store' })
-      ]);
-
-      httpInfo = `PA:${resPA.status} ${resPA.statusText} | LOC:${resLoc.status} ${resLoc.statusText}`;
-      if (!resPA.ok) throw new Error(`PA_data.csv HTTP ${resPA.status} ${resPA.statusText}`);
-      if (!resLoc.ok) throw new Error(`THSR_Location.csv HTTP ${resLoc.status} ${resLoc.statusText}`);
-
-      const [txtPA, txtLoc] = await Promise.all([resPA.text(), resLoc.text()]);
+      setStatus("fetching PA & Location");
+      const [txtPA, txtLoc] = await Promise.all([fetchNoStore(paAbs), fetchNoStore(locAbs)]);
       const rowsPA = parseCsvRobust(txtPA);
       const rowsLoc = parseCsvRobust(txtLoc);
 
-      // store all PA rows for table
+      httpInfo = `PA:OK | LOC:OK`;
+
+      // fill locMap
+      locMap.clear();
+      for (const r of rowsLoc) {
+        const name = toClean(r.location_name);
+        if (!name) continue;
+        if (!locMap.has(name)) locMap.set(name, []);
+        locMap.get(name).push(r);
+      }
+
+      // table base
       allRows = rowsPA;
+      renderTableRows(allRows);
+      setSelectionTag('');
 
       // reset indices
       for (const k of ['RES8','RES9','RES10','RES11']) idxByCell[k].clear();
@@ -785,144 +967,121 @@
         addRowIndex('RES11', toClean(r.start_H3_Res_11), i);
       }
 
-      // build location_name -> list of location rows
-      const locMap = new Map();
-      for (const r of rowsLoc) {
-        const name = toClean(r.location_name);
-        if (!name) continue;
-        if (!locMap.has(name)) locMap.set(name, []);
-        locMap.get(name).push(r);
+      // clear previous layers & caches
+      for (const k of ['RES8','RES9','RES10','RES11']) {
+        h3Layers[k].clearLayers();
+        redAgg[k].clear();
+        blueAgg[k].clear();
+        redLabelItems[k] = [];
       }
+      layersByLocName.clear();
+      clearHoverHighlights();
+      clearFocus();
 
-      // clear layers & label data
-      Object.values(h3Layers).forEach(g => g.clearLayers());
-      for (const rk of ['RES8','RES9','RES10','RES11']) labelData[rk] = [];
-      labelRenderLayer.clearLayers();
-
-      // build red meta (PA_data start_H3) and blue meta (matched locations)
-      const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-      const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-
-      function addRed(resKey, resNum, h3Index, paRow) {
+      // 1) build redAgg (PA start_H3)
+      function addRed(resKey, h3Index, row) {
         if (!h3Index) return;
         let meta = redAgg[resKey].get(h3Index);
-        if (!meta) { meta = initMetaRed(resNum, h3Index); redAgg[resKey].set(h3Index, meta); }
+        if (!meta) { meta = initMetaRed(resKey, h3Index); redAgg[resKey].set(h3Index, meta); }
 
         meta.count += 1;
 
-        const paNum = toClean(paRow.PA_Num);
+        const paNum = toClean(row.PA_Num);
         if (paNum) meta.paNums.add(paNum);
 
-        const startName = toClean(paRow.start_location_name);
-        const endName = toClean(paRow.end_location_name);
-        const locPair = (startName || endName) ? `${startName}/${endName}` : '';
-        if (locPair) meta.locPairs.add(locPair);
+        const sn = toClean(row.start_location_name);
+        const en = toClean(row.end_location_name);
+        if (sn) meta.startNames.add(sn);
+        if (en) meta.endNames.add(en);
 
-        const startKM = toClean(paRow["start_location_KM+M"]);
-        const endKM = toClean(paRow["end_location_KM+M"]);
-        const kmPair = (startKM || endKM) ? `${startKM}/${endKM}` : '';
-        if (kmPair) meta.kmPairs.add(kmPair);
-
-        const tw = toClean(paRow.twcounty);
-        const area = toClean(paRow.Marea);
-        const center = toClean(paRow.Mcenter);
-        if (tw) meta.tw.add(tw);
-        if (area) meta.area.add(area);
-        if (center) meta.center.add(center);
+        if (sn || en) meta.locPairs.add(`${sn}/${en}`);
       }
 
-      function addBlue(resKey, resNum, h3Index, paRow, locRow) {
+      for (const r of rowsPA) {
+        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
+        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
+        addRed('RES10', toClean(r.start_H3_Res_10), r);
+        addRed('RES11', toClean(r.start_H3_Res_11), r);
+      }
+
+      // 2) build blueAgg using start_location_name -> THSR_Location (and then H3_Res_X)
+      function addBlue(resKey, h3Index, startName) {
         if (!h3Index) return;
         let meta = blueAgg[resKey].get(h3Index);
-        if (!meta) { meta = initMetaBlue(resNum, h3Index); blueAgg[resKey].set(h3Index, meta); }
-
-        meta.count += 1;
-
-        const name = toClean(locRow.location_name) || toClean(paRow.start_location_name);
-        if (name) meta.names.add(name);
-
-        // THSR_Location.csv 的 KM+M 欄位是 "KM+M"（不是 start_location_KM+M）
-        const km = toClean(locRow["KM+M"]);
-        if (km) meta.kms.add(km);
+        if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg[resKey].set(h3Index, meta); }
+        if (startName) meta.names.add(startName);
       }
 
-      // 先填 redAgg
-      for (const r of rowsPA) {
-        addRed('RES8',  8,  toClean(r.start_H3_Res_8),  r);
-        addRed('RES9',  9,  toClean(r.start_H3_Res_9),  r);
-        addRed('RES10', 10, toClean(r.start_H3_Res_10), r);
-        addRed('RES11', 11, toClean(r.start_H3_Res_11), r);
-      }
-
-      // 再用 start_location_name 命中 location_name，填 blueAgg
       for (const r of rowsPA) {
         const startName = toClean(r.start_location_name);
         if (!startName) continue;
-
         const matches = locMap.get(startName);
         if (!matches || !matches.length) continue;
 
         for (const locRow of matches) {
-          // THSR_Location.csv 欄位是 H3_Res_8...（不是 start_H3_Res_8）
-          addBlue('RES8',  8,  toClean(locRow.H3_Res_8),  r, locRow);
-          addBlue('RES9',  9,  toClean(locRow.H3_Res_9),  r, locRow);
-          addBlue('RES10', 10, toClean(locRow.H3_Res_10), r, locRow);
-          addBlue('RES11', 11, toClean(locRow.H3_Res_11), r, locRow);
+          addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
+          addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
+          addBlue('RES10', toClean(locRow.H3_Res_10), startName);
+          addBlue('RES11', toClean(locRow.H3_Res_11), startName);
         }
       }
 
-      // ✅ 重複：若 blueAgg 的 H3Index 同時存在 redAgg，就刪掉 blueAgg（不顯示）
+      // 3) remove overlap: blueAgg that also exists in redAgg => drop blue
       for (const resKey of ['RES8','RES9','RES10','RES11']) {
         for (const h3Index of blueAgg[resKey].keys()) {
           if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
         }
       }
 
-      // render polygons
+      // 4) render polygons into each RES layer
       const boundsAcc = L.latLngBounds([]);
-      let cellsRed = 0, cellsBlue = 0;
+      let redCells=0, blueCells=0;
 
       for (const resKey of ['RES8','RES9','RES10','RES11']) {
         const lg = h3Layers[resKey];
 
-        // red
+        // red polygons
         for (const [h3Index, meta] of redAgg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-          addPolygonCell(resKey, meta, lg, boundsAcc, 'red');
-          cellsRed++;
+          const poly = addPolygonCell(meta, lg, 'red');
+          boundsAcc.extend(poly.getBounds());
+          redCells++;
+
+          // label item for aggregation (red only)
+          const center = h3.cellToLatLng(h3Index);
+          const nameText = uniqPreview(Array.from(meta.locPairs), 1); // 顯示一組 start/end，若多組就 +N
+          redLabelItems[resKey].push({
+            latlng: L.latLng(center[0], center[1]),
+            count: meta.count,
+            nameText
+          });
         }
 
-        // blue (non-overlap)
+        // blue polygons (no labels)
         for (const [h3Index, meta] of blueAgg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-          addPolygonCell(resKey, meta, lg, boundsAcc, 'blue');
-          cellsBlue++;
+          const poly = addPolygonCell(meta, lg, 'blue');
+          boundsAcc.extend(poly.getBounds());
+          blueCells++;
         }
       }
 
-      // initial table & view
-      setSelectionTag('');
-      renderTableRows(allRows);
-
-      // fit (optional)
-      if ((cellsRed + cellsBlue) > 0 && boundsAcc.isValid()) {
+      // fit once
+      if ((redCells+blueCells) > 0 && boundsAcc.isValid()) {
         map.fitBounds(boundsAcc.pad(0.12));
       }
 
       lastUpdateTime = new Date().toISOString();
-      setStatus(`ok: PA_rows=${rowsPA.length}, red_cells=${cellsRed}, blue_cells=${cellsBlue}`);
+      setStatus(`ok: rows=${rowsPA.length}, red_cells=${redCells}, blue_cells=${blueCells}`);
 
-      // render aggregated labels for current view / active layers
-      renderAggregatedLabels();
+      // render labels for current RES
+      renderAggLabels();
+      renderNameLabels();
     }
 
-    // clear filter button
-    btnClear.addEventListener('click', () => {
-      setSelectionTag('');
-      renderTableRows(allRows);
-    });
-
-    // run
+    // =============================
+    // Run
+    // =============================
     (async () => {
       try {
         await loadBothCSVsAndRender();
