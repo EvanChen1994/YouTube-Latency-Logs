@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Youtube_Live_LagLogger ver 9.8</title>
+  <title>Youtube_Live_LagLogger ver 9.8.1</title>
   <style>
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", sans-serif; background:#0b0f14; color:#e8eef7; }
@@ -21,7 +21,7 @@
       outline:none;
     }
     input[type="number"] { max-width: 280px; }
-    select { max-width: 280px; }
+    select { max-width: 320px; }
     button {
       padding:10px 12px; border-radius:10px;
       border:1px solid #2a3c55; background:#162235; color:#e8eef7;
@@ -35,8 +35,24 @@
     .muted { color:#a9b8cc; font-size:12px; line-height:1.55; }
     .kv { display:grid; grid-template-columns: 190px 1fr; gap:6px 10px; font-size:12px; }
     .kv div:nth-child(odd) { color:#a9b8cc; }
-    #playerWrap { aspect-ratio: 16/9; width:100%; background:#000; border-radius:12px; overflow:hidden; border:1px solid #1d2a3a; }
+
+    /* ✅ 修復齒輪：避免任何裁切/疊層擋住播放器上方控制列 */
+    #playerWrap{
+      aspect-ratio: 16/9; width:100%;
+      background:#000;
+      border:1px solid #1d2a3a;
+      border-radius:12px;
+
+      overflow: visible;     /* 關掉裁切（常見造成右上齒輪/面板不顯示/不反應） */
+      position: relative;
+      z-index: 100;          /* 確保播放器在最上層可點 */
+    }
     #player { width:100%; height:100%; }
+    #playerWrap * { pointer-events: auto; }
+
+    /* 圓角改套在 iframe 本體（不要用外層 overflow:hidden 去裁切） */
+    #player iframe { width:100% !important; height:100% !important; border-radius:12px; }
+
     table { width:100%; border-collapse:collapse; font-size:12px; }
     th, td { border-bottom:1px solid #1d2a3a; padding:8px 6px; vertical-align:top; }
     th { text-align:left; color:#a9b8cc; font-weight:700; background:#0d141e; position: sticky; top: 56px; z-index:5; }
@@ -52,8 +68,8 @@
 <body>
 <header>
   <h1>
-    Youtube_Live_LagLogger ver 9.8
-    <span class="ver">UTC+08:00 / ms / cycle_id(重開續號) / 事件先記+GPS背景回寫 / ✅e2e_recover_ms + e2e_recover_time / ✅外部畫質選單+強硬鎖畫質開關 / ✅顯示畫質狀態（不寫 log）</span>
+    Youtube_Live_LagLogger ver 9.8.1
+    <span class="ver">✅取消外部YouTube按鈕 / ✅修復嵌入齒輪不反應 / UTC+08:00 / cycle_id(重開續號) / 事件先記+GPS背景回寫 / e2e_recover_ms+time / 畫質監測(不寫log)+追進度維持畫質</span>
   </h1>
 </header>
 
@@ -82,10 +98,6 @@
           <option value="tiny">tiny (約 144p)</option>
           <option value="auto">auto</option>
         </select>
-      </div>
-      <div style="flex:1; min-width:260px;">
-        <label>外部「齒輪」替代（在 YouTube 開啟即可用齒輪）</label>
-        <button id="btnOpenYT">在 YouTube 開啟（可用齒輪）</button>
       </div>
     </div>
 
@@ -151,10 +163,8 @@
     </div>
 
     <div class="muted" style="margin-top:8px;">
-      ✅ 畫質鎖定（不寫入 log）：<br/>
-      - 溫和鎖：低頻巡航檢查；追進度 / PLAYING 後補鎖一次。<br/>
-      - 強硬鎖：若 avail 有目標畫質且 now!=pref，會更積極補鎖（仍有節流避免狂打）。<br/>
-      ✅ e2e_recover_ms/time：回寫到 root cycle 的 lag_event 列（lag_event 先出現，e2e 可能稍後補上）
+      ✅ 畫質鎖定（不寫入 log）：溫和鎖=低頻巡航；強硬鎖=更積極補鎖（仍節流）<br/>
+      ✅ 追進度（seek）後會補鎖畫質，盡量維持在你設定的 1080p
     </div>
   </div>
 
@@ -273,7 +283,6 @@ const inpDebounceMs = document.getElementById("inpDebounceMs");
 const inpSafetyMs = document.getElementById("inpSafetyMs");
 const inpMaxBehindMs = document.getElementById("inpMaxBehindMs");
 
-const btnOpenYT = document.getElementById("btnOpenYT");
 const btnBg = document.getElementById("btnBg");
 const btnHard = document.getElementById("btnHard");
 const btnLoad = document.getElementById("btnLoad");
@@ -322,9 +331,7 @@ let lastBehindAtUtcMs = null;
 let cycleSeq = 0;
 let activeCycleId = "";
 
-// e2e tracker
 let e2e = null;
-// e2e = { rootCycleId, startUtcMs, catchupAtUtcMs, waitingWindow, postCycleIds:Set, finalized }
 
 let lastCatchupUtcMs = null;
 let lastPlayingEnterUtcMs = null;
@@ -340,11 +347,9 @@ let prefQuality = "hd1080";
 let lastQualitySetUtcMs = null;
 let qualityCruiseTimer = null;
 
-// timers
 let tickTimer = null;
 let stallTimer = null;
 
-// conservative STALL detector
 const STALL_POLL_MS = 500;
 const STALL_EPSILON_SEC = 0.25;
 const BEHIND_NOISE_TOL_MS = 150;
@@ -654,6 +659,17 @@ function markWatchStartIfNeeded() {
   }
 }
 
+function updateQualityStatus() {
+  if (!playerReady || !player) {
+    stQuality.textContent = `now=- / pref=${prefQuality} / avail=-`;
+    return;
+  }
+  const nowQ = safeGetNowQual() || "-";
+  const av = safeGetAvailQual();
+  const avStr = av.length ? av.join(" ") : "-";
+  stQuality.textContent = `now=${nowQ} / pref=${prefQuality} / avail=${avStr}`;
+}
+
 function updateBehindNow() {
   if (!playerReady || !player) return;
 
@@ -679,19 +695,7 @@ function updateBehindNow() {
     }
   }
 
-  // 更新畫質狀態（不寫入 log）
-  updateQualityStatus();
-}
-
-function updateQualityStatus() {
-  if (!playerReady || !player) {
-    stQuality.textContent = `now=- / pref=${prefQuality} / avail=-`;
-    return;
-  }
-  const nowQ = safeGetNowQual() || "-";
-  const av = safeGetAvailQual();
-  const avStr = av.length ? av.join(" ") : "-";
-  stQuality.textContent = `now=${nowQ} / pref=${prefQuality} / avail=${avStr}`;
+  updateQualityStatus(); // 不寫 log
 }
 
 function seekToLiveEdgeStable(safetyMs) {
@@ -704,11 +708,6 @@ function seekToLiveEdgeStable(safetyMs) {
   try { player.seekTo(target, true); return true; } catch { return false; }
 }
 
-/**
- * 畫質鎖定（不寫入 log）
- * - 溫和：只在特定點 / 巡航低頻補鎖
- * - 強硬：now!=pref 且 avail 有 pref 就更積極補鎖（仍節流）
- */
 function applyPreferredQuality(tag, { aggressive = false } = {}) {
   if (!playerReady || !player) return false;
 
@@ -716,25 +715,21 @@ function applyPreferredQuality(tag, { aggressive = false } = {}) {
   const nowQ = safeGetNowQual();
   updateQualityStatus();
 
-  // auto 不強制
   if (!prefQuality || prefQuality === "auto") return false;
 
-  // 如果 avail 沒有 pref（直播當下不提供），就不硬做
-  const hasPref = av.includes(prefQuality) || av.length === 0; // 有些時候 API 會晚回 avail，允許先嘗試一次
+  const hasPref = av.includes(prefQuality) || av.length === 0;
   if (!hasPref) return false;
 
   const now = Date.now();
-  const MIN_SET_INTERVAL_MS = aggressive ? 2500 : 12000; // 強硬也不要狂打
+  const MIN_SET_INTERVAL_MS = aggressive ? 2500 : 12000;
   if (lastQualitySetUtcMs != null && (now - lastQualitySetUtcMs) < MIN_SET_INTERVAL_MS) return false;
 
-  // 溫和模式下，如果 now 已經是 pref 就不動
   if (!aggressive && nowQ === prefQuality) return false;
 
   try {
     if (typeof player.setPlaybackQuality === "function") {
       player.setPlaybackQuality(prefQuality);
       lastQualitySetUtcMs = now;
-      // 不寫 log，只更新狀態
       setTimeout(updateQualityStatus, 300);
       setTimeout(updateQualityStatus, 1500);
       return true;
@@ -743,16 +738,11 @@ function applyPreferredQuality(tag, { aggressive = false } = {}) {
   return false;
 }
 
-// 低頻巡航（不寫 log）
 function qualityCruise() {
   if (!playerReady || !player) return;
   const ps = safeGetPlayerState();
   if (ps !== 1) { updateQualityStatus(); return; }
-
-  // 溫和：每次巡航只補鎖一次（頻率低）
-  // 強硬：若 now!=pref 且 avail 有 pref，就補鎖（仍有 MIN_SET_INTERVAL_MS 節流）
-  const aggressive = !!hardQualityLock;
-  applyPreferredQuality("cruise", { aggressive });
+  applyPreferredQuality("cruise", { aggressive: !!hardQualityLock });
 }
 
 function stopQualityCruise() {
@@ -760,7 +750,6 @@ function stopQualityCruise() {
 }
 function restartQualityCruise() {
   stopQualityCruise();
-  // 低頻巡航：15 秒檢查一次（符合你先前偏保守的想法）
   qualityCruiseTimer = setInterval(qualityCruise, 15000);
 }
 
@@ -797,7 +786,6 @@ function forceCatchUpAfterLagEnd(reason) {
   lastAfterLagForceUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
-  // 追進度後補鎖畫質（不寫 log）
   setTimeout(() => applyPreferredQuality("after_lag_force_seek", { aggressive: hardQualityLock }), 100);
 
   const gpsType0 = lastGeo ? "lastGeo" : "none";
@@ -863,7 +851,6 @@ async function maybeCatchUpLayer1(reason) {
   lastCatchupUtcMs = now;
   stCatchupTs.textContent = nowTwIso(now);
 
-  // 追進度後補鎖畫質（不寫 log）
   setTimeout(() => applyPreferredQuality("layer1_seek", { aggressive: hardQualityLock }), 100);
 
   catchArmed = false;
@@ -1013,24 +1000,21 @@ function onPlayerStateChange(e) {
   stState.textContent = String(e.data);
   updateBehindNow();
 
-  if (e.data === 1) { // PLAYING
+  if (e.data === 1) {
     lastPlayingEnterUtcMs = Date.now();
     playedOnceEver = true;
-    markWatchStartIfNeeded();
-
-    // PLAYING 後補鎖畫質（不寫 log）
+    if (!watchStartUtcMs) {
+      watchStartUtcMs = Date.now();
+      addRow({ event: "watch_start", timeTw: nowTwIso(watchStartUtcMs), watchStartTw: nowTwIso(watchStartUtcMs) });
+    }
     setTimeout(() => applyPreferredQuality("on_playing", { aggressive: hardQualityLock }), 200);
 
     if (lagActive && lagMode === "buffering") endLagSessionIfAny("buffering_to_playing");
-
     runCatchUp("state_playing");
     return;
   }
 
-  if (e.data === 3) { // BUFFERING
-    startLagSession("buffering");
-    return;
-  }
+  if (e.data === 3) { startLagSession("buffering"); return; }
 
   if (lagActive && (e.data === 0 || e.data === 2 || e.data === -1)) {
     endLagSessionIfAny("state_non_playing");
@@ -1103,7 +1087,6 @@ async function initPlayer(videoId) {
     playerReady = false;
   }
 
-  // reset runtime state (keep logs)
   lagActive = false; lagMode = ""; lagStartUtcMs = null; lagStartCt = null; lagStartDu = null;
   stallAccumMs = 0; stallLastCt = null; stallLastBehindMs = null;
   lastBehindMs = null; lastBehindAtUtcMs = null;
@@ -1116,7 +1099,6 @@ async function initPlayer(videoId) {
   activeCycleId = "";
   e2e = null;
 
-  // quality runtime
   lastQualitySetUtcMs = null;
   updateQualityStatus();
 
@@ -1135,12 +1117,7 @@ async function initPlayer(videoId) {
   player = new YT.Player("player", {
     videoId,
     playerVars: Object.assign(
-      {
-        autoplay: 1,
-        playsinline: 1,
-        controls: 1,
-        rel: 0
-      },
+      { autoplay: 1, playsinline: 1, controls: 1, rel: 0 },
       origin ? { origin } : {}
     ),
     events: {
@@ -1150,7 +1127,6 @@ async function initPlayer(videoId) {
         pillReady.classList.add("ok");
         ensureGeo().then(ok => { if (ok) startGeoWatch(); });
 
-        // ready 後先更新畫質狀態 & 補鎖一次（不寫 log）
         setTimeout(() => { updateQualityStatus(); applyPreferredQuality("on_ready", { aggressive: false }); }, 300);
 
         if (pendingVideoId && typeof player.loadVideoById === "function") {
@@ -1176,7 +1152,6 @@ function applyBgUi() {
   btnBg.textContent = bgMode ? "背景執行：ON" : "背景執行：OFF";
   btnBg.classList.toggle("on", bgMode);
 }
-
 function applyHardUi() {
   btnHard.textContent = hardQualityLock ? "強硬鎖畫質：ON" : "強硬鎖畫質：OFF";
   btnHard.classList.toggle("on", hardQualityLock);
@@ -1252,7 +1227,7 @@ async function resetToDefaults() {
   restartStallDetector();
   restartQualityCruise();
 
-  addRow({ event: "reset_defaults", timeTw: nowTwIso(), note: "reset to ver 9.8 defaults (quality lock OFF)" });
+  addRow({ event: "reset_defaults", timeTw: nowTwIso(), note: "reset to ver 9.8.1 defaults" });
 }
 
 btnBg.addEventListener("click", async () => { await setBgMode(!bgMode); });
@@ -1261,7 +1236,6 @@ btnHard.addEventListener("click", () => {
   hardQualityLock = !hardQualityLock;
   applyHardUi();
   saveSettings();
-  // 切到 ON 後立刻補鎖一次（不寫 log）
   setTimeout(() => applyPreferredQuality("toggle_hard", { aggressive: hardQualityLock }), 0);
 });
 
@@ -1269,17 +1243,7 @@ selQuality.addEventListener("change", () => {
   prefQuality = selQuality.value || "hd1080";
   saveSettings();
   updateQualityStatus();
-  // 改畫質立刻補鎖一次（不寫 log）
   setTimeout(() => applyPreferredQuality("quality_change", { aggressive: hardQualityLock }), 0);
-});
-
-btnOpenYT.addEventListener("click", () => {
-  const vid = currentVideoId || parseVideoId(inpUrl.value);
-  if (!vid) { alert("無法解析 Video ID。"); return; }
-  const ct = safeGetCurrentTime();
-  const t = (ct != null && Number.isFinite(ct) && ct > 0) ? `&t=${Math.floor(ct)}s` : "";
-  const url = `https://www.youtube.com/watch?v=${encodeURIComponent(vid)}${t}`;
-  window.open(url, "_blank", "noopener,noreferrer");
 });
 
 btnLoad.addEventListener("click", async () => {
@@ -1294,7 +1258,6 @@ btnLoad.addEventListener("click", async () => {
     await initPlayer(vid);
     updateBehindNow();
     runCatchUp("after_load");
-    // load 後補鎖畫質（不寫 log）
     setTimeout(() => applyPreferredQuality("after_load", { aggressive: false }), 500);
   } catch (e) {
     alert("載入 YouTube Player 失敗：" + (e?.message || e));
@@ -1302,7 +1265,7 @@ btnLoad.addEventListener("click", async () => {
 });
 
 btnReset.addEventListener("click", async () => {
-  if (!confirm("確定要把所有設定恢復為 ver 9.8 預設值？（cycle_id 也會從 1 重新開始）")) return;
+  if (!confirm("確定要把所有設定恢復為 ver 9.8.1 預設值？（cycle_id 也會從 1 重新開始）")) return;
   await resetToDefaults();
 });
 
