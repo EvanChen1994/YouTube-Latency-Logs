@@ -6,7 +6,6 @@
   <title>THSR PA Analysis</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-measure@1.1.0/dist/leaflet-measure.css">
 
   <style>
     html, body { height: 100%; margin: 0; }
@@ -19,7 +18,7 @@
     code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
 
-    /* ✅ H3 count label：改成紅底、白字、醒目 */
+    /* H3 count label：紅底白字 */
     .h3-count-label{
       background: rgba(220, 0, 0, 0.92);
       color: #fff;
@@ -33,6 +32,32 @@
       pointer-events: none;
       white-space: nowrap;
     }
+
+    /* 測距按鈕 */
+    .leaflet-control.custom-measure {
+      background: #fff;
+      padding: 6px;
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+    }
+    .measure-btn {
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-weight: 700;
+      background: #fafafa;
+    }
+    .measure-btn.active {
+      background: #ffe9e9;
+      border-color: #d00;
+      color: #b00;
+    }
+
+    /* Tooltip 內容稍微美化 */
+    .h3-tip b { display:inline-block; min-width: 160px; }
+    .h3-tip { line-height: 1.35; }
   </style>
 </head>
 
@@ -48,7 +73,7 @@
 
       <div class="muted" style="margin-top:8px;">
         底圖：NLSC EMAP / EMAP01（彩色/灰階切換）<br>
-        功能：縮放拖曳、距離量測、H3(RES8~RES11) 疊圖層 + 每格筆數<br>
+        功能：縮放拖曳、H3(RES8~RES11) 疊圖層 + 每格筆數、Hover 資訊窗口、點兩下測距<br>
         CSV：<code>PA_data.csv</code>
       </div>
 
@@ -69,15 +94,14 @@
   <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- leaflet-measure -->
-  <script src="https://unpkg.com/leaflet-measure@1.1.0/dist/leaflet-measure.min.js"></script>
-
   <!-- h3-js UMD (global h3) -->
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
 
   <script>
-    // ========= Version (從此開始 ver 1.0；本次修正 => ver 1.1) =========
-    const APP_VERSION = "ver 1.1";
+    // ========= Version =========
+    // 你規則：小修 +0.1；大修/新增功能 +1
+    // 1.1 -> (新增 hover 資訊 + 新測距工具) => +1 => 2.0
+    const APP_VERSION = "ver 2.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     const statusEl = document.getElementById('status');
@@ -93,14 +117,23 @@
       statusEl.textContent = msg;
     }
     function escapeHtml(s) {
-      return String(s)
+      return String(s ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
     }
+    function toClean(s) {
+      const t = String(s ?? '').trim();
+      return t === '' ? '' : t;
+    }
+    function joinSet(set, sep='、') {
+      const arr = Array.from(set).filter(Boolean);
+      return arr.length ? arr.join(sep) : '';
+    }
 
+    // Robust CSV 解析：支援逗號/引號
     function parseCsvRobust(text) {
       const rows = [];
       let row = [];
@@ -140,7 +173,7 @@
       return data;
     }
 
-    // ===== Map =====
+    // ===== Map / Base Layers =====
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -151,8 +184,8 @@
     );
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
-    L.control.measure({ position:'topright' }).addTo(map);
 
+    // ===== H3 Overlay Layers =====
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     h3Layers.RES9.addTo(map);
 
@@ -162,19 +195,128 @@
       { collapsed:false }
     ).addTo(map);
 
-    function addH3CellWithCount(h3Index, count, layerGroup, boundsAcc) {
-      // polygon
+    // ===== 自製測距工具（點起點、點終點顯示距離）=====
+    let measureActive = false;
+    let measureStart = null;          // L.LatLng
+    let measureStartMarker = null;    // marker
+    let measureEndMarker = null;
+    let measureLine = null;
+
+    function clearMeasureGraphics() {
+      if (measureStartMarker) { map.removeLayer(measureStartMarker); measureStartMarker = null; }
+      if (measureEndMarker)   { map.removeLayer(measureEndMarker);   measureEndMarker = null; }
+      if (measureLine)        { map.removeLayer(measureLine);        measureLine = null; }
+      measureStart = null;
+    }
+
+    function formatDistance(meters) {
+      if (meters >= 1000) return `${(meters/1000).toFixed(3)} km`;
+      return `${meters.toFixed(1)} m`;
+    }
+
+    function onMapClickMeasure(e) {
+      if (!measureActive) return;
+
+      if (!measureStart) {
+        // 開始點：先清掉上一條
+        clearMeasureGraphics();
+        measureStart = e.latlng;
+        measureStartMarker = L.circleMarker(measureStart, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
+        measureStartMarker.bindTooltip("起點", { permanent: false, direction: 'top' });
+      } else {
+        // 終止點
+        const end = e.latlng;
+        measureEndMarker = L.circleMarker(end, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
+        measureEndMarker.bindTooltip("終點", { permanent: false, direction: 'top' });
+
+        measureLine = L.polyline([measureStart, end], { weight:3, opacity:0.9 }).addTo(map);
+
+        const dist = map.distance(measureStart, end);
+        const msg = `距離：${formatDistance(dist)}`;
+
+        // 在終點顯示 popup
+        L.popup({ closeButton: true, autoClose: true })
+          .setLatLng(end)
+          .setContent(msg)
+          .openOn(map);
+
+        // 下一次量測：讓下一次點擊重新開始（但保留 measureActive）
+        measureStart = null;
+      }
+    }
+
+    map.on('click', onMapClickMeasure);
+
+    const MeasureControl = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function() {
+        const div = L.DomUtil.create('div', 'leaflet-control custom-measure');
+        const btn = L.DomUtil.create('div', 'measure-btn', div);
+        btn.textContent = '測距';
+        btn.title = '點一下啟用/停用測距；啟用後左鍵點起點再點終點顯示距離';
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.on(btn, 'click', (ev) => {
+          L.DomEvent.stop(ev);
+          measureActive = !measureActive;
+          btn.classList.toggle('active', measureActive);
+
+          if (!measureActive) {
+            // 停用測距時清除暫存起點（保留線/點也可以；你若要停用就清掉，把下一行打開）
+            measureStart = null;
+          }
+        });
+
+        return div;
+      }
+    });
+    map.addControl(new MeasureControl());
+
+    // ===== H3: 畫蜂巢 + 累積 bounds + hover 資訊 =====
+    function buildHoverHtml(meta) {
+      // meta: {resNum, h3Index, locPairs:Set, kmPairs:Set, tw:Set, area:Set, center:Set, paNums:Set}
+      const resNum = meta.resNum;
+      const h3Index = meta.h3Index;
+
+      const loc = joinSet(meta.locPairs, '、');     // 若同格多種 start/end 組合，用 、 分隔
+      const km  = joinSet(meta.kmPairs, '、');
+
+      const tw = joinSet(meta.tw, '、');
+      const area = joinSet(meta.area, '、');
+      const center = joinSet(meta.center, '、');
+
+      // PA_Num：照你需求用 、 連接
+      // 盡量維持數字排序
+      const paArr = Array.from(meta.paNums)
+        .filter(Boolean)
+        .map(x => String(x))
+        .sort((a,b) => (Number(a)-Number(b)));
+      const pa = paArr.join('、');
+
+      return `
+        <div class="h3-tip">
+          <div><b>1. H3_res${resNum}:</b> ${escapeHtml(h3Index)}</div>
+          <div><b>2. location_name(start/end):</b> ${escapeHtml(loc)}</div>
+          <div><b>3. location_KM+M(start/end):</b> ${escapeHtml(km)}</div>
+          <div><b>4. twcounty:</b> ${escapeHtml(tw)}</div>
+          <div><b>5. Marea:</b> ${escapeHtml(area)}</div>
+          <div><b>6. Mcenter:</b> ${escapeHtml(center)}</div>
+          <div><b>7. PA_Num:</b> ${escapeHtml(pa)}</div>
+        </div>
+      `;
+    }
+
+    function addH3CellWithCountAndMeta(h3Index, count, layerGroup, boundsAcc, meta) {
       const boundary = h3.cellToBoundary(h3Index);
       const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
 
       const poly = L.polygon(latlngs, { weight:1, opacity:0.9, fillOpacity:0.10 });
-      poly.bindTooltip(`H3: ${h3Index}<br>count: ${count}`, { sticky:true });
       layerGroup.addLayer(poly);
 
-      // ✅ bounds 累積：只累積 polygon 的 bounds，避免 LayerGroup getBounds 爆炸
+      // bounds
       if (boundsAcc) boundsAcc.extend(poly.getBounds());
 
-      // label (center marker)
+      // count label
       const center = h3.cellToLatLng(h3Index);
       const labelIcon = L.divIcon({
         className: '',
@@ -182,23 +324,83 @@
         iconSize: null
       });
       layerGroup.addLayer(L.marker([center[0], center[1]], { icon: labelIcon, interactive:false }));
+
+      // ✅ hover 資訊窗口（sticky tooltip）
+      const html = buildHoverHtml(meta);
+      poly.bindTooltip(html, {
+        sticky: true,
+        direction: 'top',
+        opacity: 0.95,
+        className: '' // 用預設 tooltip 框即可
+      });
+
+      // 也可以加上 hover highlight（更直覺）
+      poly.on('mouseover', () => poly.setStyle({ weight: 2, fillOpacity: 0.18 }));
+      poly.on('mouseout',  () => poly.setStyle({ weight: 1, fillOpacity: 0.10 }));
     }
 
-    function buildCounts(rows) {
-      const counters = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    // ===== 聚合：對每個 RES 的 H3 cell 收集你要的資訊 =====
+    function initMeta(resNum, h3Index) {
+      return {
+        resNum,
+        h3Index,
+        count: 0,
+        paNums: new Set(),
+        locPairs: new Set(),   // "start/end"
+        kmPairs: new Set(),    // "startKM/endKM"
+        tw: new Set(),
+        area: new Set(),
+        center: new Set()
+      };
+    }
+
+    function buildAgg(rows) {
+      // 回傳：{ RES8: Map(h3->meta), RES9: ..., RES10: ..., RES11: ... }
+      const agg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+
       for (const r of rows) {
-        const h8=(r.start_H3_Res_8||'').trim();
-        const h9=(r.start_H3_Res_9||'').trim();
-        const h10=(r.start_H3_Res_10||'').trim();
-        const h11=(r.start_H3_Res_11||'').trim();
-        if (h8) counters.RES8.set(h8,(counters.RES8.get(h8)||0)+1);
-        if (h9) counters.RES9.set(h9,(counters.RES9.get(h9)||0)+1);
-        if (h10) counters.RES10.set(h10,(counters.RES10.get(h10)||0)+1);
-        if (h11) counters.RES11.set(h11,(counters.RES11.get(h11)||0)+1);
+        const paNum = toClean(r.PA_Num);
+
+        const startName = toClean(r.start_location_name);
+        const endName   = toClean(r.end_location_name);
+        const locPair = (startName || endName) ? `${startName}/${endName}` : '';
+
+        const startKM = toClean(r["start_location_KM+M"]);
+        const endKM   = toClean(r["end_location_KM+M"]);
+        const kmPair = (startKM || endKM) ? `${startKM}/${endKM}` : '';
+
+        const twcounty = toClean(r.twcounty);
+        const marea = toClean(r.Marea);
+        const mcenter = toClean(r.Mcenter);
+
+        const h8  = toClean(r.start_H3_Res_8);
+        const h9  = toClean(r.start_H3_Res_9);
+        const h10 = toClean(r.start_H3_Res_10);
+        const h11 = toClean(r.start_H3_Res_11);
+
+        function addTo(resKey, resNum, h) {
+          if (!h) return;
+          let meta = agg[resKey].get(h);
+          if (!meta) { meta = initMeta(resNum, h); agg[resKey].set(h, meta); }
+          meta.count += 1;
+          if (paNum) meta.paNums.add(paNum);
+          if (locPair) meta.locPairs.add(locPair);
+          if (kmPair) meta.kmPairs.add(kmPair);
+          if (twcounty) meta.tw.add(twcounty);
+          if (marea) meta.area.add(marea);
+          if (mcenter) meta.center.add(mcenter);
+        }
+
+        addTo('RES8',  8,  h8);
+        addTo('RES9',  9,  h9);
+        addTo('RES10', 10, h10);
+        addTo('RES11', 11, h11);
       }
-      return counters;
+
+      return agg;
     }
 
+    // ===== 讀取 CSV & 畫圖 =====
     async function loadPAData() {
       pageUrlEl.textContent = location.href;
 
@@ -229,17 +431,22 @@
 
       Object.values(h3Layers).forEach(g => g.clearLayers());
 
-      const counters = buildCounts(rows);
+      const agg = buildAgg(rows);
 
-      // ✅ 用 LatLngBounds 累積所有 polygon bounds，最後再 fitBounds
       const boundsAcc = L.latLngBounds([]);
-
       let totalCells = 0;
-      for (const [key, mapCounts] of Object.entries(counters)) {
-        const g = h3Layers[key];
-        for (const [h3Index, count] of mapCounts.entries()) {
+
+      const mapping = [
+        ['RES8',  h3Layers.RES8],
+        ['RES9',  h3Layers.RES9],
+        ['RES10', h3Layers.RES10],
+        ['RES11', h3Layers.RES11]
+      ];
+
+      for (const [key, layerGroup] of mapping) {
+        for (const [h3Index, meta] of agg[key].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-          addH3CellWithCount(h3Index, count, g, boundsAcc);
+          addH3CellWithCountAndMeta(h3Index, meta.count, layerGroup, boundsAcc, meta);
           totalCells++;
         }
       }
@@ -252,7 +459,8 @@
       debugEl.innerHTML = `
         <div class="muted">
           ${APP_VERSION}<br>
-          H3 唯一格數：RES8=${counters.RES8.size}、RES9=${counters.RES9.size}、RES10=${counters.RES10.size}、RES11=${counters.RES11.size}<br>
+          H3 唯一格數：RES8=${agg.RES8.size}、RES9=${agg.RES9.size}、RES10=${agg.RES10.size}、RES11=${agg.RES11.size}<br>
+          測距：右上角按「測距」啟用後，左鍵點起點再點終點顯示距離（下一次點起點會清除上一條線）。<br>
           提示：右上 Layers 可切換彩色/灰階與 RES8~RES11 疊圖層。
         </div>
       `;
