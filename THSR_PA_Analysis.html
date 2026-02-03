@@ -19,15 +19,17 @@
     code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
     a { color: inherit; }
 
+    /* ✅ H3 count label：改成紅底、白字、醒目 */
     .h3-count-label{
-      background: rgba(255,255,255,0.85);
-      border: 1px solid rgba(0,0,0,0.15);
+      background: rgba(220, 0, 0, 0.92);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.35);
       border-radius: 10px;
-      padding: 1px 6px;
+      padding: 1px 7px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       line-height: 16px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
       pointer-events: none;
       white-space: nowrap;
     }
@@ -39,8 +41,12 @@
     <div id="map"></div>
 
     <div id="panel">
-      <h2>THSR PA Analysis</h2>
-      <div class="muted">
+      <div style="display:flex; align-items:baseline; gap:10px;">
+        <h2 style="margin:0;">THSR PA Analysis</h2>
+        <div class="muted" id="verTag" style="font-weight:700;"></div>
+      </div>
+
+      <div class="muted" style="margin-top:8px;">
         底圖：NLSC EMAP / EMAP01（彩色/灰階切換）<br>
         功能：縮放拖曳、距離量測、H3(RES8~RES11) 疊圖層 + 每格筆數<br>
         CSV：<code>PA_data.csv</code>
@@ -66,10 +72,14 @@
   <!-- leaflet-measure -->
   <script src="https://unpkg.com/leaflet-measure@1.1.0/dist/leaflet-measure.min.js"></script>
 
-  <!-- ✅ h3-js (UMD，保證提供全域 h3) -->
+  <!-- h3-js UMD (global h3) -->
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
 
   <script>
+    // ========= Version (從此開始 ver 1.0；本次修正 => ver 1.1) =========
+    const APP_VERSION = "ver 1.1";
+    document.getElementById('verTag').textContent = APP_VERSION;
+
     const statusEl = document.getElementById('status');
     const debugEl  = document.getElementById('debug');
     const pageUrlEl = document.getElementById('pageUrl');
@@ -152,7 +162,8 @@
       { collapsed:false }
     ).addTo(map);
 
-    function addH3CellWithCount(h3Index, count, layerGroup) {
+    function addH3CellWithCount(h3Index, count, layerGroup, boundsAcc) {
+      // polygon
       const boundary = h3.cellToBoundary(h3Index);
       const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
 
@@ -160,6 +171,10 @@
       poly.bindTooltip(`H3: ${h3Index}<br>count: ${count}`, { sticky:true });
       layerGroup.addLayer(poly);
 
+      // ✅ bounds 累積：只累積 polygon 的 bounds，避免 LayerGroup getBounds 爆炸
+      if (boundsAcc) boundsAcc.extend(poly.getBounds());
+
+      // label (center marker)
       const center = h3.cellToLatLng(h3Index);
       const labelIcon = L.divIcon({
         className: '',
@@ -187,7 +202,7 @@
     async function loadPAData() {
       pageUrlEl.textContent = location.href;
 
-      // 顯示 H3 載入狀態
+      // H3 狀態
       if (typeof window.h3 === 'undefined') {
         h3InfoEl.textContent = 'NOT LOADED (window.h3 is undefined)';
         throw new Error('h3 is not defined (h3-js 未載入成功)');
@@ -215,30 +230,34 @@
       Object.values(h3Layers).forEach(g => g.clearLayers());
 
       const counters = buildCounts(rows);
-      let totalCells = 0;
 
+      // ✅ 用 LatLngBounds 累積所有 polygon bounds，最後再 fitBounds
+      const boundsAcc = L.latLngBounds([]);
+
+      let totalCells = 0;
       for (const [key, mapCounts] of Object.entries(counters)) {
         const g = h3Layers[key];
         for (const [h3Index, count] of mapCounts.entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-          addH3CellWithCount(h3Index, count, g);
+          addH3CellWithCount(h3Index, count, g, boundsAcc);
           totalCells++;
         }
       }
 
-      const all = L.featureGroup([h3Layers.RES8, h3Layers.RES9, h3Layers.RES10, h3Layers.RES11]);
-      if (totalCells > 0 && all.getLayers().length > 0) map.fitBounds(all.getBounds().pad(0.12));
+      if (totalCells > 0 && boundsAcc.isValid()) {
+        map.fitBounds(boundsAcc.pad(0.12));
+      }
 
       setStatus(`完成：事件列 ${rows.length} 筆；蜂巢格（合計）${totalCells} 格`, 'ok');
       debugEl.innerHTML = `
         <div class="muted">
+          ${APP_VERSION}<br>
           H3 唯一格數：RES8=${counters.RES8.size}、RES9=${counters.RES9.size}、RES10=${counters.RES10.size}、RES11=${counters.RES11.size}<br>
           提示：右上 Layers 可切換彩色/灰階與 RES8~RES11 疊圖層。
         </div>
       `;
     }
 
-    // 主程式：包 try/catch 讓錯誤顯示在右側
     (async () => {
       try {
         await loadPAData();
