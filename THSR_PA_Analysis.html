@@ -46,10 +46,10 @@
       left:50%;
       transform: translateX(-50%);
       z-index: 900;
-      pointer-events: none; /* allow map drag */
+      pointer-events: none;
     }
     .filter-bar{
-      pointer-events: auto; /* clickable */
+      pointer-events: auto;
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
       border-radius: 14px;
@@ -59,16 +59,8 @@
       align-items:center;
       gap:10px;
       backdrop-filter: blur(6px);
-      min-width: 520px;
-      max-width: min(92vw, 860px);
-    }
-    .filter-bar .ttl{
-      font-weight:1000;
-      color:#d7e6ff;
-      letter-spacing:.5px;
-      white-space:nowrap;
-      padding:0 4px;
-      text-shadow: 0 0 10px rgba(255,154,60,0.18);
+      min-width: 420px;               /* ✅ shorter */
+      max-width: min(92vw, 740px);    /* ✅ shorter */
     }
     .msel{
       position:relative;
@@ -83,7 +75,7 @@
       white-space:nowrap;
     }
     .msel-btn{
-      width: 150px;
+      width: 140px;
       border:1px solid rgba(255,255,255,0.16);
       background: rgba(255,255,255,0.05);
       color: var(--txt);
@@ -109,7 +101,7 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 110px;
+      max-width: 100px;
     }
     .msel-menu{
       position:absolute;
@@ -333,8 +325,14 @@
     }
     .close-btn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
 
-    /* H3 count label */
-    .agg-label{
+    /* ✅ H3 label: split count + name, same X, different Y */
+    .lblWrap{
+      position: relative;
+      transform: translate(-50%, 0); /* center by X */
+      pointer-events:none;
+      white-space: nowrap;
+    }
+    .count-label{
       color:#fff;
       border-radius: 12px;
       padding: 2px 8px;
@@ -342,11 +340,23 @@
       font-weight: 1000;
       line-height: 18px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.40);
-      pointer-events: none;
-      white-space: nowrap;
       border: 1px solid rgba(255,255,255,0.35);
       background: rgba(220, 20, 20, 0.92);
       text-shadow: 0 0 10px rgba(255,80,80,0.35);
+      display:inline-block;
+    }
+    .name-label{
+      color:#fff;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 1000;
+      line-height: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.20);
+      background: rgba(220, 20, 20, 0.70);
+      text-shadow: 0 0 10px rgba(255,80,80,0.25);
+      display:inline-block;
     }
 
     /* tooltip */
@@ -427,7 +437,7 @@
       box-shadow: 0 0 18px rgba(255,43,43,0.18);
     }
 
-    /* Chart float (保持你要的：點紅格才出現) */
+    /* Chart float */
     .chart-float{
       position:absolute;
       left: 12px;
@@ -488,6 +498,86 @@
       z-index:1;
     }
 
+    /* ✅ PA Points Legend (collapsible hover) */
+    .legend-wrap{
+      position: relative;
+    }
+    .legend-tab{
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(10,19,40,0.92);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: rgba(231,238,252,0.95);
+      cursor: default;
+      user-select:none;
+      backdrop-filter: blur(6px);
+    }
+    .legend-panel{
+      position: absolute;
+      right: 0;
+      bottom: 44px;
+      width: 260px;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(10,19,40,0.92);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.55);
+      display: none;
+      backdrop-filter: blur(6px);
+    }
+    .legend-wrap:hover .legend-panel{
+      display:block;
+    }
+    .legend-ttl{
+      font-weight:1000;
+      margin-bottom:8px;
+      color:#d7e6ff;
+      text-shadow: 0 0 10px rgba(43,124,255,0.25);
+    }
+    .legend-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 10px;
+      font-size: 12px;
+      color: rgba(231,238,252,0.92);
+    }
+    .lg-item{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      white-space:nowrap;
+    }
+    .lg-dot{
+      width: 14px;
+      height: 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 0 10px rgba(0,0,0,0.35);
+      flex: 0 0 auto;
+      position: relative;
+    }
+    .lg-badge{
+      position:absolute;
+      left:50%;
+      bottom:-1px;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 1000;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(0,0,0,0.60);
+      line-height: 1;
+    }
+    .lg-note{
+      margin-top:8px;
+      font-size: 11px;
+      color: rgba(154,176,216,0.95);
+      line-height:1.35;
+    }
+
     /* ✅ Fail-safe error banner */
     #fatalBanner{
       position: fixed;
@@ -517,7 +607,7 @@
 
       <div class="mapTopBar">
         <div class="filter-bar" id="filterBar">
-          <div class="ttl">Filter</div>
+          <!-- ✅ removed "Filter" text -->
           <div id="filterMount" style="display:flex;align-items:center;gap:10px;"></div>
         </div>
       </div>
@@ -549,7 +639,7 @@
       <div class="hint">
         Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
         數字統計僅紅格；點紅格→右表依 start_location_name 篩選，並跳出圖表視窗（可關閉）。
-        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。</span>
+        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
       </div>
 
       <div class="table-wrap">
@@ -592,13 +682,15 @@
 
   <script>
     /* ===========================
-       ✅ ver 6.2 修正重點
-       - 修掉 layersByLocName 重複 const 宣告（會直接讓整個 JS 中斷）
-       - Filter 改為 map top overlay，不依賴 topcenter hack
-       - 加入 fatalBanner，JS若炸會直接顯示錯誤在畫面
+       ver 6.3
+       - H3 count & name labels aligned on same X, different Y
+       - Filter bar shorter, removed "Filter" text
+       - Chart legend added
+       - Bottom-right PA Points legend (hover expand)
+       - Bottom-right scale bar
        =========================== */
 
-    const APP_VERSION = "ver 6.2";
+    const APP_VERSION = "ver 6.3";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // =============================
@@ -764,6 +856,9 @@
     };
     L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
 
+    // ✅ Bottom-right scale bar
+    L.control.scale({ position:'bottomright', imperial:false, metric:true }).addTo(map);
+
     // Zoom tag
     const zoomLevelEl = document.getElementById('zoomLevel');
     function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
@@ -780,7 +875,6 @@
     let selectionLocationNames = [];
     let selectionPrimaryName = '';
 
-    // ✅ IMPORTANT: declare ONCE (修掉你遇到的炸掉原因)
     const layersByLocName = new Map(); // location_name -> Set(polygons)
     let highlightedLayers = new Set();
 
@@ -840,6 +934,14 @@
 
     function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
+    // ✅ same X, different Y via translateY in HTML wrapper
+    function makeCountIconHtml(count){
+      return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label">${escapeHtml(count)}</span></div>`;
+    }
+    function makeNameIconHtml(text){
+      return `<div class="lblWrap" style="transform:translate(-50%, -12px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
+    }
+
     function renderAggLabels() {
       aggLabelLayer.clearLayers();
       const items = redLabelItems[currentResKey] || [];
@@ -848,7 +950,7 @@
       const z = map.getZoom();
       if (z >= 12) {
         for (const it of items) {
-          const icon = L.divIcon({ className: '', html: `<div class="agg-label">${escapeHtml(it.count)}</div>`, iconSize: null });
+          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.count), iconSize: null });
           L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
         }
         return;
@@ -874,7 +976,7 @@
         if (!b.sum) continue;
         const lat = b.latSum / b.n;
         const lng = b.lngSum / b.n;
-        const icon = L.divIcon({ className: '', html: `<div class="agg-label">${escapeHtml(b.sum)}</div>`, iconSize: null });
+        const icon = L.divIcon({ className: '', html: makeCountIconHtml(b.sum), iconSize: null });
         L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
       }
     }
@@ -887,11 +989,7 @@
       const items = redLabelItems[currentResKey] || [];
       for (const it of items) {
         if (!it.nameText) continue;
-        const icon = L.divIcon({
-          className: '',
-          html: `<div class="agg-label" style="border-radius:10px;background:rgba(220,20,20,0.85)">${escapeHtml(it.nameText)}</div>`,
-          iconSize: null
-        });
+        const icon = L.divIcon({ className: '', html: makeNameIconHtml(it.nameText), iconSize: null });
         L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
       }
     }
@@ -1016,6 +1114,44 @@
     });
     map.addControl(new MeasureControl());
 
+    // ✅ Bottom-right PA Points legend (hover expand)
+    const LegendCtrl = L.Control.extend({
+      options:{ position:'bottomright' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'legend-wrap');
+        div.innerHTML = `
+          <div class="legend-panel">
+            <div class="legend-ttl">PA Points 圖例</div>
+            <div class="legend-grid">
+              ${legendItemHtml('4G YoutubeLive S', '#0b2d6e', 'S')}
+              ${legendItemHtml('4G YoutubeLive E', '#0b2d6e', 'E')}
+              ${legendItemHtml('5G YoutubeLive S', '#ff9a3c', 'S')}
+              ${legendItemHtml('5G YoutubeLive E', '#ff9a3c', 'E')}
+              ${legendItemHtml('4G VoLTEmos S', '#0b2d6e', 'S')}
+              ${legendItemHtml('4G VoLTEmos E', '#0b2d6e', 'E')}
+              ${legendItemHtml('5G VoLTEmos S', '#ff9a3c', 'S')}
+              ${legendItemHtml('5G VoLTEmos E', '#ff9a3c', 'E')}
+            </div>
+            <div class="lg-note">提示：目前 points 為簡化圓點版本；後續你要的 YouTube/電話圖標與 S/E 位置會在下一版加回。</div>
+          </div>
+          <div class="legend-tab" title="PA Points 圖例（滑鼠移上來顯示）">☰</div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      }
+    });
+    function legendItemHtml(label, color, badge){
+      return `
+        <div class="lg-item">
+          <div class="lg-dot" style="background:${color};">
+            <div class="lg-badge">${badge}</div>
+          </div>
+          <div>${escapeHtml(label)}</div>
+        </div>
+      `;
+    }
+    map.addControl(new LegendCtrl());
+
     // =============================
     // Filter state (checked = include)
     // =============================
@@ -1045,7 +1181,7 @@
       return `${arr.slice(0,2).join('、')} +${arr.length-2}`;
     }
 
-    function createMultiSelectInline({title, key, width=150}) {
+    function createMultiSelectInline({title, key, width=140}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
@@ -1151,10 +1287,10 @@
     const filterMount = document.getElementById('filterMount');
     const filterWidgets = {};
 
-    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:170});
-    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:120});
-    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:160});
-    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:150});
+    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
+    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:110});
+    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:150});
+    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:140});
 
     filterMount.appendChild(filterWidgets.Date.el);
     filterMount.appendChild(filterWidgets.measurement_NetWork.el);
@@ -1196,7 +1332,6 @@
       { key: 'Date', label: 'Date' },
       { key: 'start_location_name', label: 'S.loc' },
       { key: 'end_location_name', label: 'E.loc' },
-
       { key: 'PA_Num', label: 'PA#' },
       { key: 'event', label: 'Event' },
       { key: 'time_tw', label: 'Time' },
@@ -1214,22 +1349,18 @@
       { key: 'end_lon', label: 'E.lon' },
       { key: 'end_action', label: 'EndAct' },
       { key: 'accuracy_m', label: 'Acc(m)' },
-
       { key: 'start_H3_Res_8', label: 'S.H3(8)' },
       { key: 'start_H3_Res_9', label: 'S.H3(9)' },
       { key: 'start_H3_Res_10', label: 'S.H3(10)' },
       { key: 'start_H3_Res_11', label: 'S.H3(11)' },
-
       { key: 'end_H3_Res_8', label: 'E.H3(8)' },
       { key: 'end_H3_Res_9', label: 'E.H3(9)' },
       { key: 'end_H3_Res_10', label: 'E.H3(10)' },
       { key: 'end_H3_Res_11', label: 'E.H3(11)' },
-
       { key: 'measurement_Type', label: 'Type' },
       { key: 'measurement_Path', label: 'Path' },
       { key: 'measurement_NetWork', label: 'Net' },
       { key: 'measurement_Script', label: 'Script' },
-
       { key: 'start_location_KM+M', label: 'S.KM+M' },
       { key: 'end_location_KM+M', label: 'E.KM+M' },
       { key: 'twcounty', label: 'County' },
@@ -1309,7 +1440,7 @@
     renderTableHeader();
 
     // =============================
-    // Chart floating window (same behavior)
+    // Chart floating window
     // =============================
     const chartFloat = document.getElementById('chartFloat');
     const chartTitleEl = document.getElementById('chartTitle');
@@ -1345,6 +1476,23 @@
       const g = 120 + (Math.abs(hash*7) % 100);
       const b = 120 + (Math.abs(hash*13) % 100);
       return `rgba(${r},${g},${b},0.92)`;
+    }
+
+    function drawChartLegend(scripts, padR, padT){
+      // ✅ simple legend top-right inside plot
+      const x0 = chartCanvas.width - padR - 150;
+      let y = padT - 2;
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      ctx.textAlign = 'left';
+      for (const s of scripts) {
+        ctx.fillStyle = scriptColor(s);
+        ctx.fillRect(x0, y, 12, 10);
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.strokeRect(x0, y, 12, 10);
+        ctx.fillStyle = 'rgba(231,238,252,0.92)';
+        ctx.fillText(s, x0 + 18, y + 9);
+        y += 14;
+      }
     }
 
     function renderStackedChartForLocation(locationName){
@@ -1388,7 +1536,7 @@
       }
       if (maxY === 0) maxY = 1;
 
-      const padL = 42, padR = 14, padT = 18, padB = 34;
+      const padL = 42, padR = 14, padT = 22, padB = 34;
       const plotW = W - padL - padR;
       const plotH = H - padT - padB;
 
@@ -1445,6 +1593,9 @@
         ctx.fillText(d, 0, 0);
         ctx.restore();
       }
+
+      // ✅ legend
+      drawChartLegend(scripts, padR, padT);
     }
 
     // =============================
@@ -1678,8 +1829,7 @@
     }
 
     // =============================
-    // Points (先保留原本策略：zoom>=12才顯示)
-    // 這版為了修復主流程，points layer細節後續再補回你自訂 icon
+    // Points (still simplified circle markers)
     // =============================
     function isValidLatLng(lat, lon){
       const a = Number(lat), b = Number(lon);
