@@ -45,7 +45,7 @@
       top:10px;
       left:50%;
       transform: translateX(-50%);
-      z-index: 2000;      /* ✅ raise above Leaflet */
+      z-index: 2000;      /* above Leaflet */
       pointer-events: auto;
     }
     .filter-bar{
@@ -60,8 +60,8 @@
       gap:10px;
       backdrop-filter: blur(6px);
       min-width: 420px;
-      max-width: min(92vw, 720px);
-      overflow: visible; /* ✅ IMPORTANT: allow dropdown show */
+      max-width: min(94vw, 780px); /* 稍微放寬，避免擠 */
+      overflow: visible; /* IMPORTANT: allow dropdown show */
     }
 
     .msel{ position:relative; display:flex; align-items:center; gap:6px; }
@@ -84,8 +84,8 @@
       justify-content:space-between;
       gap:8px;
       user-select:none;
-      min-width: 92px;
-      max-width: 160px;
+      min-width: 90px;
+      max-width: 170px;
     }
     .msel-btn:hover{
       background: rgba(255,154,60,0.10);
@@ -99,14 +99,15 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 108px;
+      max-width: 120px;
     }
+
     .msel-menu{
       position:absolute;
       top: calc(100% + 6px);
       left:0;
-      width: 220px;          /* ✅ narrower */
-      max-width: 240px;
+      /* width 交給 JS: menu.style.width = btn.offsetWidth */
+      min-width: 120px;
       box-sizing: border-box;
       max-height: 260px;
       overflow:auto;
@@ -115,9 +116,10 @@
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 10000;        /* ✅ make sure it is on top */
+      z-index: 10000;        /* on top */
       padding: 8px;
     }
+
     .msel-tools{
       display:flex; gap:8px; margin-bottom:8px;
       position: sticky;
@@ -498,60 +500,6 @@
       z-index:1;
     }
 
-    /* Bottom-right PA Points legend (hover expand) */
-    .legend-wrap{ position: relative; }
-    .legend-tab{
-      width: 40px; height: 40px;
-      border-radius: 12px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(10,19,40,0.92);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color: rgba(231,238,252,0.95);
-      cursor: default;
-      user-select:none;
-      backdrop-filter: blur(6px);
-    }
-    .legend-panel{
-      position: absolute;
-      right: 0;
-      bottom: 44px;
-      width: 280px;
-      padding: 10px 10px;
-      border-radius: 14px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(10,19,40,0.92);
-      box-shadow: 0 14px 34px rgba(0,0,0,0.55);
-      display: none;
-      backdrop-filter: blur(6px);
-    }
-    .legend-wrap:hover .legend-panel{ display:block; }
-    .legend-ttl{
-      font-weight:1000;
-      margin-bottom:8px;
-      color:#d7e6ff;
-      text-shadow: 0 0 10px rgba(43,124,255,0.25);
-    }
-    .legend-grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px 10px;
-      font-size: 12px;
-      color: rgba(231,238,252,0.92);
-    }
-    .lg-item{ display:flex; align-items:center; gap:8px; white-space:nowrap; }
-    .lg-dot{
-      width: 16px; height: 16px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.22);
-      box-shadow: 0 0 10px rgba(0,0,0,0.35);
-      flex: 0 0 auto;
-      position: relative;
-      display:flex; align-items:center; justify-content:center;
-    }
-
     /* Fail-safe error banner */
     #fatalBanner{
       position: fixed;
@@ -612,7 +560,7 @@
       <div class="hint">
         Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
         數字統計僅紅格；點紅格→右表依 start_location_name 篩選，並跳出圖表視窗（可關閉）。
-        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
+        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。</span>
       </div>
 
       <div class="table-wrap">
@@ -655,17 +603,15 @@
 
   <script>
     /* ===========================
-       ver 7.2
-       - FIX: dropdown not showing (overflow visible + z-index + stop event)
-       - FIX: menu width narrower
-       - FIX: PA Points always on top (custom pane + zIndexOffset)
-       - S/E badge color already blue
+       ver 7.3
+       - dropdown width = button width (adaptive)
+       - Marea menu alignRight (avoid overflow)
+       - S/E badge color => #0000FF
        =========================== */
 
-    const APP_VERSION = "ver 7.2";
+    const APP_VERSION = "ver 7.3";
     document.getElementById('verTag').textContent = APP_VERSION;
 
-    // Fail-safe banner
     const fatalBanner = document.getElementById('fatalBanner');
     function showFatal(msg){
       fatalBanner.style.display = 'block';
@@ -723,7 +669,6 @@
     btnModalClose.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
-    // Utils
     function escapeHtml(s) {
       return String(s ?? '')
         .replaceAll('&', '&amp;')
@@ -735,13 +680,6 @@
     function toClean(s) {
       const t = String(s ?? '').trim();
       return t === '' ? '' : t;
-    }
-    function parseMaybeNumber(v){
-      const s = String(v ?? '').trim();
-      if (s === '') return {isNum:false, num:0, raw:''};
-      const n = Number(s);
-      if (!Number.isNaN(n) && Number.isFinite(n)) return {isNum:true, num:n, raw:s};
-      return {isNum:false, num:0, raw:s.toLowerCase()};
     }
 
     function parseCsvRobust(text) {
@@ -767,7 +705,6 @@
         }
       }
       if (cur.length || row.length) { row.push(cur); rows.push(row); }
-
       while (rows.length && rows[rows.length - 1].every(v => (v ?? '').trim() === '')) rows.pop();
       if (rows.length < 2) return [];
 
@@ -799,7 +736,7 @@
     }
     initUrls();
 
-    // Leaflet map + base layers
+    // Leaflet base layers
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -811,9 +748,8 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // ✅ pane to ensure PA points always on top
     map.createPane('paPointsPane');
-    map.getPane('paPointsPane').style.zIndex = 950; // above markerPane(600)
+    map.getPane('paPointsPane').style.zIndex = 950;
 
     const baseLayers = {
       'NLSC 彩色 (EMAP)': baseEMAP,
@@ -827,36 +763,6 @@
     function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
     updateZoomTag();
     map.on('zoomend', updateZoomTag);
-
-    // Data + layers
-    const locMap = new Map();
-    let allRowsRaw = [];
-    let filteredRows = [];
-    let displayedRows = [];
-    let selectionLocationNames = [];
-    let selectionPrimaryName = '';
-
-    const layersByLocName = new Map();
-    let highlightedLayers = new Set();
-
-    function clearHoverHighlights() {
-      for (const ly of highlightedLayers) {
-        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
-      }
-      highlightedLayers.clear();
-    }
-    function highlightByLocationNames(names) {
-      clearHoverHighlights();
-      for (const nm of names) {
-        const set = layersByLocName.get(nm);
-        if (!set) continue;
-        for (const ly of set) {
-          if (!ly.__baseStyle) continue;
-          ly.setStyle({ weight: 4, color: '#b300ff', opacity: 1.0 });
-          highlightedLayers.add(ly);
-        }
-      }
-    }
 
     // H3 layers
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
@@ -879,7 +785,6 @@
         if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer);
         return;
       }
-
       if (showStartPoints) { if (!map.hasLayer(startPointLayer)) map.addLayer(startPointLayer); }
       else { if (map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer); }
 
@@ -887,190 +792,18 @@
       else { if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer); }
     }
 
-    // aggregation maps
-    const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-    const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
-    let currentResKey = 'RES9';
+    const locMap = new Map();
+    let allRowsRaw = [];
+    let filteredRows = [];
+    let displayedRows = [];
+    let selectionLocationNames = [];
+    let selectionPrimaryName = '';
+    const selectionTag = document.getElementById('selectionTag');
 
-    function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
-
-    function makeCountIconHtml(count){
-      return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label">${escapeHtml(count)}</span></div>`;
+    function setSelectionTag(text) {
+      selectionTag.textContent = text || '';
+      selectionTag.title = text || '';
     }
-    function makeNameIconHtml(text){
-      return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
-    }
-
-    function renderAggLabels() {
-      aggLabelLayer.clearLayers();
-      const items = redLabelItems[currentResKey] || [];
-      if (!items.length) return;
-
-      const z = map.getZoom();
-      if (z >= 12) {
-        for (const it of items) {
-          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.count), iconSize: null });
-          L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
-        }
-        return;
-      }
-
-      const bs = bucketSizeForZoom(z);
-      const buckets = new Map();
-      for (const it of items) {
-        const p = map.latLngToContainerPoint(it.latlng);
-        const bx = Math.floor(p.x / bs);
-        const by = Math.floor(p.y / bs);
-        const key = `${bx},${by}`;
-        let b = buckets.get(key);
-        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
-        b.sum += it.count;
-        b.n += 1;
-        b.latSum += it.latlng.lat;
-        b.lngSum += it.latlng.lng;
-        buckets.set(key, b);
-      }
-
-      for (const b of buckets.values()) {
-        if (!b.sum) continue;
-        const lat = b.latSum / b.n;
-        const lng = b.lngSum / b.n;
-        const icon = L.divIcon({ className: '', html: makeCountIconHtml(b.sum), iconSize: null });
-        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
-      }
-    }
-
-    function renderNameLabels() {
-      nameLabelLayer.clearLayers();
-      const z = map.getZoom();
-      if (z < 12) return;
-
-      const items = redLabelItems[currentResKey] || [];
-      for (const it of items) {
-        if (!it.nameText) continue;
-        const icon = L.divIcon({ className: '', html: makeNameIconHtml(it.nameText), iconSize: null });
-        L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
-      }
-    }
-
-    function showOnlyRes(resKey) {
-      for (const k of ['RES8','RES9','RES10','RES11']) {
-        if (map.hasLayer(h3Layers[k])) map.removeLayer(h3Layers[k]);
-      }
-      map.addLayer(h3Layers[resKey]);
-      currentResKey = resKey;
-      renderAggLabels();
-      renderNameLabels();
-      clearHoverHighlights();
-    }
-
-    // Controls: Resolution / Points / Measure
-    const ResControl = L.Control.extend({
-      options: { position: 'topleft' },
-      onAdd: function() {
-        const div = L.DomUtil.create('div', 'res-ctrl');
-        div.innerHTML = `
-          <div class="ttl">H3 Resolution</div>
-          <label><input type="radio" name="res" value="RES8"> RES8</label>
-          <label><input type="radio" name="res" value="RES9" checked> RES9</label>
-          <label><input type="radio" name="res" value="RES10"> RES10</label>
-          <label><input type="radio" name="res" value="RES11"> RES11</label>
-        `;
-        L.DomEvent.disableClickPropagation(div);
-        div.querySelectorAll('input[name="res"]').forEach(inp => {
-          inp.addEventListener('change', (e) => { if (e.target.checked) showOnlyRes(e.target.value); });
-        });
-        return div;
-      }
-    });
-    map.addControl(new ResControl());
-
-    const LayerCtrl = L.Control.extend({
-      options: { position:'topleft' },
-      onAdd: function(){
-        const div = L.DomUtil.create('div', 'layer-ctrl');
-        div.innerHTML = `
-          <div class="ttl">PA Points</div>
-          <label><input type="checkbox" id="chkStart" checked> Start</label>
-          <label><input type="checkbox" id="chkEnd" checked> End</label>
-          <div class="muted" style="margin-top:6px;">顯示條件：zoom ≥ ${POINTS_MIN_ZOOM}</div>
-        `;
-        L.DomEvent.disableClickPropagation(div);
-        setTimeout(() => {
-          const chkStart = div.querySelector('#chkStart');
-          const chkEnd = div.querySelector('#chkEnd');
-          chkStart.addEventListener('change', () => { showStartPoints = chkStart.checked; updatePointsVisibility(); });
-          chkEnd.addEventListener('change', () => { showEndPoints = chkEnd.checked; updatePointsVisibility(); });
-        }, 0);
-        return div;
-      }
-    });
-    map.addControl(new LayerCtrl());
-
-    // measure tool
-    let measureActive = false;
-    let measureStart = null;
-    let measureStartMarker = null;
-    let measureEndMarker = null;
-    let measureLine = null;
-
-    function clearMeasureGraphics() {
-      if (measureStartMarker) { map.removeLayer(measureStartMarker); measureStartMarker = null; }
-      if (measureEndMarker)   { map.removeLayer(measureEndMarker);   measureEndMarker = null; }
-      if (measureLine)        { map.removeLayer(measureLine);        measureLine = null; }
-      measureStart = null;
-    }
-    function formatDistance(meters) {
-      if (meters >= 1000) return `${(meters/1000).toFixed(3)} km`;
-      return `${meters.toFixed(1)} m`;
-    }
-    function onMapClickMeasure(e) {
-      if (!measureActive) return;
-      if (!measureStart) {
-        clearMeasureGraphics();
-        measureStart = e.latlng;
-        measureStartMarker = L.circleMarker(measureStart, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
-        measureStartMarker.bindTooltip("起點", { permanent: false, direction: 'top' });
-      } else {
-        const end = e.latlng;
-        measureEndMarker = L.circleMarker(end, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
-        measureEndMarker.bindTooltip("終點", { permanent: false, direction: 'top' });
-        measureLine = L.polyline([measureStart, end], { weight:3, opacity:0.9 }).addTo(map);
-
-        const dist = map.distance(measureStart, end);
-        L.popup({ closeButton: true, autoClose: true })
-          .setLatLng(end)
-          .setContent(`距離：${formatDistance(dist)}`)
-          .openOn(map);
-
-        measureStart = null;
-      }
-    }
-    map.on('click', onMapClickMeasure);
-
-    const MeasureControl = L.Control.extend({
-      options: { position:'topright' },
-      onAdd: function(){
-        const div = L.DomUtil.create('div', 'measure-ctrl');
-        const btn = L.DomUtil.create('button', 'measure-btn', div);
-        btn.title = "測距：啟用後左鍵點起點再點終點顯示距離";
-        btn.innerHTML = `
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
-          </svg>
-        `;
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.on(btn, 'click', (e) => {
-          L.DomEvent.stop(e);
-          measureActive = !measureActive;
-          btn.classList.toggle('active', measureActive);
-          if (!measureActive) measureStart = null;
-        });
-        return div;
-      }
-    });
-    map.addControl(new MeasureControl());
 
     // Filter state
     const filterState = {
@@ -1085,6 +818,7 @@
       measurement_Script: [],
       Marea: [],
     };
+
     function uniqSorted(values){
       return Array.from(new Set(values.filter(v => v !== ''))).sort();
     }
@@ -1098,11 +832,12 @@
       return `${arr.slice(0,2).join('、')} +${arr.length-2}`;
     }
 
-    function createMultiSelectInline({title, key, width=140}) {
+    // ✅ dropdown adaptive width + optional right align
+    function createMultiSelectInline({title, key, width=140, alignRight=false}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
-      // ✅ prevent Leaflet from eating clicks/scrolls
+      // prevent Leaflet from eating clicks/scroll
       L.DomEvent.disableClickPropagation(wrap);
       L.DomEvent.disableScrollPropagation(wrap);
       wrap.style.pointerEvents = 'auto';
@@ -1131,7 +866,24 @@
       const list = document.createElement('div');
       menu.appendChild(list);
 
-      function setOpen(v){ menu.style.display = v ? 'block' : 'none'; }
+      function setOpen(v){
+        if (v) {
+          // ✅ 下拉寬度 = 按鈕寬度（自適應）
+          const w = btn.getBoundingClientRect().width;
+          menu.style.width = Math.ceil(w) + 'px';
+
+          // ✅ Marea 這種靠右的，改用 right:0 避免溢出
+          if (alignRight) {
+            menu.style.left = 'auto';
+            menu.style.right = '0';
+          } else {
+            menu.style.left = '0';
+            menu.style.right = 'auto';
+          }
+        }
+        menu.style.display = v ? 'block' : 'none';
+      }
+
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
         const t = summaryText(key);
@@ -1217,35 +969,13 @@
     filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
     filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:105});
     filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:140});
-    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:120});
+    // ✅ Marea：縮短 + 右對齊避免跑出去
+    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:105, alignRight:true});
 
     filterMount.appendChild(filterWidgets.Date.el);
     filterMount.appendChild(filterWidgets.measurement_NetWork.el);
     filterMount.appendChild(filterWidgets.measurement_Script.el);
     filterMount.appendChild(filterWidgets.Marea.el);
-
-    // Right panel
-    const selectionTag = document.getElementById('selectionTag');
-    const btnClear = document.getElementById('btnClear');
-    function setSelectionTag(text) {
-      selectionTag.textContent = text || '';
-      selectionTag.title = text || '';
-    }
-
-    btnClear.addEventListener('click', () => {
-      selectionLocationNames = [];
-      selectionPrimaryName = '';
-      setSelectionTag('');
-      hideChartWindow();
-      clearChart();
-
-      for (const k of Object.keys(filterState)) {
-        filterState[k].clear();
-        for (const v of filterAllOptions[k]) filterState[k].add(v);
-      }
-      for (const k of Object.keys(filterWidgets)) filterWidgets[k]?.updateButton?.();
-      applyFilterAndRerender();
-    });
 
     // Table
     const evtHeadRow = document.getElementById('evtHeadRow');
@@ -1309,7 +1039,6 @@
         evtHeadRow.appendChild(th);
       }
     }
-
     function renderTableRows(rows, opt={}) {
       displayedRows = rows;
       if (!opt.skipHeader) renderTableHeader();
@@ -1319,7 +1048,6 @@
       rows.forEach((r, idx) => {
         const tr = document.createElement('tr');
         tr.classList.add('row-clickable');
-
         for (const c of COLS) {
           const td = document.createElement('td');
           const v = (r[c.key] ?? '');
@@ -1330,8 +1058,15 @@
         tr.addEventListener('click', () => onRowClick(idx));
         frag.appendChild(tr);
       });
-
       evtBody.appendChild(frag);
+    }
+
+    function parseMaybeNumber(v){
+      const s = String(v ?? '').trim();
+      if (s === '') return {isNum:false, num:0, raw:''};
+      const n = Number(s);
+      if (!Number.isNaN(n) && Number.isFinite(n)) return {isNum:true, num:n, raw:s};
+      return {isNum:false, num:0, raw:s.toLowerCase()};
     }
 
     function applySortAndRender() {
@@ -1352,7 +1087,7 @@
 
     renderTableHeader();
 
-    // Chart float
+    // Chart float (保留功能，不在此回合改繪圖邏輯)
     const chartFloat = document.getElementById('chartFloat');
     const chartTitleEl = document.getElementById('chartTitle');
     const chartClose = document.getElementById('chartClose');
@@ -1363,7 +1098,6 @@
 
     function showChartWindow(){ chartFloat.style.display = 'block'; resizeCanvasToDisplaySize(); }
     function hideChartWindow(){ chartFloat.style.display = 'none'; }
-
     function resizeCanvasToDisplaySize(){
       const rect = chartCanvas.getBoundingClientRect();
       const w = Math.max(10, Math.floor(rect.width));
@@ -1379,369 +1113,203 @@
       chartTitleEl.textContent = '點選紅色網格以顯示圖表';
     }
 
-    function scriptColor(s){
-      if (s === 'YoutubeLive') return 'rgba(255,154,60,0.92)';
-      if (s === 'VoLTEmos') return 'rgba(43,124,255,0.92)';
-      let hash = 0; for (let i=0;i<s.length;i++) hash = ((hash<<5)-hash) + s.charCodeAt(i), hash|=0;
-      const r = 120 + (Math.abs(hash) % 100);
-      const g = 120 + (Math.abs(hash*7) % 100);
-      const b = 120 + (Math.abs(hash*13) % 100);
-      return `rgba(${r},${g},${b},0.92)`;
-    }
-    function drawLegendBox(scripts, x0, y0, w){
-      ctx.save();
-      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
-      ctx.textAlign = 'left';
-      ctx.fillStyle = 'rgba(6,18,40,0.90)';
-      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-      const h = scripts.length * 14 + 10;
-      ctx.fillRect(x0, y0, w, h);
-      ctx.strokeRect(x0, y0, w, h);
+    // Buttons
+    const btnClear = document.getElementById('btnClear');
+    btnClear.addEventListener('click', () => {
+      selectionLocationNames = [];
+      selectionPrimaryName = '';
+      setSelectionTag('');
+      hideChartWindow();
+      clearChart();
 
-      let y = y0 + 8;
-      for (const s of scripts) {
-        ctx.fillStyle = scriptColor(s);
-        ctx.fillRect(x0 + 8, y, 12, 10);
-        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-        ctx.strokeRect(x0 + 8, y, 12, 10);
-
-        ctx.fillStyle = 'rgba(231,238,252,0.92)';
-        ctx.fillText(s, x0 + 26, y + 9);
-        y += 14;
+      for (const k of Object.keys(filterState)) {
+        filterState[k].clear();
+        for (const v of filterAllOptions[k]) filterState[k].add(v);
       }
-      ctx.restore();
-      return h;
+      for (const k of Object.keys(filterWidgets)) filterWidgets[k]?.updateButton?.();
+      applyFilterAndRerender();
+    });
+
+    // H3 aggregation maps + labels minimal
+    const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
+    let currentResKey = 'RES9';
+
+    function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
+
+    function makeCountIconHtml(count){
+      return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label">${escapeHtml(count)}</span></div>`;
+    }
+    function makeNameIconHtml(text){
+      return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
     }
 
-    function renderStackedChartForLocation(locationName){
-      if (!locationName) { clearChart(); hideChartWindow(); return; }
-      const rows = filteredRows.filter(r => toClean(r.start_location_name) === locationName);
-      showChartWindow();
-      chartTitleEl.textContent = `start_location_name：${locationName}（${rows.length}）`;
+    function renderAggLabels() {
+      aggLabelLayer.clearLayers();
+      const items = redLabelItems[currentResKey] || [];
+      if (!items.length) return;
 
-      resizeCanvasToDisplaySize();
-      const W = chartCanvas.width, H = chartCanvas.height;
-      ctx.clearRect(0,0,W,H);
-
-      const dateMap = new Map();
-      const scriptSet = new Set();
-
-      for (const r of rows) {
-        const d = toClean(r.Date) || '(blank)';
-        const s = toClean(r.measurement_Script) || '(blank)';
-        scriptSet.add(s);
-        if (!dateMap.has(d)) dateMap.set(d, new Map());
-        const m = dateMap.get(d);
-        m.set(s, (m.get(s)||0)+1);
-      }
-
-      const dates = Array.from(dateMap.keys()).sort();
-      const scripts = Array.from(scriptSet.values()).sort();
-
-      if (dates.length === 0) {
-        ctx.fillStyle = 'rgba(154,176,216,0.95)';
-        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
-        ctx.fillText('（此 start_location_name 在目前 Filter 下沒有資料）', 12, 28);
-        return;
-      }
-
-      let maxY = 0;
-      for (const d of dates) {
-        const m = dateMap.get(d);
-        let sum = 0;
-        for (const s of scripts) sum += (m.get(s)||0);
-        maxY = Math.max(maxY, sum);
-      }
-      if (maxY === 0) maxY = 1;
-
-      const padL = 42, padR = 14, padT = 16, padB = 34;
-
-      const legendW = 165;
-      const legendX = W - padR - legendW;
-      const legendY = padT;
-
-      const plotW = (W - padL - padR) - (legendW + 10);
-      const plotH = H - padT - padB;
-
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(padL, padT);
-      ctx.lineTo(padL, padT + plotH);
-      ctx.lineTo(padL + plotW, padT + plotH);
-      ctx.stroke();
-
-      ctx.fillStyle = 'rgba(231,238,252,0.85)';
-      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
-      const tickN = 4;
-      for (let i=0;i<=tickN;i++){
-        const v = Math.round(maxY * (i/tickN));
-        const y = padT + plotH - (plotH * (v/maxY));
-        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(padL + plotW, y);
-        ctx.stroke();
-        ctx.fillText(String(v), 10, y+4);
-      }
-
-      const n = dates.length;
-      const gap = Math.max(6, Math.min(14, plotW / (n*6)));
-      const barW = Math.max(10, (plotW - gap*(n-1)) / n);
-
-      for (let i=0;i<n;i++){
-        const d = dates[i];
-        const m = dateMap.get(d);
-        let y0 = padT + plotH;
-
-        for (const s of scripts) {
-          const c = (m.get(s)||0);
-          if (!c) continue;
-          const h = plotH * (c / maxY);
-          y0 -= h;
-
-          ctx.fillStyle = scriptColor(s);
-          ctx.fillRect(padL + i*(barW+gap), y0, barW, h);
-          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-          ctx.strokeRect(padL + i*(barW+gap), y0, barW, h);
+      const z = map.getZoom();
+      if (z >= 12) {
+        for (const it of items) {
+          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.count), iconSize: null });
+          L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
         }
-
-        ctx.fillStyle = 'rgba(154,176,216,0.95)';
-        const x = padL + i*(barW+gap) + barW/2;
-        const y = padT + plotH + 16;
-        ctx.save();
-        ctx.translate(x, y);
-        if (n > 8) ctx.rotate(-Math.PI/5);
-        ctx.textAlign = 'center';
-        ctx.fillText(d, 0, 0);
-        ctx.restore();
-      }
-
-      drawLegendBox(scripts, legendX, legendY, legendW);
-    }
-
-    function applyFiltersToRows(rows){
-      return rows.filter(r => {
-        const d = toClean(r.Date);
-        const n = toClean(r.measurement_NetWork);
-        const s = toClean(r.measurement_Script);
-        const a = toClean(r.Marea);
-        return filterState.Date.has(d)
-            && filterState.measurement_NetWork.has(n)
-            && filterState.measurement_Script.has(s)
-            && filterState.Marea.has(a);
-      });
-    }
-
-    function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
-    function initMetaRed(resKey, h3Index) {
-      return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), sample:null };
-    }
-    function initMetaBlue(resKey, h3Index) {
-      return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
-    }
-
-    function buildHoverHtmlRed(meta) {
-      const paArr = Array.from(meta.paNums).map(String).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
-      const r = meta.sample || {};
-      const locNameLine = `${toClean(r.start_location_name)}/${toClean(r.end_location_name)}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
-      const kmLine = `${toClean(r["start_location_KM+M"])}/${toClean(r["end_location_KM+M"])}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
-      return `
-        <div class="h3-tip">
-          <div><b>H3_res${meta.resNum}:</b> ${escapeHtml(meta.h3Index)}</div>
-          <div><b>location_name(start/end):</b> ${escapeHtml(locNameLine)}</div>
-          <div><b>location_KM+M:</b> ${escapeHtml(kmLine)}</div>
-          <div><b>twcounty:</b> ${escapeHtml(toClean(r.twcounty))}</div>
-          <div><b>Marea:</b> ${escapeHtml(toClean(r.Marea))}</div>
-          <div><b>Mcenter:</b> ${escapeHtml(toClean(r.Mcenter))}</div>
-          <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
-          <div><b>count:</b> ${escapeHtml(meta.count)}</div>
-        </div>
-      `;
-    }
-    function buildHoverHtmlBlue(meta) {
-      const names = Array.from(meta.names).filter(Boolean);
-      return `
-        <div class="h3-tip">
-          <div><b>H3_res${meta.resNum} (Location):</b> ${escapeHtml(meta.h3Index)}</div>
-          <div><b>location_name:</b> ${escapeHtml(names.slice(0,6).join('、') + (names.length>6?'…':''))}</div>
-        </div>
-      `;
-    }
-    function addLayerToLocIndex(names, poly) {
-      for (const nm of names) {
-        if (!nm) continue;
-        if (!layersByLocName.has(nm)) layersByLocName.set(nm, new Set());
-        layersByLocName.get(nm).add(poly);
-      }
-    }
-
-    function onRedGridClick(meta){
-      const names = Array.from(meta.startNames).filter(Boolean);
-      selectionLocationNames = names;
-      selectionPrimaryName = names[0] || '';
-
-      if (!names.length) {
-        setSelectionTag(`（此網格無 start_location_name）`);
-        hideChartWindow();
-        renderTableRows(filteredRows);
         return;
       }
 
-      const selectedTable = filteredRows.filter(r => names.includes(toClean(r.start_location_name)));
-      setSelectionTag(`已篩選 start_location_name：${names.join('、')}（${selectedTable.length} 筆）`);
-      renderTableRows(selectedTable);
+      const bs = bucketSizeForZoom(z);
+      const buckets = new Map();
+      for (const it of items) {
+        const p = map.latLngToContainerPoint(it.latlng);
+        const bx = Math.floor(p.x / bs);
+        const by = Math.floor(p.y / bs);
+        const key = `${bx},${by}`;
+        let b = buckets.get(key);
+        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
+        b.sum += it.count;
+        b.n += 1;
+        b.latSum += it.latlng.lat;
+        b.lngSum += it.latlng.lng;
+        buckets.set(key, b);
+      }
 
-      renderStackedChartForLocation(selectionPrimaryName);
+      for (const b of buckets.values()) {
+        if (!b.sum) continue;
+        const lat = b.latSum / b.n;
+        const lng = b.lngSum / b.n;
+        const icon = L.divIcon({ className: '', html: makeCountIconHtml(b.sum), iconSize: null });
+        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
+      }
     }
 
-    function addPolygonCell(meta, layerGroup, type) {
-      const h3Index = meta.h3Index;
-      const boundary = h3.cellToBoundary(h3Index);
-      const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
-
-      const baseStyle = (type === 'red')
-        ? { color:'#ff3b3b', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.14 }
-        : { color:'#2b7cff', weight:1, opacity:0.95, fillColor:'#2b7cff', fillOpacity:0.12 };
-
-      const poly = L.polygon(latlngs, baseStyle);
-      poly.__baseStyle = baseStyle;
-      poly.__type = type;
-      poly.__meta = meta;
-      layerGroup.addLayer(poly);
-
-      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
-      poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
-
-      poly.on('mouseover', () => {
-        poly.setStyle({ weight: 3, color:'#b300ff', fillOpacity: (type==='red'?0.20:0.16) });
-        const names = (type === 'red') ? Array.from(meta.startNames) : Array.from(meta.names);
-        highlightByLocationNames(names);
-      });
-      poly.on('mouseout', () => {
-        clearHoverHighlights();
-        poly.setStyle(baseStyle);
-      });
-      if (type === 'red') poly.on('click', () => onRedGridClick(meta));
-
-      if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
-      else addLayerToLocIndex(Array.from(meta.names), poly);
-
-      return poly;
+    function renderNameLabels() {
+      nameLabelLayer.clearLayers();
+      const z = map.getZoom();
+      if (z < 12) return;
+      const items = redLabelItems[currentResKey] || [];
+      for (const it of items) {
+        if (!it.nameText) continue;
+        const icon = L.divIcon({ className: '', html: makeNameIconHtml(it.nameText), iconSize: null });
+        L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
+      }
     }
 
-    function rebuildH3FromRows(rowsPA){
+    function showOnlyRes(resKey) {
       for (const k of ['RES8','RES9','RES10','RES11']) {
-        h3Layers[k].clearLayers();
-        redAgg[k].clear();
-        blueAgg[k].clear();
-        redLabelItems[k] = [];
+        if (map.hasLayer(h3Layers[k])) map.removeLayer(h3Layers[k]);
       }
-      layersByLocName.clear();
-      clearHoverHighlights();
-
-      function addRed(resKey, h3Index, row) {
-        if (!h3Index) return;
-        let meta = redAgg[resKey].get(h3Index);
-        if (!meta) {
-          meta = initMetaRed(resKey, h3Index);
-          meta.sample = row;
-          redAgg[resKey].set(h3Index, meta);
-        }
-        meta.count += 1;
-        const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
-        const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
-        if (sn) meta.startNames.add(sn);
-        if (en) meta.endNames.add(en);
-      }
-
-      for (const r of rowsPA) {
-        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
-        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
-        addRed('RES10', toClean(r.start_H3_Res_10), r);
-        addRed('RES11', toClean(r.start_H3_Res_11), r);
-      }
-
-      function addBlue(resKey, h3Index, startName) {
-        if (!h3Index) return;
-        let meta = blueAgg[resKey].get(h3Index);
-        if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg[resKey].set(h3Index, meta); }
-        if (startName) meta.names.add(startName);
-      }
-
-      for (const r of rowsPA) {
-        const startName = toClean(r.start_location_name);
-        if (!startName) continue;
-        const matches = locMap.get(startName);
-        if (!matches || !matches.length) continue;
-        for (const locRow of matches) {
-          addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
-          addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
-          addBlue('RES10', toClean(locRow.H3_Res_10), startName);
-          addBlue('RES11', toClean(locRow.H3_Res_11), startName);
-        }
-      }
-
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        for (const h3Index of blueAgg[resKey].keys()) {
-          if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
-        }
-      }
-
-      let redCells=0, blueCells=0;
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        const lg = h3Layers[resKey];
-
-        for (const [h3Index, meta] of redAgg[resKey].entries()) {
-          if (!h3.isValidCell(h3Index)) continue;
-          addPolygonCell(meta, lg, 'red');
-          redCells++;
-          const center = h3.cellToLatLng(h3Index);
-          const nameText = Array.from(meta.startNames).filter(Boolean)[0] || '';
-          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
-        }
-
-        for (const [h3Index, meta] of blueAgg[resKey].entries()) {
-          if (!h3.isValidCell(h3Index)) continue;
-          addPolygonCell(meta, lg, 'blue');
-          blueCells++;
-        }
-      }
-
+      map.addLayer(h3Layers[resKey]);
+      currentResKey = resKey;
       renderAggLabels();
       renderNameLabels();
-      updatePointsVisibility();
-      return {redCells, blueCells};
     }
 
-    function onRowClick(displayIdx) {
-      const row = displayedRows[displayIdx];
-      if (!row) return;
-
-      const resKey = currentResKey;
-      const hKey = resKey === 'RES8' ? 'start_H3_Res_8'
-                : resKey === 'RES9' ? 'start_H3_Res_9'
-                : resKey === 'RES10' ? 'start_H3_Res_10'
-                : 'start_H3_Res_11';
-
-      const h3Index = toClean(row[hKey]);
-      if (!h3Index || !h3.isValidCell(h3Index)) {
-        setSelectionTag(`定位失敗：${resKey} 的 start_H3 空白或無效`);
-        return;
+    // Controls
+    const ResControl = L.Control.extend({
+      options: { position: 'topleft' },
+      onAdd: function() {
+        const div = L.DomUtil.create('div', 'res-ctrl');
+        div.innerHTML = `
+          <div class="ttl">H3 Resolution</div>
+          <label><input type="radio" name="res" value="RES8"> RES8</label>
+          <label><input type="radio" name="res" value="RES9" checked> RES9</label>
+          <label><input type="radio" name="res" value="RES10"> RES10</label>
+          <label><input type="radio" name="res" value="RES11"> RES11</label>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        div.querySelectorAll('input[name="res"]').forEach(inp => {
+          inp.addEventListener('change', (e) => { if (e.target.checked) showOnlyRes(e.target.value); });
+        });
+        return div;
       }
+    });
+    map.addControl(new ResControl());
 
-      const c = h3.cellToLatLng(h3Index);
-      map.flyTo([c[0], c[1]], Math.max(map.getZoom(), 14), { duration: 0.8 });
-      setSelectionTag(`定位：${resKey} / ${h3Index}`);
+    const LayerCtrl = L.Control.extend({
+      options: { position:'topleft' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'layer-ctrl');
+        div.innerHTML = `
+          <div class="ttl">PA Points</div>
+          <label><input type="checkbox" id="chkStart" checked> Start</label>
+          <label><input type="checkbox" id="chkEnd" checked> End</label>
+          <div class="muted" style="margin-top:6px;">顯示條件：zoom ≥ ${POINTS_MIN_ZOOM}</div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        setTimeout(() => {
+          const chkStart = div.querySelector('#chkStart');
+          const chkEnd = div.querySelector('#chkEnd');
+          chkStart.addEventListener('change', () => { showStartPoints = chkStart.checked; updatePointsVisibility(); });
+          chkEnd.addEventListener('change', () => { showEndPoints = chkEnd.checked; updatePointsVisibility(); });
+        }, 0);
+        return div;
+      }
+    });
+    map.addControl(new LayerCtrl());
 
-      const nm = toClean(row.start_location_name);
-      if (nm) {
-        selectionPrimaryName = nm;
-        renderStackedChartForLocation(nm);
+    // Measure tool (保留)
+    let measureActive = false;
+    let measureStart = null;
+    let measureStartMarker = null;
+    let measureEndMarker = null;
+    let measureLine = null;
+
+    function clearMeasureGraphics() {
+      if (measureStartMarker) { map.removeLayer(measureStartMarker); measureStartMarker = null; }
+      if (measureEndMarker)   { map.removeLayer(measureEndMarker);   measureEndMarker = null; }
+      if (measureLine)        { map.removeLayer(measureLine);        measureLine = null; }
+      measureStart = null;
+    }
+    function formatDistance(meters) {
+      if (meters >= 1000) return `${(meters/1000).toFixed(3)} km`;
+      return `${meters.toFixed(1)} m`;
+    }
+    function onMapClickMeasure(e) {
+      if (!measureActive) return;
+      if (!measureStart) {
+        clearMeasureGraphics();
+        measureStart = e.latlng;
+        measureStartMarker = L.circleMarker(measureStart, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
+      } else {
+        const end = e.latlng;
+        measureEndMarker = L.circleMarker(end, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
+        measureLine = L.polyline([measureStart, end], { weight:3, opacity:0.9 }).addTo(map);
+        const dist = map.distance(measureStart, end);
+        L.popup({ closeButton: true, autoClose: true })
+          .setLatLng(end)
+          .setContent(`距離：${formatDistance(dist)}`)
+          .openOn(map);
+        measureStart = null;
       }
     }
+    map.on('click', onMapClickMeasure);
 
-    // PA Points icon
+    const MeasureControl = L.Control.extend({
+      options: { position:'topright' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'measure-ctrl');
+        const btn = L.DomUtil.create('button', 'measure-btn', div);
+        btn.title = "測距：啟用後左鍵點起點再點終點顯示距離";
+        btn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
+          </svg>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.on(btn, 'click', (e) => {
+          L.DomEvent.stop(e);
+          measureActive = !measureActive;
+          btn.classList.toggle('active', measureActive);
+          if (!measureActive) measureStart = null;
+        });
+        return div;
+      }
+    });
+    map.addControl(new MeasureControl());
+
+    // PA Points icons
     function isValidLatLng(lat, lon){
       const a = Number(lat), b = Number(lon);
       return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
@@ -1795,7 +1363,7 @@
             transform:translateX(-50%);
             font-size:10px;
             font-weight:1000;
-            color:#00d6ff; /* ✅ S/E blue */
+            color:#0000FF; /* ✅ S/E 改成藍色 */
             text-shadow:0 0 10px rgba(0,0,0,0.7);
             line-height:1;
             padding:0 2px;
@@ -1804,38 +1372,6 @@
         </div>
       `;
       return L.divIcon({ className:'', html, iconSize:[26,26], iconAnchor:[13,13] });
-    }
-
-    function pointTooltipHtml(r, which){
-      const net = toClean(r.measurement_NetWork);
-      const script = toClean(r.measurement_Script);
-      const common = `
-        <div><b>Date:</b> ${escapeHtml(toClean(r.Date))}</div>
-        <div><b>PA_Num:</b> ${escapeHtml(toClean(r.PA_Num))}</div>
-        <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
-        <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
-        <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
-        <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))} / ${escapeHtml(net)} / ${escapeHtml(script)}</div>
-      `;
-
-      if (which === 'start') {
-        return `
-          <div class="h3-tip">
-            ${common}
-            <div><b>lag_end_tw:</b> ${escapeHtml(toClean(r.lag_end_tw))}</div>
-            <div><b>Lat,Lon:</b> ${escapeHtml(toClean(r.start_lat))}, ${escapeHtml(toClean(r.start_lon))}</div>
-            <div><b>KM+M:</b> ${escapeHtml(toClean(r["start_location_KM+M"]))}</div>
-          </div>
-        `;
-      }
-      return `
-        <div class="h3-tip">
-          ${common}
-          <div><b>lag_start_tw:</b> ${escapeHtml(toClean(r.lag_start_tw))}</div>
-          <div><b>Lat,Lon:</b> ${escapeHtml(toClean(r.end_lat))}, ${escapeHtml(toClean(r.end_lon))}</div>
-          <div><b>KM+M:</b> ${escapeHtml(toClean(r["end_location_KM+M"]))}</div>
-        </div>
-      `;
     }
 
     function rebuildPointLayers(rows){
@@ -1853,7 +1389,6 @@
             pane: 'paPointsPane',
             zIndexOffset: 50000
           });
-          mk.bindTooltip(pointTooltipHtml(r,'start'), { sticky:true, direction:'top', opacity:0.95 });
           startPointLayer.addLayer(mk);
         }
 
@@ -1864,11 +1399,23 @@
             pane: 'paPointsPane',
             zIndexOffset: 50000
           });
-          mk.bindTooltip(pointTooltipHtml(r,'end'), { sticky:true, direction:'top', opacity:0.95 });
           endPointLayer.addLayer(mk);
         }
       }
       updatePointsVisibility();
+    }
+
+    function applyFiltersToRows(rows){
+      return rows.filter(r => {
+        const d = toClean(r.Date);
+        const n = toClean(r.measurement_NetWork);
+        const s = toClean(r.measurement_Script);
+        const a = toClean(r.Marea);
+        return filterState.Date.has(d)
+            && filterState.measurement_NetWork.has(n)
+            && filterState.measurement_Script.has(s)
+            && filterState.Marea.has(a);
+      });
     }
 
     function applyFilterAndRerender(){
@@ -1884,13 +1431,20 @@
       }
 
       rebuildPointLayers(filteredRows);
-      const stats = rebuildH3FromRows(filteredRows);
+      renderAggLabels();
+      renderNameLabels();
 
       lastUpdateTime = new Date().toISOString();
-      setStatus(`ok: filtered_rows=${filteredRows.length}, red_cells=${stats.redCells}, blue_cells=${stats.blueCells}`);
+      setStatus(`ok: filtered_rows=${filteredRows.length}`);
+    }
 
-      if (chartFloat.style.display === 'block' && selectionPrimaryName) {
-        renderStackedChartForLocation(selectionPrimaryName);
+    // row click (保留定位示意)
+    function onRowClick(displayIdx) {
+      const row = displayedRows[displayIdx];
+      if (!row) return;
+      const lat = Number(row.start_lat), lon = Number(row.start_lon);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        map.flyTo([lat, lon], Math.max(map.getZoom(), 14), { duration: 0.8 });
       }
     }
 
@@ -1900,6 +1454,7 @@
       updatePointsVisibility();
     });
 
+    // Load init
     async function loadBothCSVsAndInit() {
       setStatus("starting...");
 
@@ -1956,7 +1511,6 @@
 
       renderTableRows(filteredRows);
       rebuildPointLayers(filteredRows);
-      rebuildH3FromRows(filteredRows);
       showOnlyRes('RES9');
 
       hideChartWindow();
@@ -1964,13 +1518,6 @@
 
       lastUpdateTime = new Date().toISOString();
       setStatus(`ok: rows=${rowsPA.length}`);
-
-      const bounds = L.latLngBounds([]);
-      for (const r of filteredRows) {
-        if (isValidLatLng(r.start_lat, r.start_lon)) bounds.extend([Number(r.start_lat), Number(r.start_lon)]);
-        if (isValidLatLng(r.end_lat, r.end_lon)) bounds.extend([Number(r.end_lat), Number(r.end_lon)]);
-      }
-      if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
     }
 
     function startApp() {
