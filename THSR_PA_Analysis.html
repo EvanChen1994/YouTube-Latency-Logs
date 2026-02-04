@@ -24,14 +24,62 @@
       --orange:#ff9a3c;
       --deepblue:#1240ff;
       --purple:#b300ff;
-      --tipblue:#7fb6ff;
+      --tipbg:#061a38;     /* tooltip deep blue */
+      --tipbd:rgba(0,214,255,0.25);
+      --tipshadow:rgba(0,0,0,0.55);
     }
 
     html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
     .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
 
-    #map { width:50vw; height:100vh; background:#0a0f1e; }
+    /* LEFT: map + chart */
+    .leftCol{
+      width:50vw; height:100vh;
+      display:flex; flex-direction:column;
+      overflow:hidden;
+      background:#0a0f1e;
+    }
+    #map { flex: 1 1 auto; min-height: 0; }
+    #chartPanel{
+      flex: 0 0 220px;
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(11,26,51,0.92) 0%, rgba(7,11,22,0.98) 100%);
+      position: relative;
+      overflow:hidden;
+    }
+    #chartPanel::before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        repeating-linear-gradient(to bottom,
+          rgba(255,255,255,0.02) 0px,
+          rgba(255,255,255,0.02) 1px,
+          rgba(0,0,0,0) 3px,
+          rgba(0,0,0,0) 6px);
+      pointer-events:none;
+      opacity:.35;
+      mix-blend-mode: overlay;
+    }
+    #chartTitle{
+      position:absolute; left:10px; top:8px;
+      font-weight:1000; font-size:12px;
+      color: rgba(231,238,252,0.90);
+      z-index:2;
+      text-shadow: 0 0 10px rgba(43,124,255,0.20);
+    }
+    #chartHint{
+      position:absolute; right:10px; top:8px;
+      font-size:12px;
+      color: rgba(154,176,216,0.9);
+      z-index:2;
+      text-shadow: 0 0 10px rgba(0,214,255,0.12);
+    }
+    #gridChart{
+      position:absolute; left:0; top:0; width:100%; height:100%;
+      z-index:1;
+    }
 
+    /* RIGHT: table */
     #panel{
       width:50vw; height:100vh; overflow:hidden;
       box-sizing:border-box; border-left:1px solid var(--line);
@@ -107,12 +155,6 @@
       border-color: rgba(43,124,255,0.40);
       box-shadow: 0 0 18px rgba(43,124,255,0.12);
     }
-    .btn.active{
-      background: rgba(255,43,43,0.18);
-      border-color: rgba(255,43,43,0.60);
-      color:#ffdede;
-      box-shadow: 0 0 18px rgba(255,43,43,0.18);
-    }
 
     .tag{
       border:1px solid rgba(255,255,255,0.14);
@@ -157,7 +199,7 @@
 
     th, td{
       border-bottom: 1px solid rgba(255,255,255,0.06);
-      border-right: 1px solid rgba(255,255,255,0.07);
+      border-right: 1px solid rgba(255,255,255,0.10); /* stronger vertical grid */
       padding: 7px 8px;
       text-align: left;
       vertical-align: top;
@@ -258,12 +300,25 @@
       transform: translateY(-26px);
     }
 
-    /* ✅ tooltip text blue */
-    .h3-tip { line-height: 1.35; color: var(--tipblue); }
-    .h3-tip b { display:inline-block; min-width: 170px; color: #cfe4ff; }
+    /* ✅ tooltip: deep blue bg + white text (Leaflet tooltip override) */
+    .leaflet-tooltip{
+      background: var(--tipbg) !important;
+      color: #ffffff !important;
+      border: 1px solid var(--tipbd) !important;
+      box-shadow: 0 10px 24px var(--tipshadow) !important;
+      border-radius: 12px !important;
+      padding: 10px 10px !important;
+      backdrop-filter: blur(6px);
+    }
+    .leaflet-tooltip:before{
+      border-top-color: var(--tipbg) !important;
+      border-bottom-color: var(--tipbg) !important;
+    }
+    .h3-tip { line-height: 1.35; color:#fff; }
+    .h3-tip b { display:inline-block; min-width: 170px; color: rgba(210,232,255,0.95); }
 
     /* Leaflet controls tech look */
-    .res-ctrl, .layer-ctrl{
+    .res-ctrl, .layer-ctrl, .filter-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
       border-radius:12px;
@@ -274,7 +329,7 @@
       color: var(--txt);
       backdrop-filter: blur(6px);
     }
-    .res-ctrl .ttl, .layer-ctrl .ttl{
+    .res-ctrl .ttl, .layer-ctrl .ttl, .filter-ctrl .ttl{
       font-weight:1000;
       margin-bottom:8px;
       letter-spacing:.5px;
@@ -282,6 +337,8 @@
       text-shadow: 0 0 10px rgba(43,124,255,0.25);
     }
     .layer-ctrl .ttl{ text-shadow: 0 0 10px rgba(0,214,255,0.18); }
+    .filter-ctrl .ttl{ text-shadow: 0 0 10px rgba(255,154,60,0.18); }
+
     .res-ctrl label, .layer-ctrl label{
       display:flex; align-items:center; gap:6px;
       margin:6px 0; cursor:pointer; user-select:none;
@@ -290,7 +347,7 @@
     .res-ctrl input{ cursor:pointer; accent-color: var(--accent); }
     .layer-ctrl input{ cursor:pointer; accent-color: var(--accent2); }
 
-    /* measure button control (on map) */
+    /* measure button control */
     .measure-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
@@ -298,7 +355,7 @@
       padding:6px;
       box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       backdrop-filter: blur(6px);
-      margin-top: 6px; /* ✅ sits under layers control */
+      margin-top: 6px;
     }
     .measure-btn{
       width: 38px; height: 38px;
@@ -332,7 +389,7 @@
       border: 1px solid rgba(255,255,255,0.35);
       box-shadow: 0 6px 16px rgba(0,0,0,0.45);
       position: relative;
-      overflow: visible; /* ✅ avoid badge being clipped */
+      overflow: visible;
     }
     .pmk::before{
       content:"";
@@ -340,8 +397,6 @@
       background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.22), transparent 40%);
       pointer-events:none;
     }
-
-    /* ✅ S/E moved to center-bottom */
     .badgeSE{
       position:absolute;
       left:50%;
@@ -358,12 +413,91 @@
       text-shadow: 0 0 8px rgba(255,255,255,0.22);
     }
     .pmk svg{ width: 18px; height: 18px; display:block; }
+
+    /* -------- Filter dropdown (multiselect) -------- */
+    .filter-row { display:flex; gap:10px; flex-wrap:wrap; }
+    .msel{ position:relative; min-width: 210px; }
+    .msel-btn{
+      width: 210px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: var(--txt);
+      border-radius:10px;
+      padding:7px 10px;
+      cursor:pointer;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      user-select:none;
+    }
+    .msel-btn:hover{
+      background: rgba(255,154,60,0.10);
+      border-color: rgba(255,154,60,0.30);
+    }
+    .msel-btn .small{ color: rgba(154,176,216,0.9); font-weight:800; font-size:11px; }
+    .msel-menu{
+      position:absolute;
+      top: calc(100% + 6px);
+      left:0;
+      width: 260px;
+      max-height: 260px;
+      overflow:auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(6,18,40,0.98);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+      display:none;
+      z-index: 10000;
+      padding: 8px;
+    }
+    .msel-menu .item{
+      display:flex; align-items:center; gap:8px;
+      padding: 6px 6px;
+      border-radius: 8px;
+      cursor:pointer;
+      user-select:none;
+      color: rgba(231,238,252,0.92);
+      border: 1px solid transparent;
+    }
+    .msel-menu .item:hover{
+      background: rgba(43,124,255,0.12);
+      border-color: rgba(43,124,255,0.20);
+    }
+    .msel-menu input{ cursor:pointer; }
+    .msel-tools{
+      display:flex; gap:8px; margin-bottom:8px;
+    }
+    .msel-tools .tbtn{
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: var(--txt);
+      border-radius:10px;
+      padding:5px 8px;
+      font-weight:900;
+      cursor:pointer;
+      font-size:11px;
+      user-select:none;
+    }
+    .msel-tools .tbtn:hover{
+      background: rgba(43,124,255,0.10);
+      border-color: rgba(43,124,255,0.30);
+    }
   </style>
 </head>
 
 <body>
   <div class="app">
-    <div id="map"></div>
+    <div class="leftCol">
+      <div id="map"></div>
+
+      <div id="chartPanel">
+        <div id="chartTitle">點選紅色網格以顯示圖表</div>
+        <div id="chartHint">堆疊：measurement_Script</div>
+        <canvas id="gridChart"></canvas>
+      </div>
+    </div>
 
     <div id="panel">
       <div class="topbar">
@@ -374,8 +508,8 @@
         </div>
 
         <div class="btns">
-          <!-- ✅ current base layer indicator -->
-          <div class="tag" id="layerTag">Layer: <b id="layerName">(loading)</b></div>
+          <!-- ✅ show Zoom level (instead of layer name) -->
+          <div class="tag" id="zoomTag">Zoom: <b id="zoomLevel">-</b></div>
 
           <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
           <div class="btn" id="btnClear" title="清除篩選，顯示全部事件">清除篩選</div>
@@ -383,9 +517,10 @@
       </div>
 
       <div class="hint">
-        RES 單選顯示網格。紅格＝PA_data(start_H3)；藍格＝start_location_name 命中 THSR_Location(location_name) 產生（與紅格重複者不畫）。
-        <br>數字與聚合統計：只計紅格；<b>點左側紅格 → 用 start_location_name 篩選右表</b>；點右表列 → 左側定位。
-        <br><span class="muted">PA Points：zoom &ge; 12 才顯示（Start/End 可複選）。</span>
+        Filter 會同時影響：左側 H3 / Points / 圖表 & 右側表格。<br>
+        紅格＝PA_data(start_H3)；藍格＝start_location_name 命中 THSR_Location(location_name) 產生（與紅格重複者不畫）。
+        <br>數字與聚合統計：只計紅格；點紅格→以 start_location_name 篩選右表，並更新下方堆疊圖。
+        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。</span>
       </div>
 
       <div class="table-wrap">
@@ -430,7 +565,7 @@
     // =============================
     // Version
     // =============================
-    const APP_VERSION = "ver 5.4";
+    const APP_VERSION = "ver 6.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // =============================
@@ -587,25 +722,55 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // track current base layer name (UI tag)
-    const layerNameEl = document.getElementById('layerName');
-    let currentBaseLayerName = 'NLSC 彩色 (EMAP)';
-    layerNameEl.textContent = currentBaseLayerName;
+    // Zoom tag (replacing layer-name)
+    const zoomLevelEl = document.getElementById('zoomLevel');
+    function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
+    updateZoomTag();
+    map.on('zoomend', updateZoomTag);
 
     const baseLayers = {
       'NLSC 彩色 (EMAP)': baseEMAP,
       'NLSC 灰階 (EMAP01)': baseEMAP01
     };
+    L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
 
-    const layerCtrl = L.control.layers(baseLayers, null, { collapsed:false });
-    layerCtrl.addTo(map);
+    // =============================
+    // Global data
+    // =============================
+    const locMap = new Map(); // location_name -> rows of THSR_Location
+    let allRowsRaw = [];      // PA_data all
+    let filteredRows = [];    // after filter
+    let displayedRows = [];   // for table (may be filtered further by selection)
+    let selectionLocationNames = []; // current selection (from clicking red grid)
+    let selectionPrimaryName = '';   // for chart title
 
-    map.on('baselayerchange', (e) => {
-      // find name by matching layer ref
-      const lname = Object.keys(baseLayers).find(k => baseLayers[k] === e.layer) || '(unknown)';
-      currentBaseLayerName = lname;
-      layerNameEl.textContent = lname;
-    });
+    // =============================
+    // Filter state
+    // =============================
+    const filterState = {
+      Date: new Set(),
+      measurement_NetWork: new Set(),
+      measurement_Script: new Set(),
+      Marea: new Set(),
+    };
+
+    function inFilter(set, v){
+      if (!set || set.size === 0) return true; // empty = allow all
+      return set.has(v);
+    }
+
+    function applyFiltersToRows(rows){
+      return rows.filter(r => {
+        const d = toClean(r.Date);
+        const n = toClean(r.measurement_NetWork);
+        const s = toClean(r.measurement_Script);
+        const a = toClean(r.Marea);
+        return inFilter(filterState.Date, d)
+            && inFilter(filterState.measurement_NetWork, n)
+            && inFilter(filterState.measurement_Script, s)
+            && inFilter(filterState.Marea, a);
+      });
+    }
 
     // =============================
     // H3 layers
@@ -619,8 +784,6 @@
     const endPointLayer = L.layerGroup().addTo(map);
     let showStartPoints = true;
     let showEndPoints = true;
-
-    // ✅ points zoom threshold
     const POINTS_MIN_ZOOM = 12;
 
     function updatePointsVisibility() {
@@ -640,10 +803,12 @@
       else { if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer); }
     }
 
-    const locMap = new Map();
+    // aggregation maps
     const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
+
+    // for highlight same location_name
     const layersByLocName = new Map();
     let highlightedLayers = new Set();
 
@@ -655,8 +820,6 @@
       }
       highlightedLayers.clear();
     }
-
-    // ✅ purple highlight + thicker
     function highlightByLocationNames(names) {
       clearHoverHighlights();
       for (const nm of names) {
@@ -678,7 +841,6 @@
       if (!items.length) return;
 
       const z = map.getZoom();
-
       if (z >= 12) {
         for (const it of items) {
           const icon = L.divIcon({ className: '', html: `<div class="agg-label">${escapeHtml(it.count)}</div>`, iconSize: null });
@@ -742,7 +904,9 @@
       clearHoverHighlights();
     }
 
-    // Resolution control
+    // =============================
+    // Controls: Resolution / Points / Filter
+    // =============================
     const ResControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function() {
@@ -763,7 +927,6 @@
     });
     map.addControl(new ResControl());
 
-    // Layer control (points) under res-control
     const LayerCtrl = L.Control.extend({
       options: { position:'topleft' },
       onAdd: function(){
@@ -778,7 +941,6 @@
         setTimeout(() => {
           const chkStart = div.querySelector('#chkStart');
           const chkEnd = div.querySelector('#chkEnd');
-
           chkStart.addEventListener('change', () => { showStartPoints = chkStart.checked; updatePointsVisibility(); });
           chkEnd.addEventListener('change', () => { showEndPoints = chkEnd.checked; updatePointsVisibility(); });
         }, 0);
@@ -787,17 +949,135 @@
     });
     map.addControl(new LayerCtrl());
 
-    showOnlyRes('RES9');
+    // ---- multiselect helper ----
+    function createMultiSelect({title, key}) {
+      const wrap = document.createElement('div');
+      wrap.className = 'msel';
+      const btn = document.createElement('div');
+      btn.className = 'msel-btn';
+      btn.innerHTML = `<span>${escapeHtml(title)}</span><span class="small" data-sum>(all)</span><span>▾</span>`;
+      const menu = document.createElement('div');
+      menu.className = 'msel-menu';
 
-    map.on('zoomend moveend', () => {
-      renderAggLabels();
-      renderNameLabels();
-      updatePointsVisibility();
+      const tools = document.createElement('div');
+      tools.className = 'msel-tools';
+      tools.innerHTML = `
+        <div class="tbtn" data-act="all">全選</div>
+        <div class="tbtn" data-act="none">全不選</div>
+        <div class="tbtn" data-act="close">關閉</div>
+      `;
+      menu.appendChild(tools);
+
+      const list = document.createElement('div');
+      menu.appendChild(list);
+
+      function setOpen(v){ menu.style.display = v ? 'block' : 'none'; }
+      function updateSummary(){
+        const s = wrap.querySelector('[data-sum]');
+        const set = filterState[key];
+        if (!set || set.size === 0) s.textContent = '(all)';
+        else if (set.size <= 2) s.textContent = Array.from(set).join('、');
+        else s.textContent = `${Array.from(set).slice(0,2).join('、')} +${set.size-2}`;
+      }
+
+      btn.addEventListener('click', () => setOpen(menu.style.display !== 'block'));
+      tools.addEventListener('click', (e) => {
+        const act = e.target?.dataset?.act;
+        if (!act) return;
+        if (act === 'close') setOpen(false);
+        if (act === 'none') filterState[key].clear();
+        if (act === 'all') {
+          // special: store all options into set; but we use "empty=all" rule.
+          // so "全選" just clears to empty meaning all.
+          filterState[key].clear();
+        }
+        updateSummary();
+        applyFilterAndRerender();
+      });
+
+      // click outside close
+      document.addEventListener('click', (e) => {
+        if (!wrap.contains(e.target)) setOpen(false);
+      });
+
+      wrap.appendChild(btn);
+      wrap.appendChild(menu);
+
+      return {
+        el: wrap,
+        setOptions: (options) => {
+          list.innerHTML = '';
+          const opts = options.slice();
+          for (const v of opts) {
+            const item = document.createElement('div');
+            item.className = 'item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = (filterState[key].size === 0) ? true : filterState[key].has(v);
+            const sp = document.createElement('div');
+            sp.textContent = v || '(blank)';
+            item.appendChild(cb);
+            item.appendChild(sp);
+
+            item.addEventListener('click', (ev) => {
+              if (ev.target !== cb) cb.checked = !cb.checked;
+              // If we were in "all mode" (empty set) and user unchecks one,
+              // we need to expand to explicit selection (all minus unchecked).
+              if (filterState[key].size === 0) {
+                // turn into explicit "all" first
+                for (const ov of opts) filterState[key].add(ov);
+              }
+              if (cb.checked) filterState[key].add(v);
+              else filterState[key].delete(v);
+
+              // if becomes full set, revert to empty (all)
+              let full = true;
+              for (const ov of opts) { if (!filterState[key].has(ov)) { full=false; break; } }
+              if (full) filterState[key].clear();
+
+              updateSummary();
+              applyFilterAndRerender();
+            });
+
+            list.appendChild(item);
+          }
+          updateSummary();
+        },
+        updateSummary
+      };
+    }
+
+    // Filter control (topmost on map)
+    const filterWidgets = {};
+    const FilterControl = L.Control.extend({
+      options:{ position:'topleft' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div','filter-ctrl');
+        div.innerHTML = `<div class="ttl">Filter</div>`;
+        const row = L.DomUtil.create('div','filter-row',div);
+
+        const wDate = createMultiSelect({title:'Date', key:'Date'});
+        const wNet  = createMultiSelect({title:'NetWork', key:'measurement_NetWork'});
+        const wScr  = createMultiSelect({title:'Script', key:'measurement_Script'});
+        const wArea = createMultiSelect({title:'Marea', key:'Marea'});
+
+        filterWidgets.Date = wDate;
+        filterWidgets.measurement_NetWork = wNet;
+        filterWidgets.measurement_Script = wScr;
+        filterWidgets.Marea = wArea;
+
+        row.appendChild(wDate.el);
+        row.appendChild(wNet.el);
+        row.appendChild(wScr.el);
+        row.appendChild(wArea.el);
+
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      }
     });
+    map.addControl(new FilterControl());
 
-    // =============================
-    // Measure tool (moved to map, under base layer control)
-    // =============================
+    // measure tool
     let measureActive = false;
     let measureStart = null;
     let measureStartMarker = null;
@@ -860,10 +1140,9 @@
       }
     });
     map.addControl(new MeasureControl());
-    // =============================
 
     // =============================
-    // Modal
+    // UI elements on right panel
     // =============================
     const selectionTag = document.getElementById('selectionTag');
     const btnClear = document.getElementById('btnClear');
@@ -873,8 +1152,29 @@
       selectionTag.title = text || '';
     }
 
+    btnClear.addEventListener('click', () => {
+      // clear selection + filters
+      selectionLocationNames = [];
+      selectionPrimaryName = '';
+      setSelectionTag('');
+      clearChart();
+
+      for (const k in filterState) filterState[k].clear();
+      // refresh filter UI summary
+      for (const k in filterWidgets) filterWidgets[k]?.updateSummary?.();
+
+      applyFilterAndRerender();
+    });
+
+    showOnlyRes('RES9');
+    map.on('zoomend moveend', () => {
+      renderAggLabels();
+      renderNameLabels();
+      updatePointsVisibility();
+    });
+
     // =============================
-    // Data + Table
+    // Table
     // =============================
     const evtHeadRow = document.getElementById('evtHeadRow');
     const evtBody = document.getElementById('evtBody');
@@ -924,10 +1224,8 @@
       { key: 'Mcenter', label: 'Center' },
     ];
 
-    let allRows = [];
-    let displayedRows = [];
     let sortKey = '';
-    let sortDir = 1; // 1 asc, -1 desc
+    let sortDir = 1;
 
     function renderTableHeader() {
       evtHeadRow.innerHTML = '';
@@ -958,7 +1256,6 @@
     function renderTableRows(rows, opt={}) {
       displayedRows = rows;
       if (!opt.skipHeader) renderTableHeader();
-
       evtBody.innerHTML = '';
       const frag = document.createDocumentFragment();
 
@@ -996,14 +1293,6 @@
       renderTableRows(rows, {skipHeader:true});
     }
 
-    btnClear.addEventListener('click', () => {
-      setSelectionTag('');
-      displayedRows = [...allRows];
-      sortKey = '';
-      sortDir = 1;
-      renderTableRows(displayedRows);
-    });
-
     renderTableHeader();
 
     // =============================
@@ -1012,28 +1301,30 @@
     function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
 
     function initMetaRed(resKey, h3Index) {
-      return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), locPairs: new Set() };
+      return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), locPairs: new Set(), sample:null };
     }
     function initMetaBlue(resKey, h3Index) {
       return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
     }
 
-    function buildHoverHtmlRed(meta, extraInfo) {
+    function buildHoverHtmlRed(meta) {
       const startNames = Array.from(meta.startNames);
       const endNames = Array.from(meta.endNames);
       const paArr = Array.from(meta.paNums).map(x=>String(x)).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
 
-      const locNameLine = `${toClean(extraInfo?.start_location_name)}/${toClean(extraInfo?.end_location_name)}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
-      const kmLine = `${toClean(extraInfo?.["start_location_KM+M"])}/${toClean(extraInfo?.["end_location_KM+M"])}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
+      // prefer sample row for details (filtered)
+      const r = meta.sample || {};
+      const locNameLine = `${toClean(r.start_location_name)}/${toClean(r.end_location_name)}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
+      const kmLine = `${toClean(r["start_location_KM+M"])}/${toClean(r["end_location_KM+M"])}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
 
       return `
         <div class="h3-tip">
           <div><b>H3_res${meta.resNum}:</b> ${escapeHtml(meta.h3Index)}</div>
           <div><b>location_name(start/end):</b> ${escapeHtml(locNameLine || uniqPreview(startNames,2) + '/' + uniqPreview(endNames,2))}</div>
           <div><b>location_KM+M:</b> ${escapeHtml(kmLine)}</div>
-          <div><b>twcounty:</b> ${escapeHtml(toClean(extraInfo?.twcounty))}</div>
-          <div><b>Marea:</b> ${escapeHtml(toClean(extraInfo?.Marea))}</div>
-          <div><b>Mcenter:</b> ${escapeHtml(toClean(extraInfo?.Mcenter))}</div>
+          <div><b>twcounty:</b> ${escapeHtml(toClean(r.twcounty))}</div>
+          <div><b>Marea:</b> ${escapeHtml(toClean(r.Marea))}</div>
+          <div><b>Mcenter:</b> ${escapeHtml(toClean(r.Mcenter))}</div>
           <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
           <div><b>count:</b> ${escapeHtml(meta.count)}</div>
         </div>
@@ -1057,20 +1348,28 @@
       }
     }
 
-    function filterTableByStartNames(names) {
-      const arr = Array.from(new Set((names || []).filter(Boolean)));
-      if (!arr.length) return;
+    // ✅ click red grid => set selection + filter table + chart
+    function onRedGridClick(meta){
+      const names = Array.from(meta.startNames).filter(Boolean);
+      selectionLocationNames = names;
+      selectionPrimaryName = names[0] || '';
 
-      const filtered = allRows.filter(r => arr.includes(toClean(r.start_location_name)));
-      displayedRows = filtered;
+      if (!names.length) {
+        setSelectionTag(`（此網格無 start_location_name）`);
+        clearChart();
+        renderTableRows(filteredRows);
+        return;
+      }
 
-      if (sortKey) applySortAndRender();
-      else renderTableRows(filtered);
+      // filter right table by start_location_name (from filteredRows)
+      const filtered = filteredRows.filter(r => names.includes(toClean(r.start_location_name)));
+      setSelectionTag(`已篩選 start_location_name：${names.join('、')}（${filtered.length} 筆）`);
+      renderTableRows(filtered);
 
-      setSelectionTag(`已篩選 start_location_name：${arr.join('、')}（${filtered.length} 筆）`);
+      // chart uses primary name
+      renderStackedChartForLocation(selectionPrimaryName);
     }
 
-    // ✅ hover highlight purple + thicker border
     function addPolygonCell(meta, layerGroup, type) {
       const h3Index = meta.h3Index;
       const boundary = h3.cellToBoundary(h3Index);
@@ -1087,7 +1386,7 @@
       layerGroup.addLayer(poly);
 
       const html = (type === 'red')
-        ? buildHoverHtmlRed(meta, meta.__sampleRow)
+        ? buildHoverHtmlRed(meta)
         : buildHoverHtmlBlue(meta);
 
       poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
@@ -1103,7 +1402,7 @@
       });
 
       if (type === 'red') {
-        poly.on('click', () => filterTableByStartNames(Array.from(meta.startNames)));
+        poly.on('click', () => onRedGridClick(meta));
       }
 
       if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
@@ -1134,10 +1433,17 @@
       const c = h3.cellToLatLng(h3Index);
       map.flyTo([c[0], c[1]], Math.max(map.getZoom(), 14), { duration: 0.8 });
       setSelectionTag(`定位：${resKey} / ${h3Index}`);
+
+      // also update chart based on row start_location_name
+      const nm = toClean(row.start_location_name);
+      if (nm) {
+        selectionPrimaryName = nm;
+        renderStackedChartForLocation(nm);
+      }
     }
 
     // =============================
-    // Point markers icons
+    // Point markers
     // =============================
     function netColor(net){
       const s = String(net ?? '').trim().toUpperCase();
@@ -1145,8 +1451,6 @@
       if (s === '5G') return 'rgba(255,154,60,0.92)';
       return 'rgba(43,124,255,0.92)';
     }
-
-    // ✅ slightly simplified icons (still recognizable)
     function svgYouTube(){
       return `
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1154,21 +1458,18 @@
         <path fill="#0b1020" d="M10.2 15.6V8.4L16.4 12l-6.2 3.6z"/>
       </svg>`;
     }
-
     function svgPhone(){
       return `
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#fff" d="M6.6 10.8c1.2 2.3 3.1 4.2 5.4 5.4l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v2.9c0 .5-.4.9-.9.9C10.7 19.4 4.6 13.3 4.6 6c0-.5.4-.9.9-.9h2.9c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.6 1.8z"/>
       </svg>`;
     }
-
     function scriptIcon(script){
       const s = String(script ?? '').trim();
       if (s === 'YoutubeLive') return svgYouTube();
       if (s === 'VoLTEmos') return svgPhone();
       return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="#fff"/></svg>`;
     }
-
     function pointDivIcon({isStart, net, script}) {
       const bg = netColor(net);
       const badge = isStart ? 'S' : 'E';
@@ -1180,7 +1481,10 @@
       `;
       return L.divIcon({ className:'', html, iconSize:[28,28], iconAnchor:[14,14] });
     }
-
+    function isValidLatLng(lat, lon){
+      const a = Number(lat), b = Number(lon);
+      return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
+    }
     function tooltipStart(r){
       return `
         <div class="h3-tip">
@@ -1191,14 +1495,12 @@
           <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
           <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
           <div><b>lat/lon:</b> ${escapeHtml(toClean(r.start_lat))}, ${escapeHtml(toClean(r.start_lon))}</div>
-          <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))}</div>
           <div><b>NetWork:</b> ${escapeHtml(toClean(r.measurement_NetWork))}</div>
           <div><b>Script:</b> ${escapeHtml(toClean(r.measurement_Script))}</div>
           <div><b>KM+M:</b> ${escapeHtml(toClean(r["start_location_KM+M"]))}</div>
         </div>
       `;
     }
-
     function tooltipEnd(r){
       return `
         <div class="h3-tip">
@@ -1209,17 +1511,11 @@
           <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
           <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
           <div><b>lat/lon:</b> ${escapeHtml(toClean(r.end_lat))}, ${escapeHtml(toClean(r.end_lon))}</div>
-          <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))}</div>
           <div><b>NetWork:</b> ${escapeHtml(toClean(r.measurement_NetWork))}</div>
           <div><b>Script:</b> ${escapeHtml(toClean(r.measurement_Script))}</div>
           <div><b>KM+M:</b> ${escapeHtml(toClean(r["end_location_KM+M"]))}</div>
         </div>
       `;
-    }
-
-    function isValidLatLng(lat, lon){
-      const a = Number(lat), b = Number(lon);
-      return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
     }
 
     function rebuildPointLayers(rows){
@@ -1245,13 +1541,317 @@
         }
       }
 
-      updatePointsVisibility(); // ✅ respect zoom & toggles
+      updatePointsVisibility();
     }
 
     // =============================
-    // Load + Render
+    // Chart (stacked bars)
     // =============================
-    async function loadBothCSVsAndRender() {
+    const chartTitleEl = document.getElementById('chartTitle');
+    const chartCanvas = document.getElementById('gridChart');
+    const ctx = chartCanvas.getContext('2d');
+
+    function resizeCanvasToDisplaySize(){
+      const rect = chartCanvas.getBoundingClientRect();
+      const w = Math.max(10, Math.floor(rect.width));
+      const h = Math.max(10, Math.floor(rect.height));
+      if (chartCanvas.width !== w || chartCanvas.height !== h) {
+        chartCanvas.width = w;
+        chartCanvas.height = h;
+      }
+    }
+    window.addEventListener('resize', () => {
+      resizeCanvasToDisplaySize();
+      if (selectionPrimaryName) renderStackedChartForLocation(selectionPrimaryName);
+      else clearChart();
+    });
+
+    function clearChart(){
+      resizeCanvasToDisplaySize();
+      ctx.clearRect(0,0,chartCanvas.width, chartCanvas.height);
+      chartTitleEl.textContent = '點選紅色網格以顯示圖表';
+    }
+
+    function renderStackedChartForLocation(locationName){
+      if (!locationName) { clearChart(); return; }
+
+      // use filteredRows only
+      const rows = filteredRows.filter(r => toClean(r.start_location_name) === locationName);
+      chartTitleEl.textContent = `start_location_name：${locationName}（${rows.length}）`;
+
+      resizeCanvasToDisplaySize();
+      const W = chartCanvas.width, H = chartCanvas.height;
+      ctx.clearRect(0,0,W,H);
+
+      // background subtle
+      ctx.fillStyle = 'rgba(0,0,0,0.0)';
+      ctx.fillRect(0,0,W,H);
+
+      // aggregate: date -> script -> count
+      const dateMap = new Map();
+      const scriptSet = new Set();
+      for (const r of rows) {
+        const d = toClean(r.Date) || '(blank)';
+        const s = toClean(r.measurement_Script) || '(blank)';
+        scriptSet.add(s);
+        if (!dateMap.has(d)) dateMap.set(d, new Map());
+        const m = dateMap.get(d);
+        m.set(s, (m.get(s)||0)+1);
+      }
+
+      const dates = Array.from(dateMap.keys()).sort(); // YYYY/MM/DD sorts ok
+      const scripts = Array.from(scriptSet.values()).sort();
+
+      // if no data
+      if (dates.length === 0) {
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+        ctx.fillText('（此 start_location_name 在目前 Filter 下沒有資料）', 12, 28);
+        return;
+      }
+
+      // colors per script (deterministic, extendable)
+      function scriptColor(s){
+        if (s === 'YoutubeLive') return 'rgba(255,154,60,0.92)';
+        if (s === 'VoLTEmos') return 'rgba(43,124,255,0.92)';
+        // fallback generate by hash
+        let hash = 0; for (let i=0;i<s.length;i++) hash = ((hash<<5)-hash) + s.charCodeAt(i), hash|=0;
+        const r = 120 + (Math.abs(hash) % 100);
+        const g = 120 + (Math.abs(hash*7) % 100);
+        const b = 120 + (Math.abs(hash*13) % 100);
+        return `rgba(${r},${g},${b},0.92)`;
+      }
+
+      // compute maxY
+      let maxY = 0;
+      for (const d of dates) {
+        const m = dateMap.get(d);
+        let sum = 0;
+        for (const s of scripts) sum += (m.get(s)||0);
+        if (sum > maxY) maxY = sum;
+      }
+      if (maxY === 0) maxY = 1;
+
+      // layout
+      const padL = 42, padR = 14, padT = 36, padB = 34;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      // axes
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + plotH);
+      ctx.lineTo(padL + plotW, padT + plotH);
+      ctx.stroke();
+
+      // y ticks
+      ctx.fillStyle = 'rgba(231,238,252,0.85)';
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      const tickN = 4;
+      for (let i=0;i<=tickN;i++){
+        const v = Math.round(maxY * (i/tickN));
+        const y = padT + plotH - (plotH * (v/maxY));
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+        ctx.fillText(String(v), 10, y+4);
+      }
+
+      // bars
+      const n = dates.length;
+      const gap = Math.max(6, Math.min(14, plotW / (n*6)));
+      const barW = Math.max(10, (plotW - gap*(n-1)) / n);
+
+      for (let i=0;i<n;i++){
+        const d = dates[i];
+        const m = dateMap.get(d);
+        let y0 = padT + plotH;
+
+        for (const s of scripts) {
+          const c = (m.get(s)||0);
+          if (!c) continue;
+          const h = plotH * (c / maxY);
+          y0 -= h;
+
+          ctx.fillStyle = scriptColor(s);
+          ctx.fillRect(padL + i*(barW+gap), y0, barW, h);
+
+          // segment border
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.strokeRect(padL + i*(barW+gap), y0, barW, h);
+        }
+
+        // x labels (Date)
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        const label = d;
+        const x = padL + i*(barW+gap) + barW/2;
+        const y = padT + plotH + 16;
+        ctx.save();
+        ctx.translate(x, y);
+        // rotate when many dates
+        if (n > 8) ctx.rotate(-Math.PI/5);
+        ctx.textAlign = 'center';
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+
+      // legend (top right inside plot)
+      let lx = padL + plotW - 10;
+      let ly = 12;
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      for (let i=scripts.length-1; i>=0; i--){
+        const s = scripts[i];
+        const w = ctx.measureText(s).width;
+        const box = 10;
+        lx = padL + plotW - 10;
+        ctx.fillStyle = scriptColor(s);
+        ctx.fillRect(lx - w - box - 10, ly, box, box);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.strokeRect(lx - w - box - 10, ly, box, box);
+        ctx.fillStyle = 'rgba(231,238,252,0.9)';
+        ctx.fillText(s, lx - w - 10, ly + 9);
+        ly += 16;
+      }
+    }
+
+    // =============================
+    // Build H3 data from current filtered rows
+    // =============================
+    function rebuildH3FromRows(rowsPA){
+      for (const k of ['RES8','RES9','RES10','RES11']) {
+        h3Layers[k].clearLayers();
+        redAgg[k].clear();
+        blueAgg[k].clear();
+        redLabelItems[k] = [];
+      }
+      layersByLocName.clear();
+      clearHoverHighlights();
+
+      function addRed(resKey, h3Index, row) {
+        if (!h3Index) return;
+        let meta = redAgg[resKey].get(h3Index);
+        if (!meta) {
+          meta = initMetaRed(resKey, h3Index);
+          meta.sample = row;
+          redAgg[resKey].set(h3Index, meta);
+        }
+        meta.count += 1;
+        const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
+        const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
+        if (sn) meta.startNames.add(sn);
+        if (en) meta.endNames.add(en);
+        if (sn || en) meta.locPairs.add(`${sn}/${en}`);
+      }
+
+      for (const r of rowsPA) {
+        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
+        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
+        addRed('RES10', toClean(r.start_H3_Res_10), r);
+        addRed('RES11', toClean(r.start_H3_Res_11), r);
+      }
+
+      // blue from THSR_Location matching start_location_name
+      function addBlue(resKey, h3Index, startName) {
+        if (!h3Index) return;
+        let meta = blueAgg[resKey].get(h3Index);
+        if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg[resKey].set(h3Index, meta); }
+        if (startName) meta.names.add(startName);
+      }
+
+      for (const r of rowsPA) {
+        const startName = toClean(r.start_location_name);
+        if (!startName) continue;
+        const matches = locMap.get(startName);
+        if (!matches || !matches.length) continue;
+        for (const locRow of matches) {
+          addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
+          addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
+          addBlue('RES10', toClean(locRow.H3_Res_10), startName);
+          addBlue('RES11', toClean(locRow.H3_Res_11), startName);
+        }
+      }
+
+      // remove duplicates with red
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        for (const h3Index of blueAgg[resKey].keys()) {
+          if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
+        }
+      }
+
+      // draw polygons + label items
+      const boundsAcc = L.latLngBounds([]);
+      let redCells=0, blueCells=0;
+
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        const lg = h3Layers[resKey];
+
+        for (const [h3Index, meta] of redAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          const poly = addPolygonCell(meta, lg, 'red');
+          boundsAcc.extend(poly.getBounds());
+          redCells++;
+
+          const center = h3.cellToLatLng(h3Index);
+          const nameText = uniqPreview(Array.from(meta.locPairs), 1);
+          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
+        }
+
+        for (const [h3Index, meta] of blueAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          const poly = addPolygonCell(meta, lg, 'blue');
+          boundsAcc.extend(poly.getBounds());
+          blueCells++;
+        }
+      }
+
+      // keep current view; only fit if nothing shown yet
+      renderAggLabels();
+      renderNameLabels();
+      updatePointsVisibility();
+
+      return {redCells, blueCells};
+    }
+
+    // =============================
+    // Apply filter -> rerender everything (map + table + chart)
+    // =============================
+    function applyFilterAndRerender(){
+      // filter rows
+      filteredRows = applyFiltersToRows(allRowsRaw);
+
+      // if selection exists, keep it but the table should be selection-filtered on filteredRows
+      if (selectionLocationNames.length) {
+        const selectedTable = filteredRows.filter(r => selectionLocationNames.includes(toClean(r.start_location_name)));
+        renderTableHeader();
+        renderTableRows(selectedTable);
+        setSelectionTag(`已篩選 start_location_name：${selectionLocationNames.join('、')}（${selectedTable.length} 筆）`);
+      } else {
+        renderTableHeader();
+        renderTableRows(filteredRows);
+        setSelectionTag(`Filter 生效：${filteredRows.length} 筆`);
+      }
+
+      rebuildPointLayers(filteredRows);
+      const stats = rebuildH3FromRows(filteredRows);
+      lastUpdateTime = new Date().toISOString();
+      setStatus(`ok: filtered_rows=${filteredRows.length}, red_cells=${stats.redCells}, blue_cells=${stats.blueCells}`);
+
+      // chart
+      if (selectionPrimaryName) {
+        renderStackedChartForLocation(selectionPrimaryName);
+      } else {
+        clearChart();
+      }
+    }
+
+    // =============================
+    // CSV load + init filter options
+    // =============================
+    async function loadBothCSVsAndInit() {
       setStatus("starting...");
 
       if (typeof window.h3 === 'undefined') {
@@ -1283,6 +1883,7 @@
       const rowsPA = parseCsvRobust(txtPA);
       const rowsLoc = locOk ? parseCsvRobust(txtLoc) : [];
 
+      // build locMap
       locMap.clear();
       for (const r of rowsLoc) {
         const name = toClean(r.location_name);
@@ -1291,111 +1892,44 @@
         locMap.get(name).push(r);
       }
 
-      allRows = rowsPA;
-      displayedRows = [...allRows];
-      sortKey = '';
-      sortDir = 1;
-      renderTableRows(displayedRows);
-      setSelectionTag('');
+      allRowsRaw = rowsPA;
 
-      rebuildPointLayers(rowsPA);
-
-      for (const k of ['RES8','RES9','RES10','RES11']) {
-        h3Layers[k].clearLayers();
-        redAgg[k].clear();
-        blueAgg[k].clear();
-        redLabelItems[k] = [];
+      // init filter options from allRowsRaw
+      function uniqSorted(values){
+        return Array.from(new Set(values.filter(v => v !== ''))).sort();
       }
-      layersByLocName.clear();
-      clearHoverHighlights();
+      const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)));
+      const optNet  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_NetWork)));
+      const optScr  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_Script)));
+      const optArea = uniqSorted(allRowsRaw.map(r => toClean(r.Marea)));
 
-      function addRed(resKey, h3Index, row) {
-        if (!h3Index) return;
-        let meta = redAgg[resKey].get(h3Index);
-        if (!meta) {
-          meta = initMetaRed(resKey, h3Index);
-          meta.__sampleRow = row;
-          redAgg[resKey].set(h3Index, meta);
-        }
-        meta.count += 1;
-        const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
-        const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
-        if (sn) meta.startNames.add(sn);
-        if (en) meta.endNames.add(en);
-        if (sn || en) meta.locPairs.add(`${sn}/${en}`);
-      }
+      filterWidgets.Date.setOptions(optDate);
+      filterWidgets.measurement_NetWork.setOptions(optNet);
+      filterWidgets.measurement_Script.setOptions(optScr);
+      filterWidgets.Marea.setOptions(optArea);
 
-      for (const r of rowsPA) {
-        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
-        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
-        addRed('RES10', toClean(r.start_H3_Res_10), r);
-        addRed('RES11', toClean(r.start_H3_Res_11), r);
-      }
+      // default = all (sets empty)
+      for (const k in filterState) filterState[k].clear();
 
-      if (locOk) {
-        function addBlue(resKey, h3Index, startName) {
-          if (!h3Index) return;
-          let meta = blueAgg[resKey].get(h3Index);
-          if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg[resKey].set(h3Index, meta); }
-          if (startName) meta.names.add(startName);
-        }
-
-        for (const r of rowsPA) {
-          const startName = toClean(r.start_location_name);
-          if (!startName) continue;
-          const matches = locMap.get(startName);
-          if (!matches || !matches.length) continue;
-
-          for (const locRow of matches) {
-            addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
-            addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
-            addBlue('RES10', toClean(locRow.H3_Res_10), startName);
-            addBlue('RES11', toClean(locRow.H3_Res_11), startName);
-          }
-        }
-
-        for (const resKey of ['RES8','RES9','RES10','RES11']) {
-          for (const h3Index of blueAgg[resKey].keys()) {
-            if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
-          }
-        }
-      }
-
-      const boundsAcc = L.latLngBounds([]);
-      let redCells=0, blueCells=0;
-
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        const lg = h3Layers[resKey];
-
-        for (const [h3Index, meta] of redAgg[resKey].entries()) {
-          if (!h3.isValidCell(h3Index)) continue;
-          const poly = addPolygonCell(meta, lg, 'red');
-          boundsAcc.extend(poly.getBounds());
-          redCells++;
-
-          const center = h3.cellToLatLng(h3Index);
-          const nameText = uniqPreview(Array.from(meta.locPairs), 1);
-          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
-        }
-
-        if (locOk) {
-          for (const [h3Index, meta] of blueAgg[resKey].entries()) {
-            if (!h3.isValidCell(h3Index)) continue;
-            const poly = addPolygonCell(meta, lg, 'blue');
-            boundsAcc.extend(poly.getBounds());
-            blueCells++;
-          }
-        }
-      }
-
-      if ((redCells+blueCells) > 0 && boundsAcc.isValid()) map.fitBounds(boundsAcc.pad(0.12));
+      // initial render
+      selectionLocationNames = [];
+      selectionPrimaryName = '';
+      filteredRows = [...allRowsRaw];
+      renderTableRows(filteredRows);
+      rebuildPointLayers(filteredRows);
+      const stats = rebuildH3FromRows(filteredRows);
 
       lastUpdateTime = new Date().toISOString();
-      setStatus(`ok: rows=${rowsPA.length}, red_cells=${redCells}, blue_cells=${blueCells}`);
+      setStatus(`ok: rows=${rowsPA.length}, red_cells=${stats.redCells}, blue_cells=${stats.blueCells}`);
+      clearChart();
 
-      renderAggLabels();
-      renderNameLabels();
-      updatePointsVisibility(); // ✅ ensure zoom gating applied
+      // fit once
+      const bounds = L.latLngBounds([]);
+      for (const r of filteredRows) {
+        if (isValidLatLng(r.start_lat, r.start_lon)) bounds.extend([Number(r.start_lat), Number(r.start_lon)]);
+        if (isValidLatLng(r.end_lat, r.end_lon)) bounds.extend([Number(r.end_lat), Number(r.end_lon)]);
+      }
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
     }
 
     // =============================
@@ -1405,7 +1939,7 @@
       try {
         setStatus("booting...");
         setTimeout(async () => {
-          try { await loadBothCSVsAndRender(); }
+          try { await loadBothCSVsAndInit(); }
           catch (e) { logError(e); }
         }, 0);
       } catch (e) { logError(e); }
