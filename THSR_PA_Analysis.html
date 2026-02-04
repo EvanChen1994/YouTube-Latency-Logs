@@ -45,8 +45,10 @@
       top:10px;
       left:50%;
       transform: translateX(-50%);
-      z-index: 2000;      /* ✅ raise above Leaflet */
+      z-index: 2000;
       pointer-events: auto;
+      width: max-content;
+      max-width: min(92vw, 760px);
     }
     .filter-bar{
       pointer-events: auto;
@@ -55,16 +57,22 @@
       border-radius: 14px;
       box-shadow: 0 8px 22px rgba(0,0,0,0.38);
       padding: 8px 10px;
+
       display:flex;
       align-items:center;
+      justify-content:center;
       gap:10px;
+
+      flex-wrap: wrap;   /* ✅ 外觀：可換行，不會擠爆 */
+      row-gap: 8px;
+
       backdrop-filter: blur(6px);
       min-width: 420px;
-      max-width: min(92vw, 720px);
-      overflow: visible; /* ✅ IMPORTANT: allow dropdown show */
+      max-width: min(92vw, 760px);
+      overflow: visible; /* ✅ dropdown 不被裁切 */
     }
 
-    .msel{ position:relative; display:flex; align-items:center; gap:6px; }
+    .msel{ position:relative; display:flex; align-items:center; gap:6px; height:34px; }
     .msel .lbl{
       font-size:12px;
       font-weight:900;
@@ -72,11 +80,12 @@
       white-space:nowrap;
     }
     .msel-btn{
+      height:34px;
       border:1px solid rgba(255,255,255,0.16);
       background: rgba(255,255,255,0.05);
       color: var(--txt);
       border-radius:10px;
-      padding:6px 8px;
+      padding:0 10px;
       cursor:pointer;
       font-weight:900;
       display:flex;
@@ -85,7 +94,7 @@
       gap:8px;
       user-select:none;
       min-width: 92px;
-      max-width: 160px;
+      max-width: 180px;
     }
     .msel-btn:hover{
       background: rgba(255,154,60,0.10);
@@ -99,14 +108,14 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 108px;
+      max-width: 120px;
     }
     .msel-menu{
       position:absolute;
       top: calc(100% + 6px);
       left:0;
-      width: 220px;          /* ✅ narrower */
-      max-width: 240px;
+      width: 230px;          /* ✅ 精緻：固定較窄 */
+      max-width: 260px;
       box-sizing: border-box;
       max-height: 260px;
       overflow:auto;
@@ -115,7 +124,7 @@
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 10000;        /* ✅ make sure it is on top */
+      z-index: 10000;        /* ✅ 一定在最上 */
       padding: 8px;
     }
     .msel-tools{
@@ -550,6 +559,8 @@
       flex: 0 0 auto;
       position: relative;
       display:flex; align-items:center; justify-content:center;
+      font-weight: 1000;
+      font-size: 11px;
     }
 
     /* Fail-safe error banner */
@@ -581,7 +592,7 @@
 
       <div class="mapTopBar">
         <div class="filter-bar" id="filterBar">
-          <div id="filterMount" style="display:flex;align-items:center;gap:10px;"></div>
+          <div id="filterMount" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"></div>
         </div>
       </div>
 
@@ -655,11 +666,11 @@
 
   <script>
     /* ===========================
-       ver 7.2
-       - FIX: dropdown not showing (overflow visible + z-index + stop event)
-       - FIX: menu width narrower
-       - FIX: PA Points always on top (custom pane + zIndexOffset)
-       - S/E badge color already blue
+       ver 7.2 (patched)
+       - Filter 外觀微調：可換行/高度一致/不擠爆
+       - S/E badge color => #0000FF
+       - PA points pane zIndex => 1200（最上層）
+       - Restore bottom-right legend control
        =========================== */
 
     const APP_VERSION = "ver 7.2";
@@ -813,7 +824,7 @@
 
     // ✅ pane to ensure PA points always on top
     map.createPane('paPointsPane');
-    map.getPane('paPointsPane').style.zIndex = 950; // above markerPane(600)
+    map.getPane('paPointsPane').style.zIndex = 1200; // ✅ 更上層
 
     const baseLayers = {
       'NLSC 彩色 (EMAP)': baseEMAP,
@@ -1072,6 +1083,50 @@
     });
     map.addControl(new MeasureControl());
 
+    // ✅ Restore bottom-right legend control
+    const LegendControl = L.Control.extend({
+      options: { position: 'bottomright' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'legend-wrap');
+        div.innerHTML = `
+          <div class="legend-tab" title="PA Points 圖例（滑鼠移上顯示）">ℹ</div>
+          <div class="legend-panel">
+            <div class="legend-ttl">PA Points 圖例</div>
+            <div class="legend-grid">
+              <div class="lg-item">
+                <div class="lg-dot" style="background:#0b2d6e;"></div> 4G 點底色
+              </div>
+              <div class="lg-item">
+                <div class="lg-dot" style="background:#ff9a3c;"></div> 5G 點底色
+              </div>
+
+              <div class="lg-item">
+                <div class="lg-dot" style="background:rgba(255,255,255,0.10);color:#0000FF;">S</div> Start
+              </div>
+              <div class="lg-item">
+                <div class="lg-dot" style="background:rgba(255,255,255,0.10);color:#0000FF;">E</div> End
+              </div>
+
+              <div class="lg-item">
+                <div class="lg-dot" style="background:rgba(255,255,255,0.10);">YT</div> YoutubeLive
+              </div>
+              <div class="lg-item">
+                <div class="lg-dot" style="background:rgba(255,255,255,0.10);">TEL</div> VoLTEmos
+              </div>
+
+              <div class="lg-item" style="grid-column:1 / span 2;color:rgba(154,176,216,0.95);">
+                顯示條件：zoom ≥ ${POINTS_MIN_ZOOM}
+              </div>
+            </div>
+          </div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      }
+    });
+    map.addControl(new LegendControl());
+
     // Filter state
     const filterState = {
       Date: new Set(),
@@ -1131,7 +1186,13 @@
       const list = document.createElement('div');
       menu.appendChild(list);
 
-      function setOpen(v){ menu.style.display = v ? 'block' : 'none'; }
+      function setOpen(v){
+        menu.style.display = v ? 'block' : 'none';
+        if (v) {
+          // ✅ 下拉寬度跟按鈕一樣寬（更精緻）
+          menu.style.width = btn.offsetWidth + 'px';
+        }
+      }
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
         const t = summaryText(key);
@@ -1795,7 +1856,7 @@
             transform:translateX(-50%);
             font-size:10px;
             font-weight:1000;
-            color:#00d6ff; /* ✅ S/E blue */
+            color:#0000FF; /* ✅ S/E => #0000FF */
             text-shadow:0 0 10px rgba(0,0,0,0.7);
             line-height:1;
             padding:0 2px;
