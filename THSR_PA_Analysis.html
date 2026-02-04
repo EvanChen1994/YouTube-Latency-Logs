@@ -46,8 +46,10 @@
       left:50%;
       transform: translateX(-50%);
       z-index: 900;
-      pointer-events: none;
+      pointer-events: auto; /* ✅ 修正：讓 filter 可點 */
     }
+
+
     .filter-bar{
       pointer-events: auto;
       background: rgba(10,19,40,0.92);
@@ -666,7 +668,7 @@
        - Filter: Marea control shorter to fit
        =========================== */
 
-    const APP_VERSION = "ver 7.0";
+    const APP_VERSION = "ver 7.1";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -1850,7 +1852,7 @@
             transform:translateX(-50%);
             font-size:10px;
             font-weight:1000;
-            color:#fff;
+            color:#0000FF;
             text-shadow:0 0 10px rgba(0,0,0,0.7);
             line-height:1;
             padding:0 2px;
@@ -2045,3 +2047,4 @@
   </script>
 </body>
 </html>
+
