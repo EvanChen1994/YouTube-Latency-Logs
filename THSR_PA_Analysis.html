@@ -23,6 +23,8 @@
       --danger:#ff2b2b;
       --orange:#ff9a3c;
       --deepblue:#1240ff;
+      --purple:#b300ff;
+      --tipblue:#7fb6ff;
     }
 
     html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
@@ -38,7 +40,6 @@
       position:relative;
     }
 
-    /* tech scanline / glow */
     #panel::before{
       content:"";
       position:absolute; inset:0;
@@ -99,7 +100,6 @@
       gap:6px;
       white-space:nowrap;
       color: var(--txt);
-      box-shadow: 0 0 0 rgba(0,0,0,0);
       transition: .15s ease;
     }
     .btn:hover{
@@ -114,7 +114,18 @@
       box-shadow: 0 0 18px rgba(255,43,43,0.18);
     }
 
-    .icon-btn { width:38px; height:34px; padding:0; justify-content:center; }
+    .tag{
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04);
+      border-radius:10px;
+      padding:6px 10px;
+      color: rgba(231,238,252,0.92);
+      font-weight: 900;
+      font-size: 12px;
+      white-space:nowrap;
+      box-shadow: 0 0 14px rgba(0,0,0,0.25);
+    }
+    .tag b{ color: var(--accent2); }
 
     .hint{
       position:relative;
@@ -141,18 +152,12 @@
       user-select:none;
       white-space: nowrap;
     }
-    thead th:hover{
-      background: rgba(43,124,255,0.16);
-    }
-    thead th .sort{
-      margin-left:6px;
-      color: rgba(231,238,252,0.75);
-      font-weight:900;
-    }
+    thead th:hover{ background: rgba(43,124,255,0.16); }
+    thead th .sort{ margin-left:6px; color: rgba(231,238,252,0.75); font-weight:900; }
 
     th, td{
       border-bottom: 1px solid rgba(255,255,255,0.06);
-      border-right: 1px solid rgba(255,255,255,0.07); /* 垂直格線 */
+      border-right: 1px solid rgba(255,255,255,0.07);
       padding: 7px 8px;
       text-align: left;
       vertical-align: top;
@@ -170,7 +175,6 @@
     .muted { color: var(--muted); }
     .err { color: #ffb0b0; white-space:pre-wrap; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-    code { background: rgba(255,255,255,0.06); padding:2px 6px; border-radius:6px; }
 
     /* modal */
     .modal-backdrop{
@@ -235,7 +239,7 @@
       text-shadow: 0 0 10px rgba(255,80,80,0.35);
     }
 
-    /* location rectangle label (move upward relative to count, same X) */
+    /* location rectangle label */
     .name-label{
       color:#fff;
       border-radius: 8px;
@@ -251,14 +255,15 @@
       max-width: 240px;
       overflow: hidden;
       text-overflow: ellipsis;
-      transform: translateY(-26px); /* 往上：與 count 同 X，但 Y 拉開距離 */
+      transform: translateY(-26px);
     }
 
-    .h3-tip b { display:inline-block; min-width: 170px; }
-    .h3-tip { line-height: 1.35; color: var(--txt); }
+    /* ✅ tooltip text blue */
+    .h3-tip { line-height: 1.35; color: var(--tipblue); }
+    .h3-tip b { display:inline-block; min-width: 170px; color: #cfe4ff; }
 
     /* Leaflet controls tech look */
-    .res-ctrl{
+    .res-ctrl, .layer-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
       border-radius:12px;
@@ -269,45 +274,55 @@
       color: var(--txt);
       backdrop-filter: blur(6px);
     }
-    .res-ctrl .ttl{
+    .res-ctrl .ttl, .layer-ctrl .ttl{
       font-weight:1000;
       margin-bottom:8px;
       letter-spacing:.5px;
       color: #d7e6ff;
       text-shadow: 0 0 10px rgba(43,124,255,0.25);
     }
-    .res-ctrl label{
+    .layer-ctrl .ttl{ text-shadow: 0 0 10px rgba(0,214,255,0.18); }
+    .res-ctrl label, .layer-ctrl label{
       display:flex; align-items:center; gap:6px;
       margin:6px 0; cursor:pointer; user-select:none;
       color: rgba(231,238,252,0.92);
     }
     .res-ctrl input{ cursor:pointer; accent-color: var(--accent); }
+    .layer-ctrl input{ cursor:pointer; accent-color: var(--accent2); }
 
-    .layer-ctrl{
-      margin-top:8px;
+    /* measure button control (on map) */
+    .measure-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
       border-radius:12px;
-      padding:10px 10px;
+      padding:6px;
       box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-      font-size:12px;
-      line-height:1.2;
-      color: var(--txt);
       backdrop-filter: blur(6px);
+      margin-top: 6px; /* ✅ sits under layers control */
     }
-    .layer-ctrl .ttl{
-      font-weight:1000;
-      margin-bottom:8px;
-      letter-spacing:.5px;
-      color: #d7e6ff;
-      text-shadow: 0 0 10px rgba(0,214,255,0.18);
+    .measure-btn{
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.05);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: var(--txt);
+      transition:.15s ease;
     }
-    .layer-ctrl label{
-      display:flex; align-items:center; gap:6px;
-      margin:6px 0; cursor:pointer; user-select:none;
-      color: rgba(231,238,252,0.92);
+    .measure-btn:hover{
+      background: rgba(43,124,255,0.12);
+      border-color: rgba(43,124,255,0.40);
+      box-shadow: 0 0 18px rgba(43,124,255,0.12);
     }
-    .layer-ctrl input{ cursor:pointer; accent-color: var(--accent2); }
+    .measure-btn.active{
+      background: rgba(255,43,43,0.18);
+      border-color: rgba(255,43,43,0.60);
+      color:#ffdede;
+      box-shadow: 0 0 18px rgba(255,43,43,0.18);
+    }
 
     /* point marker */
     .pmk{
@@ -317,7 +332,7 @@
       border: 1px solid rgba(255,255,255,0.35);
       box-shadow: 0 6px 16px rgba(0,0,0,0.45);
       position: relative;
-      overflow: hidden;
+      overflow: visible; /* ✅ avoid badge being clipped */
     }
     .pmk::before{
       content:"";
@@ -325,12 +340,16 @@
       background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.22), transparent 40%);
       pointer-events:none;
     }
+
+    /* ✅ S/E moved to center-bottom */
     .badgeSE{
       position:absolute;
-      right:-5px; top:-5px;
-      width: 16px; height: 16px;
-      border-radius: 7px;
-      background: rgba(0,0,0,0.65);
+      left:50%;
+      bottom:-6px;
+      transform: translateX(-50%);
+      width: 18px; height: 18px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.72);
       border: 1px solid rgba(255,255,255,0.35);
       display:flex; align-items:center; justify-content:center;
       font-size: 11px;
@@ -355,11 +374,8 @@
         </div>
 
         <div class="btns">
-          <div class="btn icon-btn" id="btnMeasure" title="測距：啟用後左鍵點起點再點終點顯示距離">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
-            </svg>
-          </div>
+          <!-- ✅ current base layer indicator -->
+          <div class="tag" id="layerTag">Layer: <b id="layerName">(loading)</b></div>
 
           <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
           <div class="btn" id="btnClear" title="清除篩選，顯示全部事件">清除篩選</div>
@@ -369,6 +385,7 @@
       <div class="hint">
         RES 單選顯示網格。紅格＝PA_data(start_H3)；藍格＝start_location_name 命中 THSR_Location(location_name) 產生（與紅格重複者不畫）。
         <br>數字與聚合統計：只計紅格；<b>點左側紅格 → 用 start_location_name 篩選右表</b>；點右表列 → 左側定位。
+        <br><span class="muted">PA Points：zoom &ge; 12 才顯示（Start/End 可複選）。</span>
       </div>
 
       <div class="table-wrap">
@@ -413,7 +430,7 @@
     // =============================
     // Version
     // =============================
-    const APP_VERSION = "ver 5.3";
+    const APP_VERSION = "ver 5.4";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // =============================
@@ -570,14 +587,28 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    L.control.layers(
-      { 'NLSC 彩色 (EMAP)': baseEMAP, 'NLSC 灰階 (EMAP01)': baseEMAP01 },
-      null,
-      { collapsed:false }
-    ).addTo(map);
+    // track current base layer name (UI tag)
+    const layerNameEl = document.getElementById('layerName');
+    let currentBaseLayerName = 'NLSC 彩色 (EMAP)';
+    layerNameEl.textContent = currentBaseLayerName;
+
+    const baseLayers = {
+      'NLSC 彩色 (EMAP)': baseEMAP,
+      'NLSC 灰階 (EMAP01)': baseEMAP01
+    };
+
+    const layerCtrl = L.control.layers(baseLayers, null, { collapsed:false });
+    layerCtrl.addTo(map);
+
+    map.on('baselayerchange', (e) => {
+      // find name by matching layer ref
+      const lname = Object.keys(baseLayers).find(k => baseLayers[k] === e.layer) || '(unknown)';
+      currentBaseLayerName = lname;
+      layerNameEl.textContent = lname;
+    });
 
     // =============================
-    // H3 layers (先宣告資料結構，避免 TDZ)
+    // H3 layers
     // =============================
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     const aggLabelLayer = L.layerGroup().addTo(map);
@@ -588,6 +619,26 @@
     const endPointLayer = L.layerGroup().addTo(map);
     let showStartPoints = true;
     let showEndPoints = true;
+
+    // ✅ points zoom threshold
+    const POINTS_MIN_ZOOM = 12;
+
+    function updatePointsVisibility() {
+      const z = map.getZoom();
+      const allow = z >= POINTS_MIN_ZOOM;
+
+      if (!allow) {
+        if (map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer);
+        if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer);
+        return;
+      }
+
+      if (showStartPoints) { if (!map.hasLayer(startPointLayer)) map.addLayer(startPointLayer); }
+      else { if (map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer); }
+
+      if (showEndPoints) { if (!map.hasLayer(endPointLayer)) map.addLayer(endPointLayer); }
+      else { if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer); }
+    }
 
     const locMap = new Map();
     const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
@@ -604,6 +655,8 @@
       }
       highlightedLayers.clear();
     }
+
+    // ✅ purple highlight + thicker
     function highlightByLocationNames(names) {
       clearHoverHighlights();
       for (const nm of names) {
@@ -611,15 +664,13 @@
         if (!set) continue;
         for (const ly of set) {
           if (!ly.__baseStyle) continue;
-          ly.setStyle({ weight: 3, color: '#ffd400', opacity: 1.0 });
+          ly.setStyle({ weight: 4, color: '#b300ff', opacity: 1.0 });
           highlightedLayers.add(ly);
         }
       }
     }
 
-    function bucketSizeForZoom(z) {
-      return Math.max(26, 92 - z * 4);
-    }
+    function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
     function renderAggLabels() {
       aggLabelLayer.clearLayers();
@@ -628,29 +679,21 @@
 
       const z = map.getZoom();
 
-      // ✅ zoom >= 12：改成「每格一個」count，方便和 name-label 同 X 對齊
       if (z >= 12) {
         for (const it of items) {
-          const icon = L.divIcon({
-            className: '',
-            html: `<div class="agg-label">${escapeHtml(it.count)}</div>`,
-            iconSize: null
-          });
+          const icon = L.divIcon({ className: '', html: `<div class="agg-label">${escapeHtml(it.count)}</div>`, iconSize: null });
           L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
         }
         return;
       }
 
-      // zoom < 12：維持聚合
       const bs = bucketSizeForZoom(z);
       const buckets = new Map();
-
       for (const it of items) {
         const p = map.latLngToContainerPoint(it.latlng);
         const bx = Math.floor(p.x / bs);
         const by = Math.floor(p.y / bs);
         const key = `${bx},${by}`;
-
         let b = buckets.get(key);
         if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
         b.sum += it.count;
@@ -664,19 +707,11 @@
         if (!b.sum) continue;
         const lat = b.latSum / b.n;
         const lng = b.lngSum / b.n;
-
-        const icon = L.divIcon({
-          className: '',
-          html: `<div class="agg-label">${escapeHtml(b.sum)}</div>`,
-          iconSize: null
-        });
-
+        const icon = L.divIcon({ className: '', html: `<div class="agg-label">${escapeHtml(b.sum)}</div>`, iconSize: null });
         L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
       }
     }
 
-    // ✅ name-label：用「同一個 latlng（cell center）」→ 同 X
-    // CSS transform 往上拉（同 X、Y 上移留距離）
     function renderNameLabels() {
       nameLabelLayer.clearLayers();
       const z = map.getZoom();
@@ -687,13 +722,11 @@
 
       for (const it of items) {
         if (!it.nameText) continue;
-
         const icon = L.divIcon({
           className: '',
           html: `<div class="name-label" title="${escapeHtml(it.nameText)}">${escapeHtml(it.nameText)}</div>`,
           iconSize: null
         });
-
         L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
       }
     }
@@ -709,7 +742,7 @@
       clearHoverHighlights();
     }
 
-    // Resolution single-select control
+    // Resolution control
     const ResControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function() {
@@ -723,16 +756,14 @@
         `;
         L.DomEvent.disableClickPropagation(div);
         div.querySelectorAll('input[name="res"]').forEach(inp => {
-          inp.addEventListener('change', (e) => {
-            if (e.target.checked) showOnlyRes(e.target.value);
-          });
+          inp.addEventListener('change', (e) => { if (e.target.checked) showOnlyRes(e.target.value); });
         });
         return div;
       }
     });
     map.addControl(new ResControl());
 
-    // Layer control under res-control
+    // Layer control (points) under res-control
     const LayerCtrl = L.Control.extend({
       options: { position:'topleft' },
       onAdd: function(){
@@ -741,22 +772,15 @@
           <div class="ttl">PA Points</div>
           <label><input type="checkbox" id="chkStart" checked> Start</label>
           <label><input type="checkbox" id="chkEnd" checked> End</label>
+          <div class="muted" style="margin-top:6px;">顯示條件：zoom ≥ ${POINTS_MIN_ZOOM}</div>
         `;
         L.DomEvent.disableClickPropagation(div);
         setTimeout(() => {
           const chkStart = div.querySelector('#chkStart');
           const chkEnd = div.querySelector('#chkEnd');
 
-          chkStart.addEventListener('change', () => {
-            showStartPoints = chkStart.checked;
-            if (showStartPoints) map.addLayer(startPointLayer);
-            else map.removeLayer(startPointLayer);
-          });
-          chkEnd.addEventListener('change', () => {
-            showEndPoints = chkEnd.checked;
-            if (showEndPoints) map.addLayer(endPointLayer);
-            else map.removeLayer(endPointLayer);
-          });
+          chkStart.addEventListener('change', () => { showStartPoints = chkStart.checked; updatePointsVisibility(); });
+          chkEnd.addEventListener('change', () => { showEndPoints = chkEnd.checked; updatePointsVisibility(); });
         }, 0);
         return div;
       }
@@ -765,12 +789,15 @@
 
     showOnlyRes('RES9');
 
-    map.on('zoomend moveend', () => { renderAggLabels(); renderNameLabels(); });
+    map.on('zoomend moveend', () => {
+      renderAggLabels();
+      renderNameLabels();
+      updatePointsVisibility();
+    });
 
     // =============================
-    // Measure tool
+    // Measure tool (moved to map, under base layer control)
     // =============================
-    const btnMeasure = document.getElementById('btnMeasure');
     let measureActive = false;
     let measureStart = null;
     let measureStartMarker = null;
@@ -789,7 +816,6 @@
     }
     function onMapClickMeasure(e) {
       if (!measureActive) return;
-
       if (!measureStart) {
         clearMeasureGraphics();
         measureStart = e.latlng;
@@ -799,7 +825,6 @@
         const end = e.latlng;
         measureEndMarker = L.circleMarker(end, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
         measureEndMarker.bindTooltip("終點", { permanent: false, direction: 'top' });
-
         measureLine = L.polyline([measureStart, end], { weight:3, opacity:0.9 }).addTo(map);
 
         const dist = map.distance(measureStart, end);
@@ -813,19 +838,46 @@
     }
     map.on('click', onMapClickMeasure);
 
-    btnMeasure.addEventListener('click', () => {
-      measureActive = !measureActive;
-      btnMeasure.classList.toggle('active', measureActive);
-      if (!measureActive) measureStart = null;
+    const MeasureControl = L.Control.extend({
+      options: { position:'topright' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'measure-ctrl');
+        const btn = L.DomUtil.create('button', 'measure-btn', div);
+        btn.title = "測距：啟用後左鍵點起點再點終點顯示距離";
+        btn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
+          </svg>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.on(btn, 'click', (e) => {
+          L.DomEvent.stop(e);
+          measureActive = !measureActive;
+          btn.classList.toggle('active', measureActive);
+          if (!measureActive) measureStart = null;
+        });
+        return div;
+      }
     });
+    map.addControl(new MeasureControl());
+    // =============================
 
     // =============================
-    // Table
+    // Modal
+    // =============================
+    const selectionTag = document.getElementById('selectionTag');
+    const btnClear = document.getElementById('btnClear');
+
+    function setSelectionTag(text) {
+      selectionTag.textContent = text || '';
+      selectionTag.title = text || '';
+    }
+
+    // =============================
+    // Data + Table
     // =============================
     const evtHeadRow = document.getElementById('evtHeadRow');
     const evtBody = document.getElementById('evtBody');
-    const selectionTag = document.getElementById('selectionTag');
-    const btnClear = document.getElementById('btnClear');
 
     const COLS = [
       { key: 'Date', label: 'Date' },
@@ -872,15 +924,8 @@
       { key: 'Mcenter', label: 'Center' },
     ];
 
-    function setSelectionTag(text) {
-      selectionTag.textContent = text || '';
-      selectionTag.title = text || '';
-    }
-
     let allRows = [];
     let displayedRows = [];
-
-    // sorting
     let sortKey = '';
     let sortDir = 1; // 1 asc, -1 desc
 
@@ -910,26 +955,6 @@
       }
     }
 
-    function applySortAndRender() {
-      // keep current displayedRows source, just sort
-      const rows = [...displayedRows];
-
-      if (sortKey) {
-        rows.sort((a,b) => {
-          const av = parseMaybeNumber(a[sortKey]);
-          const bv = parseMaybeNumber(b[sortKey]);
-
-          if (av.isNum && bv.isNum) return (av.num - bv.num) * sortDir;
-          if (av.isNum && !bv.isNum) return -1 * sortDir;
-          if (!av.isNum && bv.isNum) return 1 * sortDir;
-          return (av.raw > bv.raw ? 1 : av.raw < bv.raw ? -1 : 0) * sortDir;
-        });
-      }
-
-      renderTableHeader();
-      renderTableRows(rows, {skipHeader:true});
-    }
-
     function renderTableRows(rows, opt={}) {
       displayedRows = rows;
       if (!opt.skipHeader) renderTableHeader();
@@ -955,6 +980,22 @@
       evtBody.appendChild(frag);
     }
 
+    function applySortAndRender() {
+      const rows = [...displayedRows];
+      if (sortKey) {
+        rows.sort((a,b) => {
+          const av = parseMaybeNumber(a[sortKey]);
+          const bv = parseMaybeNumber(b[sortKey]);
+          if (av.isNum && bv.isNum) return (av.num - bv.num) * sortDir;
+          if (av.isNum && !bv.isNum) return -1 * sortDir;
+          if (!av.isNum && bv.isNum) return 1 * sortDir;
+          return (av.raw > bv.raw ? 1 : av.raw < bv.raw ? -1 : 0) * sortDir;
+        });
+      }
+      renderTableHeader();
+      renderTableRows(rows, {skipHeader:true});
+    }
+
     btnClear.addEventListener('click', () => {
       setSelectionTag('');
       displayedRows = [...allRows];
@@ -966,31 +1007,18 @@
     renderTableHeader();
 
     // =============================
-    // H3 helper functions
+    // H3 meta + hover
     // =============================
-    function resNumOfKey(resKey) {
-      return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11;
-    }
+    function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
 
     function initMetaRed(resKey, h3Index) {
-      return {
-        resKey,
-        resNum: resNumOfKey(resKey),
-        h3Index,
-        count: 0,
-        paNums: new Set(),
-        startNames: new Set(),
-        endNames: new Set(),
-        locPairs: new Set(),
-      };
+      return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), locPairs: new Set() };
     }
-
     function initMetaBlue(resKey, h3Index) {
       return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
     }
 
     function buildHoverHtmlRed(meta, extraInfo) {
-      // extraInfo：用一筆代表資料，把你要的資訊塞進 tooltip（含 KM+M / county / area / center）
       const startNames = Array.from(meta.startNames);
       const endNames = Array.from(meta.endNames);
       const paArr = Array.from(meta.paNums).map(x=>String(x)).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
@@ -1011,7 +1039,6 @@
         </div>
       `;
     }
-
     function buildHoverHtmlBlue(meta) {
       const names = Array.from(meta.names);
       return `
@@ -1030,7 +1057,6 @@
       }
     }
 
-    // 左側點擊格子 -> 篩右表
     function filterTableByStartNames(names) {
       const arr = Array.from(new Set((names || []).filter(Boolean)));
       if (!arr.length) return;
@@ -1038,13 +1064,13 @@
       const filtered = allRows.filter(r => arr.includes(toClean(r.start_location_name)));
       displayedRows = filtered;
 
-      // 保留目前排序規則
       if (sortKey) applySortAndRender();
       else renderTableRows(filtered);
 
       setSelectionTag(`已篩選 start_location_name：${arr.join('、')}（${filtered.length} 筆）`);
     }
 
+    // ✅ hover highlight purple + thicker border
     function addPolygonCell(meta, layerGroup, type) {
       const h3Index = meta.h3Index;
       const boundary = h3.cellToBoundary(h3Index);
@@ -1067,7 +1093,7 @@
       poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
 
       poly.on('mouseover', () => {
-        poly.setStyle({ weight: 2, fillOpacity: 0.20 });
+        poly.setStyle({ weight: 3, color:'#b300ff', fillOpacity: (type==='red'?0.20:0.16) });
         const names = (type === 'red') ? Array.from(meta.startNames) : Array.from(meta.names);
         highlightByLocationNames(names);
       });
@@ -1076,12 +1102,8 @@
         poly.setStyle(baseStyle);
       });
 
-      // ✅ 左→右互動：點紅格篩右表
       if (type === 'red') {
-        poly.on('click', () => {
-          const names = Array.from(meta.startNames);
-          filterTableByStartNames(names);
-        });
+        poly.on('click', () => filterTableByStartNames(Array.from(meta.startNames)));
       }
 
       if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
@@ -1091,7 +1113,7 @@
     }
 
     // =============================
-    // Row click -> fly (右→左互動)
+    // Row click -> fly
     // =============================
     function onRowClick(displayIdx) {
       const row = displayedRows[displayIdx];
@@ -1119,23 +1141,24 @@
     // =============================
     function netColor(net){
       const s = String(net ?? '').trim().toUpperCase();
-      if (s === '4G') return 'rgba(18,64,255,0.92)'; // deep blue
-      if (s === '5G') return 'rgba(255,154,60,0.92)'; // orange
+      if (s === '4G') return 'rgba(18,64,255,0.92)';
+      if (s === '5G') return 'rgba(255,154,60,0.92)';
       return 'rgba(43,124,255,0.92)';
     }
 
+    // ✅ slightly simplified icons (still recognizable)
     function svgYouTube(){
       return `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#fff" d="M10 15.5V8.5L16 12l-6 3.5z"></path>
-        <path fill="#fff" opacity="0.35" d="M21.6 7.2c-.2-.9-.9-1.6-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4c-.9.2-1.6.9-1.8 1.8C2 8.9 2 12 2 12s0 3.1.4 4.8c.2.9.9 1.6 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.7.4-4.8.4-4.8s0-3.1-.4-4.8z"></path>
+        <path fill="#fff" opacity="0.92" d="M21.5 7.7a2.6 2.6 0 0 0-1.8-1.9C18 5.3 12 5.3 12 5.3s-6 0-7.7.5A2.6 2.6 0 0 0 2.5 7.7 27 27 0 0 0 2.2 12c0 1.4.1 2.9.3 4.3a2.6 2.6 0 0 0 1.8 1.9c1.7.5 7.7.5 7.7.5s6 0 7.7-.5a2.6 2.6 0 0 0 1.8-1.9c.2-1.4.3-2.9.3-4.3s-.1-2.9-.3-4.3z"/>
+        <path fill="#0b1020" d="M10.2 15.6V8.4L16.4 12l-6.2 3.6z"/>
       </svg>`;
     }
 
     function svgPhone(){
       return `
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#fff" d="M6.6 10.8c1.2 2.3 3.1 4.2 5.4 5.4l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v2.9c0 .5-.4.9-.9.9C10.7 19.4 4.6 13.3 4.6 6c0-.5.4-.9.9-.9h2.9c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.6 1.8z"></path>
+        <path fill="#fff" d="M6.6 10.8c1.2 2.3 3.1 4.2 5.4 5.4l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v2.9c0 .5-.4.9-.9.9C10.7 19.4 4.6 13.3 4.6 6c0-.5.4-.9.9-.9h2.9c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.6 1.8z"/>
       </svg>`;
     }
 
@@ -1207,7 +1230,6 @@
         const net = toClean(r.measurement_NetWork);
         const script = toClean(r.measurement_Script);
 
-        // start
         if (isValidLatLng(r.start_lat, r.start_lon)) {
           const icon = pointDivIcon({isStart:true, net, script});
           const mk = L.marker([Number(r.start_lat), Number(r.start_lon)], { icon });
@@ -1215,7 +1237,6 @@
           startPointLayer.addLayer(mk);
         }
 
-        // end
         if (isValidLatLng(r.end_lat, r.end_lon)) {
           const icon = pointDivIcon({isStart:false, net, script});
           const mk = L.marker([Number(r.end_lat), Number(r.end_lon)], { icon });
@@ -1224,11 +1245,7 @@
         }
       }
 
-      // respect toggles
-      if (!showStartPoints && map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer);
-      if (!showEndPoints && map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer);
-      if (showStartPoints && !map.hasLayer(startPointLayer)) map.addLayer(startPointLayer);
-      if (showEndPoints && !map.hasLayer(endPointLayer)) map.addLayer(endPointLayer);
+      updatePointsVisibility(); // ✅ respect zoom & toggles
     }
 
     // =============================
@@ -1281,10 +1298,8 @@
       renderTableRows(displayedRows);
       setSelectionTag('');
 
-      // points layer build
       rebuildPointLayers(rowsPA);
 
-      // clear layers & caches
       for (const k of ['RES8','RES9','RES10','RES11']) {
         h3Layers[k].clearLayers();
         redAgg[k].clear();
@@ -1299,12 +1314,10 @@
         let meta = redAgg[resKey].get(h3Index);
         if (!meta) {
           meta = initMetaRed(resKey, h3Index);
-          // ✅ 存一筆代表 row，用於 tooltip 取 KM+M / county / area / center
           meta.__sampleRow = row;
           redAgg[resKey].set(h3Index, meta);
         }
         meta.count += 1;
-
         const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
         const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
         if (sn) meta.startNames.add(sn);
@@ -1356,18 +1369,13 @@
 
         for (const [h3Index, meta] of redAgg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
-
           const poly = addPolygonCell(meta, lg, 'red');
           boundsAcc.extend(poly.getBounds());
           redCells++;
 
           const center = h3.cellToLatLng(h3Index);
           const nameText = uniqPreview(Array.from(meta.locPairs), 1);
-          redLabelItems[resKey].push({
-            latlng: L.latLng(center[0], center[1]),
-            count: meta.count,
-            nameText
-          });
+          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
         }
 
         if (locOk) {
@@ -1380,18 +1388,18 @@
         }
       }
 
-      if ((redCells+blueCells) > 0 && boundsAcc.isValid()) {
-        map.fitBounds(boundsAcc.pad(0.12));
-      }
+      if ((redCells+blueCells) > 0 && boundsAcc.isValid()) map.fitBounds(boundsAcc.pad(0.12));
 
       lastUpdateTime = new Date().toISOString();
       setStatus(`ok: rows=${rowsPA.length}, red_cells=${redCells}, blue_cells=${blueCells}`);
+
       renderAggLabels();
       renderNameLabels();
+      updatePointsVisibility(); // ✅ ensure zoom gating applied
     }
 
     // =============================
-    // Start (確保啟動)
+    // Start
     // =============================
     function startApp() {
       try {
@@ -1403,11 +1411,8 @@
       } catch (e) { logError(e); }
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', startApp);
-    } else {
-      startApp();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startApp);
+    else startApp();
   </script>
 </body>
 </html>
