@@ -27,7 +27,7 @@
     }
 
     html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
-    .app { display:flex; height:100vh; width:100vw; overflow:visible; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+    .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
 
     /* LEFT */
     .leftCol{
@@ -45,11 +45,9 @@
       top:10px;
       left:50%;
       transform: translateX(-50%);
-      z-index: 2000;
-      pointer-events: auto; /* ✅ 修正：讓 filter 可點 */
+      z-index: 2000;      /* ✅ raise above Leaflet */
+      pointer-events: auto;
     }
-
-
     .filter-bar{
       pointer-events: auto;
       background: rgba(10,19,40,0.92);
@@ -62,8 +60,8 @@
       gap:10px;
       backdrop-filter: blur(6px);
       min-width: 420px;
-      max-width: min(92vw, 720px); /* ✅ slightly narrower */
-      overflow:hidden;
+      max-width: min(92vw, 720px);
+      overflow: visible; /* ✅ IMPORTANT: allow dropdown show */
     }
 
     .msel{ position:relative; display:flex; align-items:center; gap:6px; }
@@ -86,8 +84,8 @@
       justify-content:space-between;
       gap:8px;
       user-select:none;
-      min-width: 100px;
-      max-width: 170px;
+      min-width: 92px;
+      max-width: 160px;
     }
     .msel-btn:hover{
       background: rgba(255,154,60,0.10);
@@ -101,21 +99,23 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 110px;
+      max-width: 108px;
     }
     .msel-menu{
       position:absolute;
       top: calc(100% + 6px);
       left:0;
-      width: 220px;
-      max-height: 240px;
+      width: 220px;          /* ✅ narrower */
+      max-width: 240px;
+      box-sizing: border-box;
+      max-height: 260px;
       overflow:auto;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.18);
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 10000;
+      z-index: 10000;        /* ✅ make sure it is on top */
       padding: 8px;
     }
     .msel-tools{
@@ -325,7 +325,7 @@
     }
     .close-btn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
 
-    /* ✅ H3 labels: count stays; name moved near top edge */
+    /* H3 labels */
     .lblWrap{
       position: relative;
       transform: translate(-50%, 0);
@@ -551,12 +551,6 @@
       position: relative;
       display:flex; align-items:center; justify-content:center;
     }
-    .lg-note{
-      margin-top:8px;
-      font-size: 11px;
-      color: rgba(154,176,216,0.95);
-      line-height:1.35;
-    }
 
     /* Fail-safe error banner */
     #fatalBanner{
@@ -661,14 +655,14 @@
 
   <script>
     /* ===========================
-       ver 7.0
-       - PA Points: icon (YouTube / Phone) + S/E badge in middle-lower, not clipped
-       - Count label unchanged; name label moved near cell top edge (more distance)
-       - Chart legend: reserve area; no overlap with bars
-       - Filter: Marea control shorter to fit
+       ver 7.2
+       - FIX: dropdown not showing (overflow visible + z-index + stop event)
+       - FIX: menu width narrower
+       - FIX: PA Points always on top (custom pane + zIndexOffset)
+       - S/E badge color already blue
        =========================== */
 
-    const APP_VERSION = "ver 7.1";
+    const APP_VERSION = "ver 7.2";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -817,6 +811,10 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
+    // ✅ pane to ensure PA points always on top
+    map.createPane('paPointsPane');
+    map.getPane('paPointsPane').style.zIndex = 950; // above markerPane(600)
+
     const baseLayers = {
       'NLSC 彩色 (EMAP)': baseEMAP,
       'NLSC 灰階 (EMAP01)': baseEMAP01
@@ -830,15 +828,15 @@
     updateZoomTag();
     map.on('zoomend', updateZoomTag);
 
-    // Global data + layers
-    const locMap = new Map(); // location_name -> rows
+    // Data + layers
+    const locMap = new Map();
     let allRowsRaw = [];
     let filteredRows = [];
     let displayedRows = [];
     let selectionLocationNames = [];
     let selectionPrimaryName = '';
 
-    const layersByLocName = new Map(); // location_name -> Set(polygons)
+    const layersByLocName = new Map();
     let highlightedLayers = new Set();
 
     function clearHoverHighlights() {
@@ -897,13 +895,9 @@
 
     function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
-    // ✅ count unchanged (same as 6.3): translateY 10px
     function makeCountIconHtml(count){
       return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label">${escapeHtml(count)}</span></div>`;
     }
-
-    // ✅ name moved near top edge (more distance from count)
-    //    We place it higher, and a bit tighter to the cell top by using larger negative translate.
     function makeNameIconHtml(text){
       return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
     }
@@ -1078,47 +1072,6 @@
     });
     map.addControl(new MeasureControl());
 
-    // ✅ PA Points Legend: now real icon-ish (still tiny svg + S/E)
-    const LegendCtrl = L.Control.extend({
-      options:{ position:'bottomright' },
-      onAdd: function(){
-        const div = L.DomUtil.create('div', 'legend-wrap');
-        div.innerHTML = `
-          <div class="legend-panel">
-            <div class="legend-ttl">PA Points 圖例</div>
-            <div class="legend-grid">
-              ${legendItemHtml('4G YoutubeLive S', '#0b2d6e', 'YT', 'S')}
-              ${legendItemHtml('4G YoutubeLive E', '#0b2d6e', 'YT', 'E')}
-              ${legendItemHtml('5G YoutubeLive S', '#ff9a3c', 'YT', 'S')}
-              ${legendItemHtml('5G YoutubeLive E', '#ff9a3c', 'YT', 'E')}
-              ${legendItemHtml('4G VoLTEmos S', '#0b2d6e', 'TEL', 'S')}
-              ${legendItemHtml('4G VoLTEmos E', '#0b2d6e', 'TEL', 'E')}
-              ${legendItemHtml('5G VoLTEmos S', '#ff9a3c', 'TEL', 'S')}
-              ${legendItemHtml('5G VoLTEmos E', '#ff9a3c', 'TEL', 'E')}
-            </div>
-          </div>
-          <div class="legend-tab" title="PA Points 圖例（滑鼠移上來顯示）">☰</div>
-        `;
-        L.DomEvent.disableClickPropagation(div);
-        return div;
-      }
-    });
-    function legendItemHtml(label, color, kind, se){
-      const icon = (kind === 'YT')
-        ? `<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="white" d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.8-1.8-.8-2.2-.9C14.9 3.8 12 3.8 12 3.8h0s-2.9 0-6.6.3c-.5.1-1.4.1-2.2.9-.6.7-.8 2.2-.8 2.2S2.2 9 2.2 10.8v1.7c0 1.8.2 3.6.2 3.6s.2 1.5.8 2.2c.8.8 1.9.8 2.4.9 1.7.2 6.4.3 6.4.3s2.9 0 6.6-.3c.5-.1 1.4-.1 2.2-.9.6-.7.8-2.2.8-2.2s.2-1.8.2-3.6v-1.7c0-1.8-.2-3.6-.2-3.6zM10 14.9V8.8l6 3.05-6 3.05z"/></svg>`
-        : `<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path fill="white" d="M6.6 10.8c1.2 2.4 3.6 4.8 6 6l2-2c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.2.7.7 0 1.2.5 1.2 1.2v3.2c0 .7-.5 1.2-1.2 1.2C10.7 21.7 2.3 13.3 2.3 3.2 2.3 2.5 2.8 2 3.5 2h3.2c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.9.7 4.2.1.4 0 .9-.3 1.2l-2 2z"/></svg>`;
-      return `
-        <div class="lg-item">
-          <div class="lg-dot" style="background:${color};">
-            ${icon}
-            <div style="position:absolute;left:50%;bottom:1px;transform:translateX(-50%);font-size:10px;font-weight:1000;color:#fff;line-height:1;text-shadow:0 0 10px rgba(0,0,0,0.6);">${se}</div>
-          </div>
-          <div>${escapeHtml(label)}</div>
-        </div>
-      `;
-    }
-    map.addControl(new LegendCtrl());
-
     // Filter state
     const filterState = {
       Date: new Set(),
@@ -1148,6 +1101,11 @@
     function createMultiSelectInline({title, key, width=140}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
+
+      // ✅ prevent Leaflet from eating clicks/scrolls
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
+      wrap.style.pointerEvents = 'auto';
 
       const lbl = document.createElement('div');
       lbl.className = 'lbl';
@@ -1181,7 +1139,10 @@
         sumEl.title = Array.from(filterState[key]).join('、') || '(none)';
       }
 
-      btn.addEventListener('click', () => setOpen(menu.style.display !== 'block'));
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpen(menu.style.display !== 'block');
+      });
 
       tools.addEventListener('click', (e) => {
         const act = e.target?.dataset?.act;
@@ -1200,6 +1161,7 @@
         });
       });
 
+      // click outside closes
       document.addEventListener('click', (e) => {
         if (!wrap.contains(e.target)) setOpen(false);
       });
@@ -1233,6 +1195,7 @@
             item.appendChild(sp);
 
             item.addEventListener('click', (ev) => {
+              ev.stopPropagation();
               if (ev.target !== cb) cb.checked = !cb.checked;
               if (cb.checked) filterState[key].add(v);
               else filterState[key].delete(v);
@@ -1254,7 +1217,6 @@
     filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
     filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:105});
     filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:140});
-    // ✅ Marea shorter to fit the whole filter bar
     filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:120});
 
     filterMount.appendChild(filterWidgets.Date.el);
@@ -1262,7 +1224,7 @@
     filterMount.appendChild(filterWidgets.measurement_Script.el);
     filterMount.appendChild(filterWidgets.Marea.el);
 
-    // Right panel UI
+    // Right panel
     const selectionTag = document.getElementById('selectionTag');
     const btnClear = document.getElementById('btnClear');
     function setSelectionTag(text) {
@@ -1308,12 +1270,6 @@
       { key: 'start_lon', label: 'S.lon' },
       { key: 'end_lat', label: 'E.lat' },
       { key: 'end_lon', label: 'E.lon' },
-      { key: 'end_action', label: 'EndAct' },
-      { key: 'accuracy_m', label: 'Acc(m)' },
-      { key: 'start_H3_Res_8', label: 'S.H3(8)' },
-      { key: 'start_H3_Res_9', label: 'S.H3(9)' },
-      { key: 'start_H3_Res_10', label: 'S.H3(10)' },
-      { key: 'start_H3_Res_11', label: 'S.H3(11)' },
       { key: 'measurement_Type', label: 'Type' },
       { key: 'measurement_Path', label: 'Path' },
       { key: 'measurement_NetWork', label: 'Net' },
@@ -1432,8 +1388,6 @@
       const b = 120 + (Math.abs(hash*13) % 100);
       return `rgba(${r},${g},${b},0.92)`;
     }
-
-    // ✅ reserve legend area: shrink plot width and draw legend in dedicated area
     function drawLegendBox(scripts, x0, y0, w){
       ctx.save();
       ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
@@ -1502,15 +1456,13 @@
 
       const padL = 42, padR = 14, padT = 16, padB = 34;
 
-      // ✅ compute legend box and reserve width
       const legendW = 165;
       const legendX = W - padR - legendW;
       const legendY = padT;
 
-      const plotW = (W - padL - padR) - (legendW + 10); // reserve legend area
+      const plotW = (W - padL - padR) - (legendW + 10);
       const plotH = H - padT - padB;
 
-      // axes
       ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -1519,7 +1471,6 @@
       ctx.lineTo(padL + plotW, padT + plotH);
       ctx.stroke();
 
-      // y grid
       ctx.fillStyle = 'rgba(231,238,252,0.85)';
       ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
       const tickN = 4;
@@ -1566,11 +1517,9 @@
         ctx.restore();
       }
 
-      // ✅ legend box at right; not overlapping bars
       drawLegendBox(scripts, legendX, legendY, legendW);
     }
 
-    // Filter apply
     function applyFiltersToRows(rows){
       return rows.filter(r => {
         const d = toClean(r.Date);
@@ -1584,7 +1533,6 @@
       });
     }
 
-    // H3 meta
     function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
     function initMetaRed(resKey, h3Index) {
       return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), sample:null };
@@ -1766,7 +1714,6 @@
       return {redCells, blueCells};
     }
 
-    // Row click -> fly
     function onRowClick(displayIdx) {
       const row = displayedRows[displayIdx];
       if (!row) return;
@@ -1794,9 +1741,7 @@
       }
     }
 
-    // =============================
-    // ✅ PA Points icon (YouTube / Phone) + S/E badge middle-lower, not clipped
-    // =============================
+    // PA Points icon
     function isValidLatLng(lat, lon){
       const a = Number(lat), b = Number(lon);
       return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
@@ -1806,7 +1751,7 @@
       return s === '5G' ? '5G' : (s === '4G' ? '4G' : s);
     }
     function netColor(net){
-      return (net === '5G') ? '#ff9a3c' : '#0b2d6e'; // 5G orange, 4G deep blue
+      return (net === '5G') ? '#ff9a3c' : '#0b2d6e';
     }
     function scriptKind(script){
       const s = toClean(script);
@@ -1814,7 +1759,6 @@
       if (s === 'VoLTEmos') return 'TEL';
       return 'DOT';
     }
-
     function pointSvg(kind){
       if (kind === 'YT') {
         return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
@@ -1831,9 +1775,8 @@
       </svg>`;
     }
 
-    function makePointDivIcon({kind, se, net, title}){
+    function makePointDivIcon({kind, se, net}){
       const bg = netColor(net);
-      // badge in middle-lower, not clipped
       const html = `
         <div style="
           width:26px;height:26px;border-radius:10px;
@@ -1848,11 +1791,11 @@
           <div style="
             position:absolute;
             left:50%;
-            bottom:2px;                 /* ✅ middle-lower */
+            bottom:2px;
             transform:translateX(-50%);
             font-size:10px;
             font-weight:1000;
-            color:#0000FF;
+            color:#00d6ff; /* ✅ S/E blue */
             text-shadow:0 0 10px rgba(0,0,0,0.7);
             line-height:1;
             padding:0 2px;
@@ -1860,7 +1803,7 @@
           ">${escapeHtml(se)}</div>
         </div>
       `;
-      return L.divIcon({ className:'', html, iconSize:[26,26], iconAnchor:[13,13], popupAnchor:[0,-13], tooltipAnchor:[0,-10] });
+      return L.divIcon({ className:'', html, iconSize:[26,26], iconAnchor:[13,13] });
     }
 
     function pointTooltipHtml(r, which){
@@ -1904,15 +1847,23 @@
         const kind = scriptKind(r.measurement_Script);
 
         if (isValidLatLng(r.start_lat, r.start_lon)) {
-          const icon = makePointDivIcon({ kind, se:'S', net, title:'Start' });
-          const mk = L.marker([Number(r.start_lat), Number(r.start_lon)], { icon });
+          const icon = makePointDivIcon({ kind, se:'S', net });
+          const mk = L.marker([Number(r.start_lat), Number(r.start_lon)], {
+            icon,
+            pane: 'paPointsPane',
+            zIndexOffset: 50000
+          });
           mk.bindTooltip(pointTooltipHtml(r,'start'), { sticky:true, direction:'top', opacity:0.95 });
           startPointLayer.addLayer(mk);
         }
 
         if (isValidLatLng(r.end_lat, r.end_lon)) {
-          const icon = makePointDivIcon({ kind, se:'E', net, title:'End' });
-          const mk = L.marker([Number(r.end_lat), Number(r.end_lon)], { icon });
+          const icon = makePointDivIcon({ kind, se:'E', net });
+          const mk = L.marker([Number(r.end_lat), Number(r.end_lon)], {
+            icon,
+            pane: 'paPointsPane',
+            zIndexOffset: 50000
+          });
           mk.bindTooltip(pointTooltipHtml(r,'end'), { sticky:true, direction:'top', opacity:0.95 });
           endPointLayer.addLayer(mk);
         }
@@ -1920,7 +1871,6 @@
       updatePointsVisibility();
     }
 
-    // Apply filter -> rerender all
     function applyFilterAndRerender(){
       filteredRows = applyFiltersToRows(allRowsRaw);
 
@@ -1950,7 +1900,6 @@
       updatePointsVisibility();
     });
 
-    // Load CSVs
     async function loadBothCSVsAndInit() {
       setStatus("starting...");
 
@@ -2016,7 +1965,6 @@
       lastUpdateTime = new Date().toISOString();
       setStatus(`ok: rows=${rowsPA.length}`);
 
-      // fit once
       const bounds = L.latLngBounds([]);
       for (const r of filteredRows) {
         if (isValidLatLng(r.start_lat, r.start_lon)) bounds.extend([Number(r.start_lat), Number(r.start_lon)]);
@@ -2025,7 +1973,6 @@
       if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
     }
 
-    // Start
     function startApp() {
       try {
         setStatus("booting...");
@@ -2038,14 +1985,6 @@
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startApp);
     else startApp();
-
-    // =============================
-    // Missing functions from earlier versions (kept minimal, stable)
-    // =============================
-    function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
-
   </script>
 </body>
 </html>
-
-
