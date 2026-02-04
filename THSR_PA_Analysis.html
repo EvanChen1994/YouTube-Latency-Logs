@@ -20,7 +20,7 @@
       --accent2:#00d6ff;
       --danger:#ff2b2b;
       --orange:#ff9a3c;
-
+      --purple:#b300ff;
       --tipbg:#061a38;
       --tipbd:rgba(0,214,255,0.25);
       --tipshadow:rgba(0,0,0,0.55);
@@ -29,6 +29,7 @@
     html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
     .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
 
+    /* LEFT */
     .leftCol{
       width:50vw; height:100vh;
       display:flex; flex-direction:column;
@@ -44,7 +45,7 @@
       top:10px;
       left:50%;
       transform: translateX(-50%);
-      z-index: 2000;
+      z-index: 2000;      /* ✅ raise above Leaflet */
       pointer-events: auto;
     }
     .filter-bar{
@@ -59,40 +60,10 @@
       gap:10px;
       backdrop-filter: blur(6px);
       min-width: 420px;
-      max-width: min(94vw, 780px);
-      overflow: visible;
+      max-width: min(92vw, 720px);
+      overflow: visible; /* ✅ IMPORTANT: allow dropdown show */
     }
 
-    /* Diagnostics overlay */
-    .diagBox{
-      position:absolute;
-      left: 10px;
-      top: 10px;
-      z-index: 2200;
-      width: 360px;
-      max-width: calc(50vw - 20px);
-      background: rgba(10,19,40,0.92);
-      border:1px solid rgba(255,255,255,0.16);
-      border-radius: 14px;
-      box-shadow: 0 10px 26px rgba(0,0,0,0.45);
-      padding: 10px 12px;
-      backdrop-filter: blur(6px);
-      font-size: 12px;
-      line-height: 1.35;
-      pointer-events: none; /* just display */
-    }
-    .diagBox .ttl{
-      font-weight: 1000;
-      margin-bottom: 6px;
-      color: rgba(231,238,252,0.95);
-      text-shadow: 0 0 10px rgba(43,124,255,0.25);
-    }
-    .diagRow{ display:flex; gap:8px; align-items:baseline; }
-    .k{ color: rgba(154,176,216,0.95); min-width: 110px; }
-    .v{ color: rgba(231,238,252,0.92); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .bad{ color:#ffb0b0; white-space: pre-wrap; word-break: break-word; }
-
-    /* Multi select */
     .msel{ position:relative; display:flex; align-items:center; gap:6px; }
     .msel .lbl{
       font-size:12px;
@@ -113,8 +84,8 @@
       justify-content:space-between;
       gap:8px;
       user-select:none;
-      min-width: 90px;
-      max-width: 170px;
+      min-width: 92px;
+      max-width: 160px;
     }
     .msel-btn:hover{
       background: rgba(255,154,60,0.10);
@@ -128,14 +99,14 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 120px;
+      max-width: 108px;
     }
-
     .msel-menu{
       position:absolute;
       top: calc(100% + 6px);
       left:0;
-      min-width: 120px;
+      width: 220px;          /* ✅ narrower */
+      max-width: 240px;
       box-sizing: border-box;
       max-height: 260px;
       overflow:auto;
@@ -144,7 +115,7 @@
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 10000;
+      z-index: 10000;        /* ✅ make sure it is on top */
       padding: 8px;
     }
     .msel-tools{
@@ -191,6 +162,18 @@
       background: linear-gradient(180deg, var(--panel) 0%, var(--bg1) 100%);
       position:relative;
     }
+    #panel::before{
+      content:"";
+      position:absolute; inset:0;
+      background: repeating-linear-gradient(to bottom,
+          rgba(255,255,255,0.02) 0px,
+          rgba(255,255,255,0.02) 1px,
+          rgba(0,0,0,0) 3px,
+          rgba(0,0,0,0) 6px);
+      pointer-events:none;
+      mix-blend-mode: overlay;
+      opacity:.35;
+    }
 
     .topbar{
       position:relative;
@@ -213,7 +196,6 @@
       color:var(--muted); font-size:12px; white-space:nowrap;
       overflow:hidden; text-overflow:ellipsis; max-width: 24vw;
     }
-
     .btns{ display:flex; gap:8px; align-items:center; position:relative; z-index:2; }
     .btn{
       border:1px solid var(--line2);
@@ -293,6 +275,55 @@
     tbody tr.row-clickable:hover { background: rgba(255,43,43,0.10); }
 
     .muted { color: var(--muted); }
+    .err { color: #ffb0b0; white-space:pre-wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+
+    /* modal */
+    .modal-backdrop{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal{
+      width: min(920px, 92vw);
+      max-height: 86vh;
+      background: linear-gradient(180deg, rgba(11,26,51,0.98) 0%, rgba(7,11,22,0.98) 100%);
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.45);
+      overflow: hidden;
+      display:flex;
+      flex-direction: column;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .modal-header{
+      padding: 10px 12px;
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+    }
+    .modal-body{
+      padding: 12px;
+      overflow:auto;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--txt);
+    }
+    .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 10px; }
+    .close-btn{
+      border:1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
+      border-radius:10px;
+      padding:6px 10px;
+      cursor:pointer;
+      font-weight:900;
+      color: var(--txt);
+    }
+    .close-btn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
 
     /* H3 labels */
     .lblWrap{
@@ -372,10 +403,178 @@
     .res-ctrl input{ cursor:pointer; accent-color: var(--accent); }
     .layer-ctrl input{ cursor:pointer; accent-color: var(--accent2); }
 
+    /* measure */
+    .measure-ctrl{
+      background: rgba(10,19,40,0.92);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:12px;
+      padding:6px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      backdrop-filter: blur(6px);
+      margin-top: 6px;
+    }
+    .measure-btn{
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.05);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: var(--txt);
+      transition:.15s ease;
+    }
+    .measure-btn:hover{
+      background: rgba(43,124,255,0.12);
+      border-color: rgba(43,124,255,0.40);
+      box-shadow: 0 0 18px rgba(43,124,255,0.12);
+    }
+    .measure-btn.active{
+      background: rgba(255,43,43,0.18);
+      border-color: rgba(255,43,43,0.60);
+      color:#ffdede;
+      box-shadow: 0 0 18px rgba(255,43,43,0.18);
+    }
+
+    /* Chart float */
+    .chart-float{
+      position:absolute;
+      left: 12px;
+      bottom: 12px;
+      width: min(560px, calc(50vw - 24px));
+      height: 230px;
+      background: linear-gradient(180deg, rgba(11,26,51,0.98) 0%, rgba(7,11,22,0.98) 100%);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+      overflow:hidden;
+      display:none;
+      z-index: 800;
+    }
+    .chart-float::before{
+      content:"";
+      position:absolute; inset:0;
+      background: repeating-linear-gradient(to bottom,
+        rgba(255,255,255,0.02) 0px,
+        rgba(255,255,255,0.02) 1px,
+        rgba(0,0,0,0) 3px,
+        rgba(0,0,0,0) 6px);
+      pointer-events:none;
+      opacity:.35;
+      mix-blend-mode: overlay;
+    }
+    .chart-head{
+      position:relative;
+      z-index:2;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+    }
+    .chart-head .ctitle{
+      font-weight: 1000;
+      font-size: 12px;
+      color: rgba(231,238,252,0.95);
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      max-width: 480px;
+    }
+    .chart-close{
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      color: var(--txt);
+      border-radius: 10px;
+      padding: 4px 10px;
+      cursor:pointer;
+      font-weight: 1000;
+    }
+    .chart-close:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
+    #gridChart{
+      position:absolute; left:0; top:38px; width:100%; height: calc(100% - 38px);
+      z-index:1;
+    }
+
+    /* Bottom-right PA Points legend (hover expand) */
+    .legend-wrap{ position: relative; }
+    .legend-tab{
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(10,19,40,0.92);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color: rgba(231,238,252,0.95);
+      cursor: default;
+      user-select:none;
+      backdrop-filter: blur(6px);
+    }
+    .legend-panel{
+      position: absolute;
+      right: 0;
+      bottom: 44px;
+      width: 280px;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(10,19,40,0.92);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.55);
+      display: none;
+      backdrop-filter: blur(6px);
+    }
+    .legend-wrap:hover .legend-panel{ display:block; }
+    .legend-ttl{
+      font-weight:1000;
+      margin-bottom:8px;
+      color:#d7e6ff;
+      text-shadow: 0 0 10px rgba(43,124,255,0.25);
+    }
+    .legend-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 10px;
+      font-size: 12px;
+      color: rgba(231,238,252,0.92);
+    }
+    .lg-item{ display:flex; align-items:center; gap:8px; white-space:nowrap; }
+    .lg-dot{
+      width: 16px; height: 16px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 0 10px rgba(0,0,0,0.35);
+      flex: 0 0 auto;
+      position: relative;
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    /* Fail-safe error banner */
+    #fatalBanner{
+      position: fixed;
+      left: 10px;
+      top: 10px;
+      z-index: 20000;
+      background: rgba(255,43,43,0.92);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.45);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 1000;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+      display:none;
+      max-width: min(92vw, 980px);
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 
 <body>
+  <div id="fatalBanner"></div>
+
   <div class="app">
     <div class="leftCol">
       <div id="map"></div>
@@ -386,14 +585,12 @@
         </div>
       </div>
 
-      <div class="diagBox" id="diagBox">
-        <div class="ttl">H3 Diagnostics (ver 7.4)</div>
-        <div class="diagRow"><div class="k">H3 lib</div><div class="v" id="dH3">pending</div></div>
-        <div class="diagRow"><div class="k">PA rows</div><div class="v" id="dRows">0</div></div>
-        <div class="diagRow"><div class="k">Red RES8/9/10/11</div><div class="v" id="dRed">0/0/0/0</div></div>
-        <div class="diagRow"><div class="k">Blue RES8/9/10/11</div><div class="v" id="dBlue">0/0/0/0</div></div>
-        <div class="diagRow"><div class="k">Render status</div><div class="v" id="dStatus">booting...</div></div>
-        <div class="diagRow"><div class="k">First render error</div><div class="bad" id="dErr">(none)</div></div>
+      <div class="chart-float" id="chartFloat">
+        <div class="chart-head">
+          <div class="ctitle" id="chartTitle">start_location_name：</div>
+          <button class="chart-close" id="chartClose">✕</button>
+        </div>
+        <canvas id="gridChart"></canvas>
       </div>
     </div>
 
@@ -401,18 +598,21 @@
       <div class="topbar">
         <div class="title-wrap">
           <h2>THSR PA Analysis</h2>
-          <div class="verTag">ver 7.4</div>
+          <div class="verTag" id="verTag"></div>
           <div class="selectionTag" id="selectionTag" title=""></div>
         </div>
 
         <div class="btns">
-          <div class="tag">Zoom: <b id="zoomLevel">-</b></div>
+          <div class="tag" id="zoomTag">Zoom: <b id="zoomLevel">-</b></div>
+          <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
           <div class="btn" id="btnClear" title="清除篩選與選取">清除篩選</div>
         </div>
       </div>
 
       <div class="hint">
-        這版先強制把「H3 畫不出來」的原因顯示在左上角 H3 Diagnostics：你會看到 red/blue 數量、以及第一個 render error。
+        Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
+        數字統計僅紅格；點紅格→右表依 start_location_name 篩選，並跳出圖表視窗（可關閉）。
+        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
       </div>
 
       <div class="table-wrap">
@@ -424,23 +624,126 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="系統資訊">
+      <div class="modal-header">
+        <div style="font-weight:1000;">系統資訊（狀態 / 更新 / 錯誤）</div>
+        <button class="close-btn" id="btnModalClose">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="kv">
+          <div class="muted">Version</div><div class="mono" id="mVersion"></div>
+          <div class="muted">Page URL</div><div class="mono" id="mPageUrl"></div>
+          <div class="muted">PA CSV</div><div class="mono" id="mCsvPA"></div>
+          <div class="muted">Location CSV</div><div class="mono" id="mCsvLoc"></div>
+          <div class="muted">HTTP</div><div class="mono" id="mHttp"></div>
+          <div class="muted">H3</div><div class="mono" id="mH3"></div>
+          <div class="muted">Status</div><div class="mono" id="mStatus"></div>
+          <div class="muted">Last Update</div><div class="mono" id="mUpdate"></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;">
+
+        <div style="font-weight:1000;margin-bottom:6px;">Errors</div>
+        <div class="mono err" id="mErrors" style="white-space:pre-wrap;"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
 
   <script>
-    /* ========= Diagnostics hooks ========= */
-    const dH3 = document.getElementById('dH3');
-    const dRows = document.getElementById('dRows');
-    const dRed = document.getElementById('dRed');
-    const dBlue = document.getElementById('dBlue');
-    const dStatus = document.getElementById('dStatus');
-    const dErr = document.getElementById('dErr');
+    /* ===========================
+       ver 7.2
+       - FIX: dropdown not showing (overflow visible + z-index + stop event)
+       - FIX: menu width narrower
+       - FIX: PA Points always on top (custom pane + zIndexOffset)
+       - S/E badge color already blue
+       =========================== */
 
-    let firstRenderError = null;
-    function setDiagStatus(s){ dStatus.textContent = s; }
-    function setDiagError(s){ if (!firstRenderError){ firstRenderError = s; dErr.textContent = s; } }
+    const APP_VERSION = "ver 7.2";
+    document.getElementById('verTag').textContent = APP_VERSION;
 
-    /* ========= CSV ========= */
+    // Fail-safe banner
+    const fatalBanner = document.getElementById('fatalBanner');
+    function showFatal(msg){
+      fatalBanner.style.display = 'block';
+      fatalBanner.textContent = msg;
+    }
+
+    // Modal / status
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const btnInfo = document.getElementById('btnInfo');
+    const btnModalClose = document.getElementById('btnModalClose');
+
+    const mVersion = document.getElementById('mVersion');
+    const mPageUrl = document.getElementById('mPageUrl');
+    const mCsvPA = document.getElementById('mCsvPA');
+    const mCsvLoc = document.getElementById('mCsvLoc');
+    const mHttp = document.getElementById('mHttp');
+    const mH3 = document.getElementById('mH3');
+    const mStatus = document.getElementById('mStatus');
+    const mUpdate = document.getElementById('mUpdate');
+    const mErrors = document.getElementById('mErrors');
+
+    let lastStatus = "init";
+    let lastUpdateTime = "";
+    const errorLogs = [];
+
+    let httpInfo = "";
+    let paCsvUrlAbs = "";
+    let locCsvUrlAbs = "";
+    let h3Info = "";
+
+    function openModal() { modalBackdrop.style.display = "flex"; }
+    function closeModal() { modalBackdrop.style.display = "none"; }
+    function setStatus(msg) { lastStatus = msg; }
+    function logError(err) {
+      const s = String(err?.stack || err);
+      errorLogs.push(s);
+      if (!lastStatus.startsWith("FAILED")) setStatus("FAILED: " + (err?.message || s));
+      console.error(err);
+    }
+    window.addEventListener('error', (e) => logError(e.error || e.message || e));
+    window.addEventListener('unhandledrejection', (e) => logError(e.reason || e));
+
+    btnInfo.addEventListener('click', () => {
+      mVersion.textContent = APP_VERSION;
+      mPageUrl.textContent = location.href;
+      mCsvPA.textContent = paCsvUrlAbs || "(not set)";
+      mCsvLoc.textContent = locCsvUrlAbs || "(not set)";
+      mHttp.textContent = httpInfo || "(pending)";
+      mH3.textContent = h3Info || "(pending)";
+      mStatus.textContent = lastStatus;
+      mUpdate.textContent = lastUpdateTime || '';
+      mErrors.textContent = errorLogs.length ? errorLogs.join("\n\n") : "(none)";
+      openModal();
+    });
+    btnModalClose.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+    // Utils
+    function escapeHtml(s) {
+      return String(s ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+    function toClean(s) {
+      const t = String(s ?? '').trim();
+      return t === '' ? '' : t;
+    }
+    function parseMaybeNumber(v){
+      const s = String(v ?? '').trim();
+      if (s === '') return {isNum:false, num:0, raw:''};
+      const n = Number(s);
+      if (!Number.isNaN(n) && Number.isFinite(n)) return {isNum:true, num:n, raw:s};
+      return {isNum:false, num:0, raw:s.toLowerCase()};
+    }
+
     function parseCsvRobust(text) {
       const rows = [];
       let row = [];
@@ -464,6 +767,7 @@
         }
       }
       if (cur.length || row.length) { row.push(cur); rows.push(row); }
+
       while (rows.length && rows[rows.length - 1].every(v => (v ?? '').trim() === '')) rows.pop();
       if (rows.length < 2) return [];
 
@@ -487,54 +791,15 @@
       return res.text();
     }
 
-    function cleanH3Index(s){
-      // 去掉常見不可見字元：BOM、ZWNBSP、空白
-      return String(s ?? '')
-        .replace(/\uFEFF/g,'')
-        .replace(/\u200B/g,'')
-        .replace(/\u2060/g,'')
-        .trim();
+    function initUrls() {
+      paCsvUrlAbs = new URL(`./PA_data.csv?v=${Date.now()}`, location.href).toString();
+      locCsvUrlAbs = new URL(`./THSR_Location.csv?v=${Date.now()}`, location.href).toString();
+      httpInfo = "pending...";
+      h3Info = "pending...";
     }
+    initUrls();
 
-    /* ========= H3 Compat ========= */
-    function getH3Lib(){
-      // Most likely global is window.h3, but keep fallback for safety
-      return window.h3 || window.h3js || window.H3 || null;
-    }
-
-    function h3BoundaryLatLng(H, h3Index) {
-      const idx = cleanH3Index(h3Index);
-      if (!idx) throw new Error('Empty H3 index');
-
-      // v4+
-      if (typeof H.cellToBoundary === 'function') {
-        const pts = H.cellToBoundary(idx, true); // [[lat,lng],...]
-        return pts.map(p => [p[0], p[1]]);
-      }
-      // legacy
-      if (typeof H.h3ToGeoBoundary === 'function') {
-        const pts = H.h3ToGeoBoundary(idx, true);
-        return pts.map(p => [p[0], p[1]]);
-      }
-      throw new Error('No boundary function (cellToBoundary/h3ToGeoBoundary)');
-    }
-
-    function h3CenterLatLng(H, h3Index){
-      const idx = cleanH3Index(h3Index);
-      if (!idx) throw new Error('Empty H3 index');
-
-      if (typeof H.cellToLatLng === 'function') {
-        const c = H.cellToLatLng(idx);
-        return [c[0], c[1]];
-      }
-      if (typeof H.h3ToGeo === 'function') {
-        const c = H.h3ToGeo(idx);
-        return [c[0], c[1]];
-      }
-      throw new Error('No center function (cellToLatLng/h3ToGeo)');
-    }
-
-    /* ========= Leaflet base ========= */
+    // Leaflet map + base layers
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -545,36 +810,97 @@
     );
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
-    L.control.layers(
-      { 'NLSC 彩色 (EMAP)': baseEMAP, 'NLSC 灰階 (EMAP01)': baseEMAP01 },
-      null,
-      { collapsed:true }
-    ).addTo(map);
 
+    // ✅ pane to ensure PA points always on top
+    map.createPane('paPointsPane');
+    map.getPane('paPointsPane').style.zIndex = 950; // above markerPane(600)
+
+    const baseLayers = {
+      'NLSC 彩色 (EMAP)': baseEMAP,
+      'NLSC 灰階 (EMAP01)': baseEMAP01
+    };
+    L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
+    L.control.scale({ position:'bottomright', imperial:false, metric:true }).addTo(map);
+
+    // Zoom tag
     const zoomLevelEl = document.getElementById('zoomLevel');
     function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
     updateZoomTag();
     map.on('zoomend', updateZoomTag);
 
-    /* ========= H3 layers ========= */
+    // Data + layers
+    const locMap = new Map();
+    let allRowsRaw = [];
+    let filteredRows = [];
+    let displayedRows = [];
+    let selectionLocationNames = [];
+    let selectionPrimaryName = '';
+
+    const layersByLocName = new Map();
+    let highlightedLayers = new Set();
+
+    function clearHoverHighlights() {
+      for (const ly of highlightedLayers) {
+        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
+      }
+      highlightedLayers.clear();
+    }
+    function highlightByLocationNames(names) {
+      clearHoverHighlights();
+      for (const nm of names) {
+        const set = layersByLocName.get(nm);
+        if (!set) continue;
+        for (const ly of set) {
+          if (!ly.__baseStyle) continue;
+          ly.setStyle({ weight: 4, color: '#b300ff', opacity: 1.0 });
+          highlightedLayers.add(ly);
+        }
+      }
+    }
+
+    // H3 layers
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     const aggLabelLayer = L.layerGroup().addTo(map);
     const nameLabelLayer = L.layerGroup().addTo(map);
+
+    // points layers
+    const startPointLayer = L.layerGroup().addTo(map);
+    const endPointLayer = L.layerGroup().addTo(map);
+    let showStartPoints = true;
+    let showEndPoints = true;
+    const POINTS_MIN_ZOOM = 12;
+
+    function updatePointsVisibility() {
+      const z = map.getZoom();
+      const allow = z >= POINTS_MIN_ZOOM;
+
+      if (!allow) {
+        if (map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer);
+        if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer);
+        return;
+      }
+
+      if (showStartPoints) { if (!map.hasLayer(startPointLayer)) map.addLayer(startPointLayer); }
+      else { if (map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer); }
+
+      if (showEndPoints) { if (!map.hasLayer(endPointLayer)) map.addLayer(endPointLayer); }
+      else { if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer); }
+    }
+
+    // aggregation maps
+    const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
     let currentResKey = 'RES9';
 
-    const redGrid = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-    const blueGrid = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-
-    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
+    function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
     function makeCountIconHtml(count){
-      return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label">${count}</span></div>`;
+      return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label">${escapeHtml(count)}</span></div>`;
     }
     function makeNameIconHtml(text){
-      return `<div class="lblWrap" style="transform:translate(-50%, -48px);"><span class="name-label">${text}</span></div>`;
+      return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
     }
-
-    function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
     function renderAggLabels() {
       aggLabelLayer.clearLayers();
@@ -619,6 +945,7 @@
       nameLabelLayer.clearLayers();
       const z = map.getZoom();
       if (z < 12) return;
+
       const items = redLabelItems[currentResKey] || [];
       for (const it of items) {
         if (!it.nameText) continue;
@@ -635,8 +962,10 @@
       currentResKey = resKey;
       renderAggLabels();
       renderNameLabels();
+      clearHoverHighlights();
     }
 
+    // Controls: Resolution / Points / Measure
     const ResControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function() {
@@ -657,12 +986,105 @@
     });
     map.addControl(new ResControl());
 
-    map.on('zoomend moveend', () => { renderAggLabels(); renderNameLabels(); });
+    const LayerCtrl = L.Control.extend({
+      options: { position:'topleft' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'layer-ctrl');
+        div.innerHTML = `
+          <div class="ttl">PA Points</div>
+          <label><input type="checkbox" id="chkStart" checked> Start</label>
+          <label><input type="checkbox" id="chkEnd" checked> End</label>
+          <div class="muted" style="margin-top:6px;">顯示條件：zoom ≥ ${POINTS_MIN_ZOOM}</div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        setTimeout(() => {
+          const chkStart = div.querySelector('#chkStart');
+          const chkEnd = div.querySelector('#chkEnd');
+          chkStart.addEventListener('change', () => { showStartPoints = chkStart.checked; updatePointsVisibility(); });
+          chkEnd.addEventListener('change', () => { showEndPoints = chkEnd.checked; updatePointsVisibility(); });
+        }, 0);
+        return div;
+      }
+    });
+    map.addControl(new LayerCtrl());
 
-    /* ========= Filter UI (minimal keep, doesn't block H3) ========= */
-    const filterState = { Date:new Set(), measurement_NetWork:new Set(), measurement_Script:new Set(), Marea:new Set() };
-    const filterAllOptions = { Date:[], measurement_NetWork:[], measurement_Script:[], Marea:[] };
+    // measure tool
+    let measureActive = false;
+    let measureStart = null;
+    let measureStartMarker = null;
+    let measureEndMarker = null;
+    let measureLine = null;
 
+    function clearMeasureGraphics() {
+      if (measureStartMarker) { map.removeLayer(measureStartMarker); measureStartMarker = null; }
+      if (measureEndMarker)   { map.removeLayer(measureEndMarker);   measureEndMarker = null; }
+      if (measureLine)        { map.removeLayer(measureLine);        measureLine = null; }
+      measureStart = null;
+    }
+    function formatDistance(meters) {
+      if (meters >= 1000) return `${(meters/1000).toFixed(3)} km`;
+      return `${meters.toFixed(1)} m`;
+    }
+    function onMapClickMeasure(e) {
+      if (!measureActive) return;
+      if (!measureStart) {
+        clearMeasureGraphics();
+        measureStart = e.latlng;
+        measureStartMarker = L.circleMarker(measureStart, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
+        measureStartMarker.bindTooltip("起點", { permanent: false, direction: 'top' });
+      } else {
+        const end = e.latlng;
+        measureEndMarker = L.circleMarker(end, { radius:6, weight:2, fillOpacity:0.7 }).addTo(map);
+        measureEndMarker.bindTooltip("終點", { permanent: false, direction: 'top' });
+        measureLine = L.polyline([measureStart, end], { weight:3, opacity:0.9 }).addTo(map);
+
+        const dist = map.distance(measureStart, end);
+        L.popup({ closeButton: true, autoClose: true })
+          .setLatLng(end)
+          .setContent(`距離：${formatDistance(dist)}`)
+          .openOn(map);
+
+        measureStart = null;
+      }
+    }
+    map.on('click', onMapClickMeasure);
+
+    const MeasureControl = L.Control.extend({
+      options: { position:'topright' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'measure-ctrl');
+        const btn = L.DomUtil.create('button', 'measure-btn', div);
+        btn.title = "測距：啟用後左鍵點起點再點終點顯示距離";
+        btn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
+          </svg>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.on(btn, 'click', (e) => {
+          L.DomEvent.stop(e);
+          measureActive = !measureActive;
+          btn.classList.toggle('active', measureActive);
+          if (!measureActive) measureStart = null;
+        });
+        return div;
+      }
+    });
+    map.addControl(new MeasureControl());
+
+    // Filter state
+    const filterState = {
+      Date: new Set(),
+      measurement_NetWork: new Set(),
+      measurement_Script: new Set(),
+      Marea: new Set(),
+    };
+    const filterAllOptions = {
+      Date: [],
+      measurement_NetWork: [],
+      measurement_Script: [],
+      Marea: [],
+    };
     function uniqSorted(values){
       return Array.from(new Set(values.filter(v => v !== ''))).sort();
     }
@@ -675,9 +1097,14 @@
       if (arr.length <= 2) return arr.join('、');
       return `${arr.slice(0,2).join('、')} +${arr.length-2}`;
     }
-    function createMultiSelectInline({title, key, width=140, alignRight=false}) {
+
+    function createMultiSelectInline({title, key, width=140}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
+
+      // ✅ prevent Leaflet from eating clicks/scrolls
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
       wrap.style.pointerEvents = 'auto';
 
       const lbl = document.createElement('div');
@@ -694,22 +1121,17 @@
 
       const tools = document.createElement('div');
       tools.className = 'msel-tools';
-      tools.innerHTML = `<div class="tbtn" data-act="all">全選</div><div class="tbtn" data-act="none">全不選</div><div class="tbtn" data-act="close">關閉</div>`;
+      tools.innerHTML = `
+        <div class="tbtn" data-act="all">全選</div>
+        <div class="tbtn" data-act="none">全不選</div>
+        <div class="tbtn" data-act="close">關閉</div>
+      `;
       menu.appendChild(tools);
 
       const list = document.createElement('div');
       menu.appendChild(list);
 
-      function setOpen(v){
-        if (v) {
-          const w = btn.getBoundingClientRect().width;
-          menu.style.width = Math.ceil(w) + 'px'; // ✅ adaptive
-          if (alignRight) { menu.style.left = 'auto'; menu.style.right = '0'; }
-          else { menu.style.left = '0'; menu.style.right = 'auto'; }
-        }
-        menu.style.display = v ? 'block' : 'none';
-      }
-
+      function setOpen(v){ menu.style.display = v ? 'block' : 'none'; }
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
         const t = summaryText(key);
@@ -717,27 +1139,43 @@
         sumEl.title = Array.from(filterState[key]).join('、') || '(none)';
       }
 
-      btn.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.style.display !== 'block'); });
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpen(menu.style.display !== 'block');
+      });
 
       tools.addEventListener('click', (e) => {
         const act = e.target?.dataset?.act;
         if (!act) return;
         if (act === 'close') { setOpen(false); return; }
         if (act === 'none') { filterState[key].clear(); }
-        if (act === 'all') { filterState[key].clear(); for (const v of filterAllOptions[key]) filterState[key].add(v); }
+        if (act === 'all') {
+          filterState[key].clear();
+          for (const v of filterAllOptions[key]) filterState[key].add(v);
+        }
         updateButton();
-        list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = filterState[key].has(cb.dataset.v));
+        applyFilterAndRerender();
+        list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          const v = cb.dataset.v;
+          cb.checked = filterState[key].has(v);
+        });
       });
 
-      document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) setOpen(false); });
+      // click outside closes
+      document.addEventListener('click', (e) => {
+        if (!wrap.contains(e.target)) setOpen(false);
+      });
 
-      wrap.appendChild(lbl); wrap.appendChild(btn); wrap.appendChild(menu);
+      wrap.appendChild(lbl);
+      wrap.appendChild(btn);
+      wrap.appendChild(menu);
 
       return {
         el: wrap,
         setOptions: (options) => {
           list.innerHTML = '';
           filterAllOptions[key] = options.slice();
+
           filterState[key].clear();
           for (const v of options) filterState[key].add(v);
 
@@ -753,168 +1191,800 @@
             const sp = document.createElement('div');
             sp.textContent = v || '(blank)';
 
-            item.appendChild(cb); item.appendChild(sp);
+            item.appendChild(cb);
+            item.appendChild(sp);
+
             item.addEventListener('click', (ev) => {
               ev.stopPropagation();
               if (ev.target !== cb) cb.checked = !cb.checked;
-              if (cb.checked) filterState[key].add(v); else filterState[key].delete(v);
+              if (cb.checked) filterState[key].add(v);
+              else filterState[key].delete(v);
               updateButton();
+              applyFilterAndRerender();
             });
+
             list.appendChild(item);
           }
           updateButton();
-        }
+        },
+        updateButton
       };
     }
 
     const filterMount = document.getElementById('filterMount');
-    const fwDate = createMultiSelectInline({title:'Date', key:'Date', width:150});
-    const fwNet  = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:105});
-    const fwScr  = createMultiSelectInline({title:'Script', key:'measurement_Script', width:140});
-    const fwArea = createMultiSelectInline({title:'Marea', key:'Marea', width:105, alignRight:true});
-    filterMount.appendChild(fwDate.el);
-    filterMount.appendChild(fwNet.el);
-    filterMount.appendChild(fwScr.el);
-    filterMount.appendChild(fwArea.el);
+    const filterWidgets = {};
 
-    /* ========= Right table minimal ========= */
+    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
+    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:105});
+    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:140});
+    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:120});
+
+    filterMount.appendChild(filterWidgets.Date.el);
+    filterMount.appendChild(filterWidgets.measurement_NetWork.el);
+    filterMount.appendChild(filterWidgets.measurement_Script.el);
+    filterMount.appendChild(filterWidgets.Marea.el);
+
+    // Right panel
+    const selectionTag = document.getElementById('selectionTag');
+    const btnClear = document.getElementById('btnClear');
+    function setSelectionTag(text) {
+      selectionTag.textContent = text || '';
+      selectionTag.title = text || '';
+    }
+
+    btnClear.addEventListener('click', () => {
+      selectionLocationNames = [];
+      selectionPrimaryName = '';
+      setSelectionTag('');
+      hideChartWindow();
+      clearChart();
+
+      for (const k of Object.keys(filterState)) {
+        filterState[k].clear();
+        for (const v of filterAllOptions[k]) filterState[k].add(v);
+      }
+      for (const k of Object.keys(filterWidgets)) filterWidgets[k]?.updateButton?.();
+      applyFilterAndRerender();
+    });
+
+    // Table
     const evtHeadRow = document.getElementById('evtHeadRow');
     const evtBody = document.getElementById('evtBody');
-    const COLS = ['Date','start_location_name','end_location_name','PA_Num','event','time_tw','lag_ms','measurement_NetWork','measurement_Script','Marea'];
-    evtHeadRow.innerHTML = COLS.map(c => `<th>${c}</th>`).join('');
 
-    function renderTableRows(rows){
-      evtBody.innerHTML = rows.map(r => `<tr>${COLS.map(c => `<td title="${(r[c]??'')}">${(r[c]??'')}</td>`).join('')}</tr>`).join('');
+    const COLS = [
+      { key: 'Date', label: 'Date' },
+      { key: 'start_location_name', label: 'S.loc' },
+      { key: 'end_location_name', label: 'E.loc' },
+      { key: 'PA_Num', label: 'PA#' },
+      { key: 'event', label: 'Event' },
+      { key: 'time_tw', label: 'Time' },
+      { key: 'lag_start_tw', label: 'LagStart' },
+      { key: 'resume_tw', label: 'Resume' },
+      { key: 'lag_ms', label: 'Lag(ms)' },
+      { key: 'e2e_recover_ms', label: 'E2E(ms)' },
+      { key: 'e2e_recover_time', label: 'E2E(Time)' },
+      { key: 'lag_end_tw', label: 'LagEnd' },
+      { key: 'lag_mode', label: 'LagMode' },
+      { key: 'gps_type', label: 'GPS' },
+      { key: 'start_lat', label: 'S.lat' },
+      { key: 'start_lon', label: 'S.lon' },
+      { key: 'end_lat', label: 'E.lat' },
+      { key: 'end_lon', label: 'E.lon' },
+      { key: 'measurement_Type', label: 'Type' },
+      { key: 'measurement_Path', label: 'Path' },
+      { key: 'measurement_NetWork', label: 'Net' },
+      { key: 'measurement_Script', label: 'Script' },
+      { key: 'start_location_KM+M', label: 'S.KM+M' },
+      { key: 'end_location_KM+M', label: 'E.KM+M' },
+      { key: 'twcounty', label: 'County' },
+      { key: 'Marea', label: 'Area' },
+      { key: 'Mcenter', label: 'Center' },
+    ];
+
+    let sortKey = '';
+    let sortDir = 1;
+
+    function renderTableHeader() {
+      evtHeadRow.innerHTML = '';
+      for (const c of COLS) {
+        const th = document.createElement('th');
+        th.dataset.key = c.key;
+
+        const label = document.createElement('span');
+        label.textContent = c.label;
+        th.appendChild(label);
+
+        const sort = document.createElement('span');
+        sort.className = 'sort';
+        sort.textContent = (sortKey === c.key) ? (sortDir === 1 ? '▲' : '▼') : '';
+        th.appendChild(sort);
+
+        th.title = `排序：${c.key}`;
+        th.addEventListener('click', () => {
+          if (sortKey === c.key) sortDir = -sortDir;
+          else { sortKey = c.key; sortDir = 1; }
+          applySortAndRender();
+        });
+
+        evtHeadRow.appendChild(th);
+      }
     }
 
-    /* ========= Build H3 ========= */
-    const redCounts = { RES8:0, RES9:0, RES10:0, RES11:0 };
-    const blueCounts = { RES8:0, RES9:0, RES10:0, RES11:0 };
+    function renderTableRows(rows, opt={}) {
+      displayedRows = rows;
+      if (!opt.skipHeader) renderTableHeader();
+      evtBody.innerHTML = '';
+      const frag = document.createDocumentFragment();
 
-    function resetH3(){
+      rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.classList.add('row-clickable');
+
+        for (const c of COLS) {
+          const td = document.createElement('td');
+          const v = (r[c.key] ?? '');
+          td.textContent = v;
+          td.title = v;
+          tr.appendChild(td);
+        }
+        tr.addEventListener('click', () => onRowClick(idx));
+        frag.appendChild(tr);
+      });
+
+      evtBody.appendChild(frag);
+    }
+
+    function applySortAndRender() {
+      const rows = [...displayedRows];
+      if (sortKey) {
+        rows.sort((a,b) => {
+          const av = parseMaybeNumber(a[sortKey]);
+          const bv = parseMaybeNumber(b[sortKey]);
+          if (av.isNum && bv.isNum) return (av.num - bv.num) * sortDir;
+          if (av.isNum && !bv.isNum) return -1 * sortDir;
+          if (!av.isNum && bv.isNum) return 1 * sortDir;
+          return (av.raw > bv.raw ? 1 : av.raw < bv.raw ? -1 : 0) * sortDir;
+        });
+      }
+      renderTableHeader();
+      renderTableRows(rows, {skipHeader:true});
+    }
+
+    renderTableHeader();
+
+    // Chart float
+    const chartFloat = document.getElementById('chartFloat');
+    const chartTitleEl = document.getElementById('chartTitle');
+    const chartClose = document.getElementById('chartClose');
+    const chartCanvas = document.getElementById('gridChart');
+    const ctx = chartCanvas.getContext('2d');
+
+    chartClose.addEventListener('click', () => chartFloat.style.display = 'none');
+
+    function showChartWindow(){ chartFloat.style.display = 'block'; resizeCanvasToDisplaySize(); }
+    function hideChartWindow(){ chartFloat.style.display = 'none'; }
+
+    function resizeCanvasToDisplaySize(){
+      const rect = chartCanvas.getBoundingClientRect();
+      const w = Math.max(10, Math.floor(rect.width));
+      const h = Math.max(10, Math.floor(rect.height));
+      if (chartCanvas.width !== w || chartCanvas.height !== h) {
+        chartCanvas.width = w;
+        chartCanvas.height = h;
+      }
+    }
+    function clearChart(){
+      resizeCanvasToDisplaySize();
+      ctx.clearRect(0,0,chartCanvas.width, chartCanvas.height);
+      chartTitleEl.textContent = '點選紅色網格以顯示圖表';
+    }
+
+    function scriptColor(s){
+      if (s === 'YoutubeLive') return 'rgba(255,154,60,0.92)';
+      if (s === 'VoLTEmos') return 'rgba(43,124,255,0.92)';
+      let hash = 0; for (let i=0;i<s.length;i++) hash = ((hash<<5)-hash) + s.charCodeAt(i), hash|=0;
+      const r = 120 + (Math.abs(hash) % 100);
+      const g = 120 + (Math.abs(hash*7) % 100);
+      const b = 120 + (Math.abs(hash*13) % 100);
+      return `rgba(${r},${g},${b},0.92)`;
+    }
+    function drawLegendBox(scripts, x0, y0, w){
+      ctx.save();
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(6,18,40,0.90)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      const h = scripts.length * 14 + 10;
+      ctx.fillRect(x0, y0, w, h);
+      ctx.strokeRect(x0, y0, w, h);
+
+      let y = y0 + 8;
+      for (const s of scripts) {
+        ctx.fillStyle = scriptColor(s);
+        ctx.fillRect(x0 + 8, y, 12, 10);
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.strokeRect(x0 + 8, y, 12, 10);
+
+        ctx.fillStyle = 'rgba(231,238,252,0.92)';
+        ctx.fillText(s, x0 + 26, y + 9);
+        y += 14;
+      }
+      ctx.restore();
+      return h;
+    }
+
+    function renderStackedChartForLocation(locationName){
+      if (!locationName) { clearChart(); hideChartWindow(); return; }
+      const rows = filteredRows.filter(r => toClean(r.start_location_name) === locationName);
+      showChartWindow();
+      chartTitleEl.textContent = `start_location_name：${locationName}（${rows.length}）`;
+
+      resizeCanvasToDisplaySize();
+      const W = chartCanvas.width, H = chartCanvas.height;
+      ctx.clearRect(0,0,W,H);
+
+      const dateMap = new Map();
+      const scriptSet = new Set();
+
+      for (const r of rows) {
+        const d = toClean(r.Date) || '(blank)';
+        const s = toClean(r.measurement_Script) || '(blank)';
+        scriptSet.add(s);
+        if (!dateMap.has(d)) dateMap.set(d, new Map());
+        const m = dateMap.get(d);
+        m.set(s, (m.get(s)||0)+1);
+      }
+
+      const dates = Array.from(dateMap.keys()).sort();
+      const scripts = Array.from(scriptSet.values()).sort();
+
+      if (dates.length === 0) {
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+        ctx.fillText('（此 start_location_name 在目前 Filter 下沒有資料）', 12, 28);
+        return;
+      }
+
+      let maxY = 0;
+      for (const d of dates) {
+        const m = dateMap.get(d);
+        let sum = 0;
+        for (const s of scripts) sum += (m.get(s)||0);
+        maxY = Math.max(maxY, sum);
+      }
+      if (maxY === 0) maxY = 1;
+
+      const padL = 42, padR = 14, padT = 16, padB = 34;
+
+      const legendW = 165;
+      const legendX = W - padR - legendW;
+      const legendY = padT;
+
+      const plotW = (W - padL - padR) - (legendW + 10);
+      const plotH = H - padT - padB;
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + plotH);
+      ctx.lineTo(padL + plotW, padT + plotH);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(231,238,252,0.85)';
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      const tickN = 4;
+      for (let i=0;i<=tickN;i++){
+        const v = Math.round(maxY * (i/tickN));
+        const y = padT + plotH - (plotH * (v/maxY));
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+        ctx.fillText(String(v), 10, y+4);
+      }
+
+      const n = dates.length;
+      const gap = Math.max(6, Math.min(14, plotW / (n*6)));
+      const barW = Math.max(10, (plotW - gap*(n-1)) / n);
+
+      for (let i=0;i<n;i++){
+        const d = dates[i];
+        const m = dateMap.get(d);
+        let y0 = padT + plotH;
+
+        for (const s of scripts) {
+          const c = (m.get(s)||0);
+          if (!c) continue;
+          const h = plotH * (c / maxY);
+          y0 -= h;
+
+          ctx.fillStyle = scriptColor(s);
+          ctx.fillRect(padL + i*(barW+gap), y0, barW, h);
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.strokeRect(padL + i*(barW+gap), y0, barW, h);
+        }
+
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        const x = padL + i*(barW+gap) + barW/2;
+        const y = padT + plotH + 16;
+        ctx.save();
+        ctx.translate(x, y);
+        if (n > 8) ctx.rotate(-Math.PI/5);
+        ctx.textAlign = 'center';
+        ctx.fillText(d, 0, 0);
+        ctx.restore();
+      }
+
+      drawLegendBox(scripts, legendX, legendY, legendW);
+    }
+
+    function applyFiltersToRows(rows){
+      return rows.filter(r => {
+        const d = toClean(r.Date);
+        const n = toClean(r.measurement_NetWork);
+        const s = toClean(r.measurement_Script);
+        const a = toClean(r.Marea);
+        return filterState.Date.has(d)
+            && filterState.measurement_NetWork.has(n)
+            && filterState.measurement_Script.has(s)
+            && filterState.Marea.has(a);
+      });
+    }
+
+    function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
+    function initMetaRed(resKey, h3Index) {
+      return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), sample:null };
+    }
+    function initMetaBlue(resKey, h3Index) {
+      return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
+    }
+
+    function buildHoverHtmlRed(meta) {
+      const paArr = Array.from(meta.paNums).map(String).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
+      const r = meta.sample || {};
+      const locNameLine = `${toClean(r.start_location_name)}/${toClean(r.end_location_name)}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
+      const kmLine = `${toClean(r["start_location_KM+M"])}/${toClean(r["end_location_KM+M"])}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
+      return `
+        <div class="h3-tip">
+          <div><b>H3_res${meta.resNum}:</b> ${escapeHtml(meta.h3Index)}</div>
+          <div><b>location_name(start/end):</b> ${escapeHtml(locNameLine)}</div>
+          <div><b>location_KM+M:</b> ${escapeHtml(kmLine)}</div>
+          <div><b>twcounty:</b> ${escapeHtml(toClean(r.twcounty))}</div>
+          <div><b>Marea:</b> ${escapeHtml(toClean(r.Marea))}</div>
+          <div><b>Mcenter:</b> ${escapeHtml(toClean(r.Mcenter))}</div>
+          <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
+          <div><b>count:</b> ${escapeHtml(meta.count)}</div>
+        </div>
+      `;
+    }
+    function buildHoverHtmlBlue(meta) {
+      const names = Array.from(meta.names).filter(Boolean);
+      return `
+        <div class="h3-tip">
+          <div><b>H3_res${meta.resNum} (Location):</b> ${escapeHtml(meta.h3Index)}</div>
+          <div><b>location_name:</b> ${escapeHtml(names.slice(0,6).join('、') + (names.length>6?'…':''))}</div>
+        </div>
+      `;
+    }
+    function addLayerToLocIndex(names, poly) {
+      for (const nm of names) {
+        if (!nm) continue;
+        if (!layersByLocName.has(nm)) layersByLocName.set(nm, new Set());
+        layersByLocName.get(nm).add(poly);
+      }
+    }
+
+    function onRedGridClick(meta){
+      const names = Array.from(meta.startNames).filter(Boolean);
+      selectionLocationNames = names;
+      selectionPrimaryName = names[0] || '';
+
+      if (!names.length) {
+        setSelectionTag(`（此網格無 start_location_name）`);
+        hideChartWindow();
+        renderTableRows(filteredRows);
+        return;
+      }
+
+      const selectedTable = filteredRows.filter(r => names.includes(toClean(r.start_location_name)));
+      setSelectionTag(`已篩選 start_location_name：${names.join('、')}（${selectedTable.length} 筆）`);
+      renderTableRows(selectedTable);
+
+      renderStackedChartForLocation(selectionPrimaryName);
+    }
+
+    function addPolygonCell(meta, layerGroup, type) {
+      const h3Index = meta.h3Index;
+      const boundary = h3.cellToBoundary(h3Index);
+      const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
+
+      const baseStyle = (type === 'red')
+        ? { color:'#ff3b3b', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.14 }
+        : { color:'#2b7cff', weight:1, opacity:0.95, fillColor:'#2b7cff', fillOpacity:0.12 };
+
+      const poly = L.polygon(latlngs, baseStyle);
+      poly.__baseStyle = baseStyle;
+      poly.__type = type;
+      poly.__meta = meta;
+      layerGroup.addLayer(poly);
+
+      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
+      poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
+
+      poly.on('mouseover', () => {
+        poly.setStyle({ weight: 3, color:'#b300ff', fillOpacity: (type==='red'?0.20:0.16) });
+        const names = (type === 'red') ? Array.from(meta.startNames) : Array.from(meta.names);
+        highlightByLocationNames(names);
+      });
+      poly.on('mouseout', () => {
+        clearHoverHighlights();
+        poly.setStyle(baseStyle);
+      });
+      if (type === 'red') poly.on('click', () => onRedGridClick(meta));
+
+      if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
+      else addLayerToLocIndex(Array.from(meta.names), poly);
+
+      return poly;
+    }
+
+    function rebuildH3FromRows(rowsPA){
       for (const k of ['RES8','RES9','RES10','RES11']) {
         h3Layers[k].clearLayers();
-        redGrid[k].clear(); blueGrid[k].clear();
+        redAgg[k].clear();
+        blueAgg[k].clear();
         redLabelItems[k] = [];
       }
-      aggLabelLayer.clearLayers();
-      nameLabelLayer.clearLayers();
-      for (const k of ['RES8','RES9','RES10','RES11']) { redCounts[k]=0; blueCounts[k]=0; }
-      firstRenderError = null;
-      dErr.textContent = '(none)';
+      layersByLocName.clear();
+      clearHoverHighlights();
+
+      function addRed(resKey, h3Index, row) {
+        if (!h3Index) return;
+        let meta = redAgg[resKey].get(h3Index);
+        if (!meta) {
+          meta = initMetaRed(resKey, h3Index);
+          meta.sample = row;
+          redAgg[resKey].set(h3Index, meta);
+        }
+        meta.count += 1;
+        const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
+        const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
+        if (sn) meta.startNames.add(sn);
+        if (en) meta.endNames.add(en);
+      }
+
+      for (const r of rowsPA) {
+        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
+        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
+        addRed('RES10', toClean(r.start_H3_Res_10), r);
+        addRed('RES11', toClean(r.start_H3_Res_11), r);
+      }
+
+      function addBlue(resKey, h3Index, startName) {
+        if (!h3Index) return;
+        let meta = blueAgg[resKey].get(h3Index);
+        if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg[resKey].set(h3Index, meta); }
+        if (startName) meta.names.add(startName);
+      }
+
+      for (const r of rowsPA) {
+        const startName = toClean(r.start_location_name);
+        if (!startName) continue;
+        const matches = locMap.get(startName);
+        if (!matches || !matches.length) continue;
+        for (const locRow of matches) {
+          addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
+          addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
+          addBlue('RES10', toClean(locRow.H3_Res_10), startName);
+          addBlue('RES11', toClean(locRow.H3_Res_11), startName);
+        }
+      }
+
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        for (const h3Index of blueAgg[resKey].keys()) {
+          if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
+        }
+      }
+
+      let redCells=0, blueCells=0;
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        const lg = h3Layers[resKey];
+
+        for (const [h3Index, meta] of redAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          addPolygonCell(meta, lg, 'red');
+          redCells++;
+          const center = h3.cellToLatLng(h3Index);
+          const nameText = Array.from(meta.startNames).filter(Boolean)[0] || '';
+          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
+        }
+
+        for (const [h3Index, meta] of blueAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          addPolygonCell(meta, lg, 'blue');
+          blueCells++;
+        }
+      }
+
+      renderAggLabels();
+      renderNameLabels();
+      updatePointsVisibility();
+      return {redCells, blueCells};
     }
 
-    function updateDiagCounts(){
-      dRed.textContent = `${redGrid.RES8.size}/${redGrid.RES9.size}/${redGrid.RES10.size}/${redGrid.RES11.size}`;
-      dBlue.textContent = `${blueGrid.RES8.size}/${blueGrid.RES9.size}/${blueGrid.RES10.size}/${blueGrid.RES11.size}`;
+    function onRowClick(displayIdx) {
+      const row = displayedRows[displayIdx];
+      if (!row) return;
+
+      const resKey = currentResKey;
+      const hKey = resKey === 'RES8' ? 'start_H3_Res_8'
+                : resKey === 'RES9' ? 'start_H3_Res_9'
+                : resKey === 'RES10' ? 'start_H3_Res_10'
+                : 'start_H3_Res_11';
+
+      const h3Index = toClean(row[hKey]);
+      if (!h3Index || !h3.isValidCell(h3Index)) {
+        setSelectionTag(`定位失敗：${resKey} 的 start_H3 空白或無效`);
+        return;
+      }
+
+      const c = h3.cellToLatLng(h3Index);
+      map.flyTo([c[0], c[1]], Math.max(map.getZoom(), 14), { duration: 0.8 });
+      setSelectionTag(`定位：${resKey} / ${h3Index}`);
+
+      const nm = toClean(row.start_location_name);
+      if (nm) {
+        selectionPrimaryName = nm;
+        renderStackedChartForLocation(nm);
+      }
     }
 
-    function buildRedGrid(rows){
+    // PA Points icon
+    function isValidLatLng(lat, lon){
+      const a = Number(lat), b = Number(lon);
+      return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
+    }
+    function normNet(v){
+      const s = toClean(v);
+      return s === '5G' ? '5G' : (s === '4G' ? '4G' : s);
+    }
+    function netColor(net){
+      return (net === '5G') ? '#ff9a3c' : '#0b2d6e';
+    }
+    function scriptKind(script){
+      const s = toClean(script);
+      if (s === 'YoutubeLive') return 'YT';
+      if (s === 'VoLTEmos') return 'TEL';
+      return 'DOT';
+    }
+    function pointSvg(kind){
+      if (kind === 'YT') {
+        return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="white" d="M21.6 7.2s-.2-1.5-.8-2.2c-.8-.8-1.8-.8-2.2-.9C14.9 3.8 12 3.8 12 3.8h0s-2.9 0-6.6.3c-.5.1-1.4.1-2.2.9-.6.7-.8 2.2-.8 2.2S2.2 9 2.2 10.8v1.7c0 1.8.2 3.6.2 3.6s.2 1.5.8 2.2c.8.8 1.9.8 2.4.9 1.7.2 6.4.3 6.4.3s2.9 0 6.6-.3c.5-.1 1.4-.1 2.2-.9.6-.7.8-2.2.8-2.2s.2-1.8.2-3.6v-1.7c0-1.8-.2-3.6-.2-3.6zM10 14.9V8.8l6 3.05-6 3.05z"/>
+        </svg>`;
+      }
+      if (kind === 'TEL') {
+        return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="white" d="M6.6 10.8c1.2 2.4 3.6 4.8 6 6l2-2c.3-.3.8-.4 1.2-.3 1.3.4 2.7.7 4.2.7.7 0 1.2.5 1.2 1.2v3.2c0 .7-.5 1.2-1.2 1.2C10.7 21.7 2.3 13.3 2.3 3.2 2.3 2.5 2.8 2 3.5 2h3.2c.7 0 1.2.5 1.2 1.2 0 1.4.2 2.9.7 4.2.1.4 0 .9-.3 1.2l-2 2z"/>
+        </svg>`;
+      }
+      return `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="6" fill="white"></circle>
+      </svg>`;
+    }
+
+    function makePointDivIcon({kind, se, net}){
+      const bg = netColor(net);
+      const html = `
+        <div style="
+          width:26px;height:26px;border-radius:10px;
+          background:${bg};
+          border:1px solid rgba(255,255,255,0.22);
+          box-shadow:0 6px 16px rgba(0,0,0,0.45);
+          display:flex;align-items:center;justify-content:center;
+          position:relative;
+          overflow:visible;
+        ">
+          ${pointSvg(kind)}
+          <div style="
+            position:absolute;
+            left:50%;
+            bottom:2px;
+            transform:translateX(-50%);
+            font-size:10px;
+            font-weight:1000;
+            color:#00d6ff; /* ✅ S/E blue */
+            text-shadow:0 0 10px rgba(0,0,0,0.7);
+            line-height:1;
+            padding:0 2px;
+            pointer-events:none;
+          ">${escapeHtml(se)}</div>
+        </div>
+      `;
+      return L.divIcon({ className:'', html, iconSize:[26,26], iconAnchor:[13,13] });
+    }
+
+    function pointTooltipHtml(r, which){
+      const net = toClean(r.measurement_NetWork);
+      const script = toClean(r.measurement_Script);
+      const common = `
+        <div><b>Date:</b> ${escapeHtml(toClean(r.Date))}</div>
+        <div><b>PA_Num:</b> ${escapeHtml(toClean(r.PA_Num))}</div>
+        <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
+        <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
+        <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
+        <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))} / ${escapeHtml(net)} / ${escapeHtml(script)}</div>
+      `;
+
+      if (which === 'start') {
+        return `
+          <div class="h3-tip">
+            ${common}
+            <div><b>lag_end_tw:</b> ${escapeHtml(toClean(r.lag_end_tw))}</div>
+            <div><b>Lat,Lon:</b> ${escapeHtml(toClean(r.start_lat))}, ${escapeHtml(toClean(r.start_lon))}</div>
+            <div><b>KM+M:</b> ${escapeHtml(toClean(r["start_location_KM+M"]))}</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="h3-tip">
+          ${common}
+          <div><b>lag_start_tw:</b> ${escapeHtml(toClean(r.lag_start_tw))}</div>
+          <div><b>Lat,Lon:</b> ${escapeHtml(toClean(r.end_lat))}, ${escapeHtml(toClean(r.end_lon))}</div>
+          <div><b>KM+M:</b> ${escapeHtml(toClean(r["end_location_KM+M"]))}</div>
+        </div>
+      `;
+    }
+
+    function rebuildPointLayers(rows){
+      startPointLayer.clearLayers();
+      endPointLayer.clearLayers();
+
       for (const r of rows) {
-        const add = (resKey, h3Index) => {
-          const idx = cleanH3Index(h3Index);
-          if (!idx) return;
-          let meta = redGrid[resKey].get(idx);
-          if (!meta) { meta = { h3: idx, count:0, name: (r.start_location_name||'') }; redGrid[resKey].set(idx, meta); }
-          meta.count += 1;
-        };
-        add('RES8', r.start_H3_Res_8);
-        add('RES9', r.start_H3_Res_9);
-        add('RES10', r.start_H3_Res_10);
-        add('RES11', r.start_H3_Res_11);
-      }
-    }
+        const net = normNet(r.measurement_NetWork);
+        const kind = scriptKind(r.measurement_Script);
 
-    function drawH3(H){
-      setDiagStatus('drawing polygons...');
-      // label items
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        const items = [];
-        for (const meta of redGrid[resKey].values()) {
-          try{
-            const c = h3CenterLatLng(H, meta.h3);
-            items.push({ latlng: L.latLng(c[0], c[1]), count: meta.count, nameText: meta.name });
-          }catch(e){
-            setDiagError(`Center fail: ${meta.h3}\n${String(e.message||e)}`);
-          }
+        if (isValidLatLng(r.start_lat, r.start_lon)) {
+          const icon = makePointDivIcon({ kind, se:'S', net });
+          const mk = L.marker([Number(r.start_lat), Number(r.start_lon)], {
+            icon,
+            pane: 'paPointsPane',
+            zIndexOffset: 50000
+          });
+          mk.bindTooltip(pointTooltipHtml(r,'start'), { sticky:true, direction:'top', opacity:0.95 });
+          startPointLayer.addLayer(mk);
         }
-        redLabelItems[resKey] = items;
-      }
 
-      // polygons
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        for (const meta of redGrid[resKey].values()) {
-          try{
-            const latlngs = h3BoundaryLatLng(H, meta.h3);
-            const poly = L.polygon(latlngs, {
-              color: 'rgba(255,43,43,0.85)',
-              weight: 1.5,
-              fillColor: 'rgba(255,43,43,0.18)',
-              fillOpacity: 0.45
-            });
-            poly.bindTooltip(`<div class="h3-tip"><div><b>${resKey}</b>${meta.h3}</div><div><b>count</b>${meta.count}</div><div><b>start_location_name</b>${meta.name}</div></div>`, { sticky:true, opacity:1.0 });
-            h3Layers[resKey].addLayer(poly);
-          }catch(e){
-            setDiagError(`Boundary fail: ${meta.h3}\n${String(e.message||e)}`);
-          }
+        if (isValidLatLng(r.end_lat, r.end_lon)) {
+          const icon = makePointDivIcon({ kind, se:'E', net });
+          const mk = L.marker([Number(r.end_lat), Number(r.end_lon)], {
+            icon,
+            pane: 'paPointsPane',
+            zIndexOffset: 50000
+          });
+          mk.bindTooltip(pointTooltipHtml(r,'end'), { sticky:true, direction:'top', opacity:0.95 });
+          endPointLayer.addLayer(mk);
         }
       }
-
-      updateDiagCounts();
-      showOnlyRes(currentResKey);
-      setDiagStatus('done');
+      updatePointsVisibility();
     }
 
-    /* ========= Load ========= */
-    async function main(){
-      setDiagStatus('booting...');
-      const H = getH3Lib();
-      if (!H) {
-        dH3.textContent = 'NOT FOUND (window.h3 missing)';
-        setDiagStatus('FAILED');
-        setDiagError('h3-js 沒有載入成功（window.h3 不存在）');
-        return;
-      }
-      dH3.textContent = 'loaded';
-      setDiagStatus('fetching CSV...');
+    function applyFilterAndRerender(){
+      filteredRows = applyFiltersToRows(allRowsRaw);
 
-      const paCsvUrlAbs = new URL(`./PA_data.csv?v=${Date.now()}`, location.href).toString();
-      const locCsvUrlAbs = new URL(`./THSR_Location.csv?v=${Date.now()}`, location.href).toString();
-
-      let paText = '';
-      try{ paText = await fetchNoStore(paCsvUrlAbs); }
-      catch(e){
-        setDiagStatus('FAILED');
-        setDiagError(`PA_data.csv 讀取失敗：\n${String(e.message||e)}\n${paCsvUrlAbs}`);
-        return;
+      if (selectionLocationNames.length) {
+        const selectedTable = filteredRows.filter(r => selectionLocationNames.includes(toClean(r.start_location_name)));
+        renderTableRows(selectedTable);
+        setSelectionTag(`已篩選 start_location_name：${selectionLocationNames.join('、')}（${selectedTable.length} 筆）`);
+      } else {
+        renderTableRows(filteredRows);
+        setSelectionTag(`Filter 生效：${filteredRows.length} 筆`);
       }
 
-      const rows = parseCsvRobust(paText);
-      dRows.textContent = String(rows.length);
+      rebuildPointLayers(filteredRows);
+      const stats = rebuildH3FromRows(filteredRows);
 
-      // init filter options
-      const optDate = uniqSorted(rows.map(r => (r.Date||'').trim()));
-      const optNet  = uniqSorted(rows.map(r => (r.measurement_NetWork||'').trim()));
-      const optScr  = uniqSorted(rows.map(r => (r.measurement_Script||'').trim()));
-      const optArea = uniqSorted(rows.map(r => (r.Marea||'').trim()));
-      fwDate.setOptions(optDate);
-      fwNet.setOptions(optNet);
-      fwScr.setOptions(optScr);
-      fwArea.setOptions(optArea);
+      lastUpdateTime = new Date().toISOString();
+      setStatus(`ok: filtered_rows=${filteredRows.length}, red_cells=${stats.redCells}, blue_cells=${stats.blueCells}`);
 
-      renderTableRows(rows.slice(0, 200)); // table just show first 200 for now
-      resetH3();
-      buildRedGrid(rows);
-
-      updateDiagCounts();
-      setDiagStatus('redGrid built, rendering...');
-      drawH3(H);
+      if (chartFloat.style.display === 'block' && selectionPrimaryName) {
+        renderStackedChartForLocation(selectionPrimaryName);
+      }
     }
 
-    main().catch(e => {
-      setDiagStatus('FAILED');
-      setDiagError(String(e.stack||e));
+    map.on('zoomend moveend', () => {
+      renderAggLabels();
+      renderNameLabels();
+      updatePointsVisibility();
     });
+
+    async function loadBothCSVsAndInit() {
+      setStatus("starting...");
+
+      if (typeof window.h3 === 'undefined') {
+        h3Info = 'NOT LOADED (window.h3 is undefined)';
+        throw new Error('h3 is not defined (h3-js 未載入成功)');
+      } else {
+        const v = window.h3?.versions?.h3 || window.h3?.VERSION || 'loaded';
+        h3Info = `loaded (${v})`;
+      }
+
+      initUrls();
+      setStatus("fetching PA & Location");
+      httpInfo = "PA:pending | LOC:pending";
+
+      const txtPA = await fetchNoStore(paCsvUrlAbs);
+      httpInfo = "PA:OK | LOC:pending";
+
+      let txtLoc = "";
+      let locOk = true;
+      try {
+        txtLoc = await fetchNoStore(locCsvUrlAbs);
+        httpInfo = "PA:OK | LOC:OK";
+      } catch (e) {
+        locOk = false;
+        httpInfo = "PA:OK | LOC:FAILED (skip blue grids)";
+        logError(e);
+      }
+
+      const rowsPA = parseCsvRobust(txtPA);
+      const rowsLoc = locOk ? parseCsvRobust(txtLoc) : [];
+
+      locMap.clear();
+      for (const r of rowsLoc) {
+        const name = toClean(r.location_name);
+        if (!name) continue;
+        if (!locMap.has(name)) locMap.set(name, []);
+        locMap.get(name).push(r);
+      }
+
+      allRowsRaw = rowsPA;
+
+      const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)));
+      const optNet  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_NetWork)));
+      const optScr  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_Script)));
+      const optArea = uniqSorted(allRowsRaw.map(r => toClean(r.Marea)));
+
+      filterWidgets.Date.setOptions(optDate);
+      filterWidgets.measurement_NetWork.setOptions(optNet);
+      filterWidgets.measurement_Script.setOptions(optScr);
+      filterWidgets.Marea.setOptions(optArea);
+
+      filteredRows = [...allRowsRaw];
+
+      renderTableRows(filteredRows);
+      rebuildPointLayers(filteredRows);
+      rebuildH3FromRows(filteredRows);
+      showOnlyRes('RES9');
+
+      hideChartWindow();
+      clearChart();
+
+      lastUpdateTime = new Date().toISOString();
+      setStatus(`ok: rows=${rowsPA.length}`);
+
+      const bounds = L.latLngBounds([]);
+      for (const r of filteredRows) {
+        if (isValidLatLng(r.start_lat, r.start_lon)) bounds.extend([Number(r.start_lat), Number(r.start_lon)]);
+        if (isValidLatLng(r.end_lat, r.end_lon)) bounds.extend([Number(r.end_lat), Number(r.end_lon)]);
+      }
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
+    }
+
+    function startApp() {
+      try {
+        setStatus("booting...");
+        setTimeout(async () => {
+          try { await loadBothCSVsAndInit(); }
+          catch (e) { logError(e); showFatal(String(e?.stack || e)); }
+        }, 0);
+      } catch (e) { logError(e); showFatal(String(e?.stack || e)); }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startApp);
+    else startApp();
   </script>
 </body>
 </html>
