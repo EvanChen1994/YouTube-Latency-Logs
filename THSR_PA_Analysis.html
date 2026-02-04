@@ -236,7 +236,7 @@
     // =============================
     // Version
     // =============================
-    const APP_VERSION = "ver 5.1";
+    const APP_VERSION = "ver 5.2";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // =============================
@@ -272,12 +272,10 @@
     function logError(err) {
       const s = String(err?.stack || err);
       errorLogs.push(s);
-      // 讓狀態不會卡 init
       if (!lastStatus.startsWith("FAILED")) setStatus("FAILED: " + (err?.message || s));
       console.error(err);
     }
 
-    // ✅ 全域錯誤捕捉：避免「卡 init」
     window.addEventListener('error', (e) => logError(e.error || e.message || e));
     window.addEventListener('unhandledrejection', (e) => logError(e.reason || e));
 
@@ -366,7 +364,6 @@
       return res.text();
     }
 
-    // ✅ 啟動前就先把 URL 塞進系統資訊（方便你檢查檔名/大小寫）
     function initUrls() {
       paCsvUrlAbs = new URL(`./PA_data.csv?v=${Date.now()}`, location.href).toString();
       locCsvUrlAbs = new URL(`./THSR_Location.csv?v=${Date.now()}`, location.href).toString();
@@ -396,13 +393,106 @@
     ).addTo(map);
 
     // =============================
-    // H3 layers
+    // H3 layers (先宣告資料結構，避免 TDZ)
     // =============================
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     const aggLabelLayer = L.layerGroup().addTo(map);
     const nameLabelLayer = L.layerGroup().addTo(map);
 
+    // ✅ 這些一定要在 showOnlyRes / renderAggLabels 前先存在
+    const locMap = new Map();
+    const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
+    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
+    const layersByLocName = new Map();
+    let highlightedLayers = new Set();
+
     let currentResKey = 'RES9';
+
+    function clearHoverHighlights() {
+      for (const ly of highlightedLayers) {
+        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
+      }
+      highlightedLayers.clear();
+    }
+    function highlightByLocationNames(names) {
+      clearHoverHighlights();
+      for (const nm of names) {
+        const set = layersByLocName.get(nm);
+        if (!set) continue;
+        for (const ly of set) {
+          if (!ly.__baseStyle) continue;
+          ly.setStyle({ weight: 3, color: '#ffd400', opacity: 1.0 });
+          highlightedLayers.add(ly);
+        }
+      }
+    }
+
+    function bucketSizeForZoom(z) {
+      return Math.max(26, 92 - z * 4);
+    }
+
+    function renderAggLabels() {
+      aggLabelLayer.clearLayers();
+      const items = redLabelItems[currentResKey] || [];
+      if (!items.length) return;
+
+      const z = map.getZoom();
+      const bs = bucketSizeForZoom(z);
+
+      const buckets = new Map();
+      for (const it of items) {
+        const p = map.latLngToContainerPoint(it.latlng);
+        const bx = Math.floor(p.x / bs);
+        const by = Math.floor(p.y / bs);
+        const key = `${bx},${by}`;
+
+        let b = buckets.get(key);
+        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
+        b.sum += it.count;
+        b.n += 1;
+        b.latSum += it.latlng.lat;
+        b.lngSum += it.latlng.lng;
+        buckets.set(key, b);
+      }
+
+      for (const b of buckets.values()) {
+        if (!b.sum) continue;
+        const lat = b.latSum / b.n;
+        const lng = b.lngSum / b.n;
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="agg-label">${escapeHtml(b.sum)}</div>`,
+          iconSize: null
+        });
+
+        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
+      }
+    }
+
+    function renderNameLabels() {
+      nameLabelLayer.clearLayers();
+      const z = map.getZoom();
+      if (z < 12) return;
+
+      const items = redLabelItems[currentResKey] || [];
+      if (!items.length) return;
+
+      for (const it of items) {
+        if (!it.nameText) continue;
+
+        const icon = L.divIcon({
+          className: '',
+          html: `<div class="name-label" title="${escapeHtml(it.nameText)}">${escapeHtml(it.nameText)}</div>`,
+          iconSize: null
+        });
+
+        const latlng = it.latlng;
+        const shifted = L.latLng(latlng.lat + 0.00015, latlng.lng);
+        L.marker(shifted, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
+      }
+    }
 
     function showOnlyRes(resKey) {
       for (const k of ['RES8','RES9','RES10','RES11']) {
@@ -415,6 +505,7 @@
       clearHoverHighlights();
     }
 
+    // Resolution single-select control
     const ResControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function() {
@@ -437,6 +528,8 @@
     });
     map.addControl(new ResControl());
     showOnlyRes('RES9');
+
+    map.on('zoomend moveend', () => { renderAggLabels(); renderNameLabels(); });
 
     // =============================
     // Measure tool
@@ -552,12 +645,10 @@
         evtHeadRow.appendChild(th);
       }
     }
-
     function setSelectionTag(text) {
       selectionTag.textContent = text || '';
       selectionTag.title = text || '';
     }
-
     let allRows = [];
     let displayedRows = [];
 
@@ -569,7 +660,6 @@
       rows.forEach((r, idx) => {
         const tr = document.createElement('tr');
         tr.classList.add('row-clickable');
-        tr.dataset.rowIndex = String(idx);
 
         for (const c of COLS) {
           const td = document.createElement('td');
@@ -578,14 +668,12 @@
           td.title = v;
           tr.appendChild(td);
         }
-
         tr.addEventListener('click', () => onRowClick(idx));
         frag.appendChild(tr);
       });
 
       evtBody.appendChild(frag);
     }
-
     renderTableHeader();
 
     btnClear.addEventListener('click', () => {
@@ -594,35 +682,8 @@
     });
 
     // =============================
-    // Data structures
+    // H3 helper functions
     // =============================
-    const locMap = new Map();
-    const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-    const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
-    const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
-
-    const layersByLocName = new Map();
-    let highlightedLayers = new Set();
-
-    function clearHoverHighlights() {
-      for (const ly of highlightedLayers) {
-        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
-      }
-      highlightedLayers.clear();
-    }
-    function highlightByLocationNames(names) {
-      clearHoverHighlights();
-      for (const nm of names) {
-        const set = layersByLocName.get(nm);
-        if (!set) continue;
-        for (const ly of set) {
-          if (!ly.__baseStyle) continue;
-          ly.setStyle({ weight: 3, color: '#ffd400', opacity: 1.0 });
-          highlightedLayers.add(ly);
-        }
-      }
-    }
-
     function resNumOfKey(resKey) {
       return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11;
     }
@@ -641,18 +702,12 @@
     }
 
     function initMetaBlue(resKey, h3Index) {
-      return {
-        resKey,
-        resNum: resNumOfKey(resKey),
-        h3Index,
-        names: new Set()
-      };
+      return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
     }
 
     function buildHoverHtmlRed(meta) {
       const startNames = Array.from(meta.startNames);
       const endNames = Array.from(meta.endNames);
-      const pairs = Array.from(meta.locPairs);
       const paArr = Array.from(meta.paNums).map(x=>String(x)).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
       return `
         <div class="h3-tip">
@@ -717,77 +772,8 @@
       return poly;
     }
 
-    function bucketSizeForZoom(z) {
-      const bs = Math.max(26, 92 - z * 4);
-      return bs;
-    }
-
-    function renderAggLabels() {
-      aggLabelLayer.clearLayers();
-      const items = redLabelItems[currentResKey] || [];
-      if (!items.length) return;
-
-      const z = map.getZoom();
-      const bs = bucketSizeForZoom(z);
-
-      const buckets = new Map();
-      for (const it of items) {
-        const p = map.latLngToContainerPoint(it.latlng);
-        const bx = Math.floor(p.x / bs);
-        const by = Math.floor(p.y / bs);
-        const key = `${bx},${by}`;
-
-        let b = buckets.get(key);
-        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
-        b.sum += it.count;
-        b.n += 1;
-        b.latSum += it.latlng.lat;
-        b.lngSum += it.latlng.lng;
-        buckets.set(key, b);
-      }
-
-      for (const b of buckets.values()) {
-        if (!b.sum) continue;
-        const lat = b.latSum / b.n;
-        const lng = b.lngSum / b.n;
-
-        const icon = L.divIcon({
-          className: '',
-          html: `<div class="agg-label">${escapeHtml(b.sum)}</div>`,
-          iconSize: null
-        });
-
-        L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
-      }
-    }
-
-    function renderNameLabels() {
-      nameLabelLayer.clearLayers();
-      const z = map.getZoom();
-      if (z < 12) return;
-
-      const items = redLabelItems[currentResKey] || [];
-      if (!items.length) return;
-
-      for (const it of items) {
-        if (!it.nameText) continue;
-
-        const icon = L.divIcon({
-          className: '',
-          html: `<div class="name-label" title="${escapeHtml(it.nameText)}">${escapeHtml(it.nameText)}</div>`,
-          iconSize: null
-        });
-
-        const latlng = it.latlng;
-        const shifted = L.latLng(latlng.lat + 0.00015, latlng.lng);
-        L.marker(shifted, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
-      }
-    }
-
-    map.on('zoomend moveend', () => { renderAggLabels(); renderNameLabels(); });
-
     // =============================
-    // Row click -> fly (簡化：先保留原行為)
+    // Row click -> fly
     // =============================
     function onRowClick(displayIdx) {
       const row = displayedRows[displayIdx];
@@ -811,7 +797,7 @@
     }
 
     // =============================
-    // Load + Render (核心修正點：啟動 + 允許 LOC 失敗)
+    // Load + Render
     // =============================
     async function loadBothCSVsAndRender() {
       setStatus("starting...");
@@ -824,13 +810,10 @@
         h3Info = `loaded (${v})`;
       }
 
-      // 先寫入 URL 讓系統資訊一定看得到
       initUrls();
-
       setStatus("fetching PA & Location");
       httpInfo = "PA:pending | LOC:pending";
 
-      // ✅ PA 必須成功；LOC 允許失敗（失敗仍畫紅格）
       const txtPA = await fetchNoStore(paCsvUrlAbs);
       httpInfo = "PA:OK | LOC:pending";
 
@@ -848,7 +831,6 @@
       const rowsPA = parseCsvRobust(txtPA);
       const rowsLoc = locOk ? parseCsvRobust(txtLoc) : [];
 
-      // locMap
       locMap.clear();
       for (const r of rowsLoc) {
         const name = toClean(r.location_name);
@@ -857,12 +839,10 @@
         locMap.get(name).push(r);
       }
 
-      // table
       allRows = rowsPA;
       renderTableRows(allRows);
       setSelectionTag('');
 
-      // clear layers
       for (const k of ['RES8','RES9','RES10','RES11']) {
         h3Layers[k].clearLayers();
         redAgg[k].clear();
@@ -872,7 +852,6 @@
       layersByLocName.clear();
       clearHoverHighlights();
 
-      // build red
       function addRed(resKey, h3Index, row) {
         if (!h3Index) return;
         let meta = redAgg[resKey].get(h3Index);
@@ -892,7 +871,6 @@
         addRed('RES11', toClean(r.start_H3_Res_11), r);
       }
 
-      // build blue (only if LOC ok)
       if (locOk) {
         function addBlue(resKey, h3Index, startName) {
           if (!h3Index) return;
@@ -922,7 +900,6 @@
         }
       }
 
-      // render
       const boundsAcc = L.latLngBounds([]);
       let redCells=0, blueCells=0;
 
@@ -964,21 +941,17 @@
       renderNameLabels();
     }
 
-    // ✅ 最重要：確保啟動一定跑（避免卡 init）
+    // =============================
+    // Start (確保啟動)
+    // =============================
     function startApp() {
       try {
         setStatus("booting...");
-        // 小延遲，避免某些瀏覽器在外掛 script 還在初始化時就跑
         setTimeout(async () => {
-          try {
-            await loadBothCSVsAndRender();
-          } catch (e) {
-            logError(e);
-          }
+          try { await loadBothCSVsAndRender(); }
+          catch (e) { logError(e); }
         }, 0);
-      } catch (e) {
-        logError(e);
-      }
+      } catch (e) { logError(e); }
     }
 
     if (document.readyState === 'loading') {
