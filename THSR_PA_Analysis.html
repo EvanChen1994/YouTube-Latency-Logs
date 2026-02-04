@@ -8,98 +8,152 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <style>
-    html, body { height: 100%; margin: 0; }
-    .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
-    #map { width:50vw; height:100vh; background:#f3f3f3; }
-    #panel {
-      width:50vw; height:100vh; overflow:hidden;
-      box-sizing:border-box; border-left:1px solid #e5e5e5;
-      display:flex; flex-direction:column;
-      background:#fff;
+    :root{
+      --bg0:#070b16;
+      --bg1:#0b1020;
+      --bg2:#0c142a;
+      --panel:#0a1328;
+      --panel2:#0b1a33;
+      --line:rgba(255,255,255,0.10);
+      --line2:rgba(255,255,255,0.16);
+      --txt:#e7eefc;
+      --muted:#9ab0d8;
+      --accent:#2b7cff;
+      --accent2:#00d6ff;
+      --danger:#ff2b2b;
+      --orange:#ff9a3c;
+      --deepblue:#1240ff;
     }
 
-    .topbar {
+    html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
+    .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+
+    #map { width:50vw; height:100vh; background:#0a0f1e; }
+
+    #panel{
+      width:50vw; height:100vh; overflow:hidden;
+      box-sizing:border-box; border-left:1px solid var(--line);
+      display:flex; flex-direction:column;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--bg1) 100%);
+      position:relative;
+    }
+
+    /* tech scanline / glow */
+    #panel::before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        repeating-linear-gradient(to bottom,
+          rgba(255,255,255,0.02) 0px,
+          rgba(255,255,255,0.02) 1px,
+          rgba(0,0,0,0) 3px,
+          rgba(0,0,0,0) 6px);
+      pointer-events:none;
+      mix-blend-mode: overlay;
+      opacity:.35;
+    }
+    #panel::after{
+      content:"";
+      position:absolute; inset:-40px;
+      background: radial-gradient(circle at 20% 10%, rgba(43,124,255,0.18), transparent 35%),
+                  radial-gradient(circle at 80% 25%, rgba(0,214,255,0.12), transparent 40%);
+      pointer-events:none;
+      opacity:.9;
+      filter: blur(2px);
+    }
+
+    .topbar{
+      position:relative;
+      z-index:2;
       display:flex; align-items:center; justify-content:space-between;
       padding:10px 12px;
-      border-bottom:1px solid #eee;
+      border-bottom:1px solid var(--line);
       gap:10px;
+      background: linear-gradient(180deg, rgba(11,26,51,0.92) 0%, rgba(10,19,40,0.88) 100%);
+      backdrop-filter: blur(6px);
     }
 
     .title-wrap { display:flex; align-items:baseline; gap:10px; min-width: 0; }
-    .title-wrap h2 { margin:0; font-size:18px; white-space:nowrap; }
-    .verTag { color:#666; font-weight:700; white-space:nowrap; }
-    .selectionTag { color:#666; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 24vw; }
+    .title-wrap h2 {
+      margin:0; font-size:18px; white-space:nowrap;
+      letter-spacing: .5px;
+      text-shadow: 0 0 12px rgba(43,124,255,0.35);
+    }
+    .verTag { color:var(--muted); font-weight:800; white-space:nowrap; }
+    .selectionTag{
+      color:var(--muted); font-size:12px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis; max-width: 24vw;
+    }
 
-    .btns { display:flex; gap:8px; align-items:center; }
-    .btn {
-      border:1px solid #ddd;
-      background:#fafafa;
-      border-radius:8px;
+    .btns{ display:flex; gap:8px; align-items:center; position:relative; z-index:2; }
+    .btn{
+      border:1px solid var(--line2);
+      background: rgba(255,255,255,0.04);
+      border-radius:10px;
       padding:6px 10px;
       cursor:pointer;
-      font-weight:700;
+      font-weight:800;
       user-select:none;
       display:flex;
       align-items:center;
       gap:6px;
       white-space:nowrap;
+      color: var(--txt);
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+      transition: .15s ease;
     }
-    .btn:hover { background:#f2f2f2; }
-    .btn.active { background:#ffe9e9; border-color:#d00; color:#b00; }
-
-    .icon-btn { width:36px; height:34px; padding:0; justify-content:center; }
-    .muted { color:#666; }
-    .err { color:#c00; white-space:pre-wrap; }
-    code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
-    a { color: inherit; }
-
-    .agg-label{
-      color:#fff;
-      border-radius: 12px;
-      padding: 2px 8px;
-      font-size: 12px;
-      font-weight: 900;
-      line-height: 18px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
-      pointer-events: none;
-      white-space: nowrap;
-      border: 1px solid rgba(255,255,255,0.38);
-      background: rgba(200, 0, 0, 0.92);
+    .btn:hover{
+      background: rgba(43,124,255,0.10);
+      border-color: rgba(43,124,255,0.40);
+      box-shadow: 0 0 18px rgba(43,124,255,0.12);
+    }
+    .btn.active{
+      background: rgba(255,43,43,0.18);
+      border-color: rgba(255,43,43,0.60);
+      color:#ffdede;
+      box-shadow: 0 0 18px rgba(255,43,43,0.18);
     }
 
-    .name-label{
-      color:#fff;
-      border-radius: 8px;
-      padding: 3px 8px;
-      font-size: 12px;
-      font-weight: 900;
-      line-height: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
-      pointer-events: none;
-      white-space: nowrap;
-      border: 1px solid rgba(255,255,255,0.38);
-      background: rgba(200, 0, 0, 0.92);
-      max-width: 220px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .icon-btn { width:38px; height:34px; padding:0; justify-content:center; }
 
-    .h3-tip b { display:inline-block; min-width: 170px; }
-    .h3-tip { line-height: 1.35; }
-
-    .hint {
-      padding: 6px 12px;
-      color:#666;
+    .hint{
+      position:relative;
+      z-index:2;
+      padding: 8px 12px;
+      color: var(--muted);
       font-size:12px;
-      border-bottom:1px solid #f0f0f0;
-      background:#fff;
+      border-bottom:1px solid var(--line);
+      background: rgba(11,26,51,0.62);
+      backdrop-filter: blur(6px);
+      line-height: 1.35;
     }
-    .table-wrap { flex:1; overflow:auto; padding: 8px 10px 12px 10px; }
-    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
-    thead th { position: sticky; top: 0; z-index: 2; background: #f7f7f7; border-bottom: 1px solid #ddd; }
-    th, td {
-      border-bottom: 1px solid #eee;
-      padding: 6px 8px;
+
+    .table-wrap { position:relative; z-index:2; flex:1; overflow:auto; padding: 10px 10px 12px 10px; }
+    table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; color: var(--txt); }
+
+    thead th{
+      position: sticky; top: 0; z-index: 2;
+      background: rgba(10,19,40,0.92);
+      border-bottom: 1px solid var(--line2);
+      border-right: 1px solid var(--line);
+      padding: 8px 8px;
+      cursor: pointer;
+      user-select:none;
+      white-space: nowrap;
+    }
+    thead th:hover{
+      background: rgba(43,124,255,0.16);
+    }
+    thead th .sort{
+      margin-left:6px;
+      color: rgba(231,238,252,0.75);
+      font-weight:900;
+    }
+
+    th, td{
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-right: 1px solid rgba(255,255,255,0.07); /* 垂直格線 */
+      padding: 7px 8px;
       text-align: left;
       vertical-align: top;
       max-width: 220px;
@@ -107,61 +161,184 @@
       overflow: hidden;
       text-overflow: ellipsis;
       cursor: default;
+      background: rgba(0,0,0,0.00);
     }
-    tbody tr:hover { background:#fafafa; }
+    tbody tr:hover { background: rgba(43,124,255,0.08); }
     tbody tr.row-clickable { cursor: pointer; }
-    tbody tr.row-clickable:hover { background:#fff3f3; }
+    tbody tr.row-clickable:hover { background: rgba(255,43,43,0.10); }
 
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.35);
+    .muted { color: var(--muted); }
+    .err { color: #ffb0b0; white-space:pre-wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    code { background: rgba(255,255,255,0.06); padding:2px 6px; border-radius:6px; }
+
+    /* modal */
+    .modal-backdrop{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 9999;
     }
-    .modal {
-      width: min(900px, 92vw);
+    .modal{
+      width: min(920px, 92vw);
       max-height: 86vh;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      background: linear-gradient(180deg, rgba(11,26,51,0.98) 0%, rgba(7,11,22,0.98) 100%);
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.45);
       overflow: hidden;
       display:flex;
       flex-direction: column;
+      border: 1px solid rgba(255,255,255,0.12);
     }
-    .modal-header {
+    .modal-header{
       padding: 10px 12px;
       display:flex;
       justify-content: space-between;
       align-items:center;
-      border-bottom: 1px solid #eee;
-      background:#fafafa;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
     }
-    .modal-body {
+    .modal-body{
       padding: 12px;
       overflow:auto;
       font-size: 12px;
       line-height: 1.45;
+      color: var(--txt);
     }
     .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 10px; }
-    .kv div { padding: 2px 0; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-    .close-btn { border:1px solid #ddd; background:#fff; border-radius:8px; padding:6px 10px; cursor:pointer; font-weight:700; }
-
-    .res-ctrl {
-      background:#fff;
-      border:1px solid #ddd;
+    .close-btn{
+      border:1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06);
       border-radius:10px;
-      padding:8px 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      padding:6px 10px;
+      cursor:pointer;
+      font-weight:900;
+      color: var(--txt);
+    }
+    .close-btn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
+
+    /* H3 count label */
+    .agg-label{
+      color:#fff;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 18px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.40);
+      pointer-events: none;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(220, 20, 20, 0.92);
+      text-shadow: 0 0 10px rgba(255,80,80,0.35);
+    }
+
+    /* location rectangle label (move upward relative to count, same X) */
+    .name-label{
+      color:#fff;
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 1000;
+      line-height: 16px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.45);
+      pointer-events: none;
+      white-space: nowrap;
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(220, 20, 20, 0.92);
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transform: translateY(-26px); /* 往上：與 count 同 X，但 Y 拉開距離 */
+    }
+
+    .h3-tip b { display:inline-block; min-width: 170px; }
+    .h3-tip { line-height: 1.35; color: var(--txt); }
+
+    /* Leaflet controls tech look */
+    .res-ctrl{
+      background: rgba(10,19,40,0.92);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:12px;
+      padding:10px 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
       font-size:12px;
       line-height:1.2;
+      color: var(--txt);
+      backdrop-filter: blur(6px);
     }
-    .res-ctrl .ttl { font-weight:900; margin-bottom:6px; }
-    .res-ctrl label { display:flex; align-items:center; gap:6px; margin:4px 0; cursor:pointer; user-select:none; }
-    .res-ctrl input { cursor:pointer; }
+    .res-ctrl .ttl{
+      font-weight:1000;
+      margin-bottom:8px;
+      letter-spacing:.5px;
+      color: #d7e6ff;
+      text-shadow: 0 0 10px rgba(43,124,255,0.25);
+    }
+    .res-ctrl label{
+      display:flex; align-items:center; gap:6px;
+      margin:6px 0; cursor:pointer; user-select:none;
+      color: rgba(231,238,252,0.92);
+    }
+    .res-ctrl input{ cursor:pointer; accent-color: var(--accent); }
+
+    .layer-ctrl{
+      margin-top:8px;
+      background: rgba(10,19,40,0.92);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:12px;
+      padding:10px 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      font-size:12px;
+      line-height:1.2;
+      color: var(--txt);
+      backdrop-filter: blur(6px);
+    }
+    .layer-ctrl .ttl{
+      font-weight:1000;
+      margin-bottom:8px;
+      letter-spacing:.5px;
+      color: #d7e6ff;
+      text-shadow: 0 0 10px rgba(0,214,255,0.18);
+    }
+    .layer-ctrl label{
+      display:flex; align-items:center; gap:6px;
+      margin:6px 0; cursor:pointer; user-select:none;
+      color: rgba(231,238,252,0.92);
+    }
+    .layer-ctrl input{ cursor:pointer; accent-color: var(--accent2); }
+
+    /* point marker */
+    .pmk{
+      width: 28px; height: 28px;
+      border-radius: 10px;
+      display:flex; align-items:center; justify-content:center;
+      border: 1px solid rgba(255,255,255,0.35);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+      position: relative;
+      overflow: hidden;
+    }
+    .pmk::before{
+      content:"";
+      position:absolute; inset:-20px;
+      background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.22), transparent 40%);
+      pointer-events:none;
+    }
+    .badgeSE{
+      position:absolute;
+      right:-5px; top:-5px;
+      width: 16px; height: 16px;
+      border-radius: 7px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.35);
+      display:flex; align-items:center; justify-content:center;
+      font-size: 11px;
+      font-weight: 1000;
+      color: #fff;
+      text-shadow: 0 0 8px rgba(255,255,255,0.22);
+    }
+    .pmk svg{ width: 18px; height: 18px; display:block; }
   </style>
 </head>
 
@@ -180,7 +357,7 @@
         <div class="btns">
           <div class="btn icon-btn" id="btnMeasure" title="測距：啟用後左鍵點起點再點終點顯示距離">
             <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
+              <path fill="currentColor" d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zm2 0v10h14V7H5zm2 2h2v2H7V9zm4 0h2v3h-2V9zm4 0h2v2h-2V9zm-8 6h2v2H7v-2zm4-1h2v3h-2v-3zm4 1h2v2h-2v-2z"/>
             </svg>
           </div>
 
@@ -191,7 +368,7 @@
 
       <div class="hint">
         RES 單選顯示網格。紅格＝PA_data(start_H3)；藍格＝start_location_name 命中 THSR_Location(location_name) 產生（與紅格重複者不畫）。
-        <br>數字與聚合統計：只計紅格；滑鼠移到格子會高亮同 start_location_name 的所有格；點右側列可定位。
+        <br>數字與聚合統計：只計紅格；<b>點左側紅格 → 用 start_location_name 篩選右表</b>；點右表列 → 左側定位。
       </div>
 
       <div class="table-wrap">
@@ -206,7 +383,7 @@
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-label="系統資訊">
       <div class="modal-header">
-        <div style="font-weight:800;">系統資訊（狀態 / 更新 / 錯誤）</div>
+        <div style="font-weight:1000;">系統資訊（狀態 / 更新 / 錯誤）</div>
         <button class="close-btn" id="btnModalClose">關閉</button>
       </div>
       <div class="modal-body">
@@ -221,9 +398,9 @@
           <div class="muted">Last Update</div><div class="mono" id="mUpdate"></div>
         </div>
 
-        <hr style="border:none;border-top:1px solid #eee;margin:12px 0;">
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;">
 
-        <div style="font-weight:800;margin-bottom:6px;">Errors</div>
+        <div style="font-weight:1000;margin-bottom:6px;">Errors</div>
         <div class="mono err" id="mErrors" style="white-space:pre-wrap;"></div>
       </div>
     </div>
@@ -236,7 +413,7 @@
     // =============================
     // Version
     // =============================
-    const APP_VERSION = "ver 5.2";
+    const APP_VERSION = "ver 5.3";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // =============================
@@ -315,6 +492,13 @@
       if (!a.length) return '';
       if (a.length <= max) return a.join('、');
       return `${a.slice(0,max).join('、')} +${a.length - max}`;
+    }
+    function parseMaybeNumber(v){
+      const s = String(v ?? '').trim();
+      if (s === '') return {isNum:false, num:0, raw:''};
+      const n = Number(s);
+      if (!Number.isNaN(n) && Number.isFinite(n)) return {isNum:true, num:n, raw:s};
+      return {isNum:false, num:0, raw:s.toLowerCase()};
     }
 
     function parseCsvRobust(text) {
@@ -399,7 +583,12 @@
     const aggLabelLayer = L.layerGroup().addTo(map);
     const nameLabelLayer = L.layerGroup().addTo(map);
 
-    // ✅ 這些一定要在 showOnlyRes / renderAggLabels 前先存在
+    // points layers
+    const startPointLayer = L.layerGroup().addTo(map);
+    const endPointLayer = L.layerGroup().addTo(map);
+    let showStartPoints = true;
+    let showEndPoints = true;
+
     const locMap = new Map();
     const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
@@ -438,9 +627,24 @@
       if (!items.length) return;
 
       const z = map.getZoom();
-      const bs = bucketSizeForZoom(z);
 
+      // ✅ zoom >= 12：改成「每格一個」count，方便和 name-label 同 X 對齊
+      if (z >= 12) {
+        for (const it of items) {
+          const icon = L.divIcon({
+            className: '',
+            html: `<div class="agg-label">${escapeHtml(it.count)}</div>`,
+            iconSize: null
+          });
+          L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
+        }
+        return;
+      }
+
+      // zoom < 12：維持聚合
+      const bs = bucketSizeForZoom(z);
       const buckets = new Map();
+
       for (const it of items) {
         const p = map.latLngToContainerPoint(it.latlng);
         const bx = Math.floor(p.x / bs);
@@ -471,6 +675,8 @@
       }
     }
 
+    // ✅ name-label：用「同一個 latlng（cell center）」→ 同 X
+    // CSS transform 往上拉（同 X、Y 上移留距離）
     function renderNameLabels() {
       nameLabelLayer.clearLayers();
       const z = map.getZoom();
@@ -488,9 +694,7 @@
           iconSize: null
         });
 
-        const latlng = it.latlng;
-        const shifted = L.latLng(latlng.lat + 0.00015, latlng.lng);
-        L.marker(shifted, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
+        L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9000 }).addTo(nameLabelLayer);
       }
     }
 
@@ -527,6 +731,38 @@
       }
     });
     map.addControl(new ResControl());
+
+    // Layer control under res-control
+    const LayerCtrl = L.Control.extend({
+      options: { position:'topleft' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'layer-ctrl');
+        div.innerHTML = `
+          <div class="ttl">PA Points</div>
+          <label><input type="checkbox" id="chkStart" checked> Start</label>
+          <label><input type="checkbox" id="chkEnd" checked> End</label>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        setTimeout(() => {
+          const chkStart = div.querySelector('#chkStart');
+          const chkEnd = div.querySelector('#chkEnd');
+
+          chkStart.addEventListener('change', () => {
+            showStartPoints = chkStart.checked;
+            if (showStartPoints) map.addLayer(startPointLayer);
+            else map.removeLayer(startPointLayer);
+          });
+          chkEnd.addEventListener('change', () => {
+            showEndPoints = chkEnd.checked;
+            if (showEndPoints) map.addLayer(endPointLayer);
+            else map.removeLayer(endPointLayer);
+          });
+        }, 0);
+        return div;
+      }
+    });
+    map.addControl(new LayerCtrl());
+
     showOnlyRes('RES9');
 
     map.on('zoomend moveend', () => { renderAggLabels(); renderNameLabels(); });
@@ -636,24 +872,68 @@
       { key: 'Mcenter', label: 'Center' },
     ];
 
-    function renderTableHeader() {
-      evtHeadRow.innerHTML = '';
-      for (const c of COLS) {
-        const th = document.createElement('th');
-        th.textContent = c.label;
-        th.title = c.key;
-        evtHeadRow.appendChild(th);
-      }
-    }
     function setSelectionTag(text) {
       selectionTag.textContent = text || '';
       selectionTag.title = text || '';
     }
+
     let allRows = [];
     let displayedRows = [];
 
-    function renderTableRows(rows) {
+    // sorting
+    let sortKey = '';
+    let sortDir = 1; // 1 asc, -1 desc
+
+    function renderTableHeader() {
+      evtHeadRow.innerHTML = '';
+      for (const c of COLS) {
+        const th = document.createElement('th');
+        th.dataset.key = c.key;
+
+        const label = document.createElement('span');
+        label.textContent = c.label;
+        th.appendChild(label);
+
+        const sort = document.createElement('span');
+        sort.className = 'sort';
+        sort.textContent = (sortKey === c.key) ? (sortDir === 1 ? '▲' : '▼') : '';
+        th.appendChild(sort);
+
+        th.title = `排序：${c.key}`;
+        th.addEventListener('click', () => {
+          if (sortKey === c.key) sortDir = -sortDir;
+          else { sortKey = c.key; sortDir = 1; }
+          applySortAndRender();
+        });
+
+        evtHeadRow.appendChild(th);
+      }
+    }
+
+    function applySortAndRender() {
+      // keep current displayedRows source, just sort
+      const rows = [...displayedRows];
+
+      if (sortKey) {
+        rows.sort((a,b) => {
+          const av = parseMaybeNumber(a[sortKey]);
+          const bv = parseMaybeNumber(b[sortKey]);
+
+          if (av.isNum && bv.isNum) return (av.num - bv.num) * sortDir;
+          if (av.isNum && !bv.isNum) return -1 * sortDir;
+          if (!av.isNum && bv.isNum) return 1 * sortDir;
+          return (av.raw > bv.raw ? 1 : av.raw < bv.raw ? -1 : 0) * sortDir;
+        });
+      }
+
+      renderTableHeader();
+      renderTableRows(rows, {skipHeader:true});
+    }
+
+    function renderTableRows(rows, opt={}) {
       displayedRows = rows;
+      if (!opt.skipHeader) renderTableHeader();
+
       evtBody.innerHTML = '';
       const frag = document.createDocumentFragment();
 
@@ -674,12 +954,16 @@
 
       evtBody.appendChild(frag);
     }
-    renderTableHeader();
 
     btnClear.addEventListener('click', () => {
       setSelectionTag('');
-      renderTableRows(allRows);
+      displayedRows = [...allRows];
+      sortKey = '';
+      sortDir = 1;
+      renderTableRows(displayedRows);
     });
+
+    renderTableHeader();
 
     // =============================
     // H3 helper functions
@@ -705,17 +989,25 @@
       return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
     }
 
-    function buildHoverHtmlRed(meta) {
+    function buildHoverHtmlRed(meta, extraInfo) {
+      // extraInfo：用一筆代表資料，把你要的資訊塞進 tooltip（含 KM+M / county / area / center）
       const startNames = Array.from(meta.startNames);
       const endNames = Array.from(meta.endNames);
       const paArr = Array.from(meta.paNums).map(x=>String(x)).filter(Boolean).sort((a,b)=>Number(a)-Number(b));
+
+      const locNameLine = `${toClean(extraInfo?.start_location_name)}/${toClean(extraInfo?.end_location_name)}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
+      const kmLine = `${toClean(extraInfo?.["start_location_KM+M"])}/${toClean(extraInfo?.["end_location_KM+M"])}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
+
       return `
         <div class="h3-tip">
-          <div><b>H3_res${meta.resNum} (PA):</b> ${escapeHtml(meta.h3Index)}</div>
-          <div><b>count:</b> ${escapeHtml(meta.count)}</div>
-          <div><b>start_location_name:</b> ${escapeHtml(uniqPreview(startNames, 3))}</div>
-          <div><b>end_location_name:</b> ${escapeHtml(uniqPreview(endNames, 3))}</div>
+          <div><b>H3_res${meta.resNum}:</b> ${escapeHtml(meta.h3Index)}</div>
+          <div><b>location_name(start/end):</b> ${escapeHtml(locNameLine || uniqPreview(startNames,2) + '/' + uniqPreview(endNames,2))}</div>
+          <div><b>location_KM+M:</b> ${escapeHtml(kmLine)}</div>
+          <div><b>twcounty:</b> ${escapeHtml(toClean(extraInfo?.twcounty))}</div>
+          <div><b>Marea:</b> ${escapeHtml(toClean(extraInfo?.Marea))}</div>
+          <div><b>Mcenter:</b> ${escapeHtml(toClean(extraInfo?.Mcenter))}</div>
           <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
+          <div><b>count:</b> ${escapeHtml(meta.count)}</div>
         </div>
       `;
     }
@@ -738,14 +1030,29 @@
       }
     }
 
+    // 左側點擊格子 -> 篩右表
+    function filterTableByStartNames(names) {
+      const arr = Array.from(new Set((names || []).filter(Boolean)));
+      if (!arr.length) return;
+
+      const filtered = allRows.filter(r => arr.includes(toClean(r.start_location_name)));
+      displayedRows = filtered;
+
+      // 保留目前排序規則
+      if (sortKey) applySortAndRender();
+      else renderTableRows(filtered);
+
+      setSelectionTag(`已篩選 start_location_name：${arr.join('、')}（${filtered.length} 筆）`);
+    }
+
     function addPolygonCell(meta, layerGroup, type) {
       const h3Index = meta.h3Index;
       const boundary = h3.cellToBoundary(h3Index);
       const latlngs = boundary.map(([lat, lng]) => [lat, lng]);
 
       const baseStyle = (type === 'red')
-        ? { color:'#d00', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.12 }
-        : { color:'#0066cc', weight:1, opacity:0.95, fillColor:'#0066cc', fillOpacity:0.12 };
+        ? { color:'#ff3b3b', weight:1, opacity:0.95, fillColor:'#ff0000', fillOpacity:0.14 }
+        : { color:'#2b7cff', weight:1, opacity:0.95, fillColor:'#2b7cff', fillOpacity:0.12 };
 
       const poly = L.polygon(latlngs, baseStyle);
       poly.__baseStyle = baseStyle;
@@ -753,11 +1060,14 @@
       poly.__meta = meta;
       layerGroup.addLayer(poly);
 
-      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
+      const html = (type === 'red')
+        ? buildHoverHtmlRed(meta, meta.__sampleRow)
+        : buildHoverHtmlBlue(meta);
+
       poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
 
       poly.on('mouseover', () => {
-        poly.setStyle({ weight: 2, fillOpacity: 0.18 });
+        poly.setStyle({ weight: 2, fillOpacity: 0.20 });
         const names = (type === 'red') ? Array.from(meta.startNames) : Array.from(meta.names);
         highlightByLocationNames(names);
       });
@@ -766,6 +1076,14 @@
         poly.setStyle(baseStyle);
       });
 
+      // ✅ 左→右互動：點紅格篩右表
+      if (type === 'red') {
+        poly.on('click', () => {
+          const names = Array.from(meta.startNames);
+          filterTableByStartNames(names);
+        });
+      }
+
       if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
       else addLayerToLocIndex(Array.from(meta.names), poly);
 
@@ -773,7 +1091,7 @@
     }
 
     // =============================
-    // Row click -> fly
+    // Row click -> fly (右→左互動)
     // =============================
     function onRowClick(displayIdx) {
       const row = displayedRows[displayIdx];
@@ -794,6 +1112,123 @@
       const c = h3.cellToLatLng(h3Index);
       map.flyTo([c[0], c[1]], Math.max(map.getZoom(), 14), { duration: 0.8 });
       setSelectionTag(`定位：${resKey} / ${h3Index}`);
+    }
+
+    // =============================
+    // Point markers icons
+    // =============================
+    function netColor(net){
+      const s = String(net ?? '').trim().toUpperCase();
+      if (s === '4G') return 'rgba(18,64,255,0.92)'; // deep blue
+      if (s === '5G') return 'rgba(255,154,60,0.92)'; // orange
+      return 'rgba(43,124,255,0.92)';
+    }
+
+    function svgYouTube(){
+      return `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#fff" d="M10 15.5V8.5L16 12l-6 3.5z"></path>
+        <path fill="#fff" opacity="0.35" d="M21.6 7.2c-.2-.9-.9-1.6-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4c-.9.2-1.6.9-1.8 1.8C2 8.9 2 12 2 12s0 3.1.4 4.8c.2.9.9 1.6 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4c.9-.2 1.6-.9 1.8-1.8.4-1.7.4-4.8.4-4.8s0-3.1-.4-4.8z"></path>
+      </svg>`;
+    }
+
+    function svgPhone(){
+      return `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#fff" d="M6.6 10.8c1.2 2.3 3.1 4.2 5.4 5.4l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v2.9c0 .5-.4.9-.9.9C10.7 19.4 4.6 13.3 4.6 6c0-.5.4-.9.9-.9h2.9c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.6 1.8z"></path>
+      </svg>`;
+    }
+
+    function scriptIcon(script){
+      const s = String(script ?? '').trim();
+      if (s === 'YoutubeLive') return svgYouTube();
+      if (s === 'VoLTEmos') return svgPhone();
+      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="#fff"/></svg>`;
+    }
+
+    function pointDivIcon({isStart, net, script}) {
+      const bg = netColor(net);
+      const badge = isStart ? 'S' : 'E';
+      const html = `
+        <div class="pmk" style="background:${bg}">
+          ${scriptIcon(script)}
+          <div class="badgeSE">${badge}</div>
+        </div>
+      `;
+      return L.divIcon({ className:'', html, iconSize:[28,28], iconAnchor:[14,14] });
+    }
+
+    function tooltipStart(r){
+      return `
+        <div class="h3-tip">
+          <div><b>Date:</b> ${escapeHtml(toClean(r.Date))}</div>
+          <div><b>PA_Num:</b> ${escapeHtml(toClean(r.PA_Num))}</div>
+          <div><b>lag_end_tw:</b> ${escapeHtml(toClean(r.lag_end_tw))}</div>
+          <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
+          <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
+          <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
+          <div><b>lat/lon:</b> ${escapeHtml(toClean(r.start_lat))}, ${escapeHtml(toClean(r.start_lon))}</div>
+          <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))}</div>
+          <div><b>NetWork:</b> ${escapeHtml(toClean(r.measurement_NetWork))}</div>
+          <div><b>Script:</b> ${escapeHtml(toClean(r.measurement_Script))}</div>
+          <div><b>KM+M:</b> ${escapeHtml(toClean(r["start_location_KM+M"]))}</div>
+        </div>
+      `;
+    }
+
+    function tooltipEnd(r){
+      return `
+        <div class="h3-tip">
+          <div><b>Date:</b> ${escapeHtml(toClean(r.Date))}</div>
+          <div><b>PA_Num:</b> ${escapeHtml(toClean(r.PA_Num))}</div>
+          <div><b>lag_start_tw:</b> ${escapeHtml(toClean(r.lag_start_tw))}</div>
+          <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
+          <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
+          <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
+          <div><b>lat/lon:</b> ${escapeHtml(toClean(r.end_lat))}, ${escapeHtml(toClean(r.end_lon))}</div>
+          <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))}</div>
+          <div><b>NetWork:</b> ${escapeHtml(toClean(r.measurement_NetWork))}</div>
+          <div><b>Script:</b> ${escapeHtml(toClean(r.measurement_Script))}</div>
+          <div><b>KM+M:</b> ${escapeHtml(toClean(r["end_location_KM+M"]))}</div>
+        </div>
+      `;
+    }
+
+    function isValidLatLng(lat, lon){
+      const a = Number(lat), b = Number(lon);
+      return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
+    }
+
+    function rebuildPointLayers(rows){
+      startPointLayer.clearLayers();
+      endPointLayer.clearLayers();
+
+      for (const r of rows) {
+        const net = toClean(r.measurement_NetWork);
+        const script = toClean(r.measurement_Script);
+
+        // start
+        if (isValidLatLng(r.start_lat, r.start_lon)) {
+          const icon = pointDivIcon({isStart:true, net, script});
+          const mk = L.marker([Number(r.start_lat), Number(r.start_lon)], { icon });
+          mk.bindTooltip(tooltipStart(r), { sticky:true, direction:'top', opacity:0.95 });
+          startPointLayer.addLayer(mk);
+        }
+
+        // end
+        if (isValidLatLng(r.end_lat, r.end_lon)) {
+          const icon = pointDivIcon({isStart:false, net, script});
+          const mk = L.marker([Number(r.end_lat), Number(r.end_lon)], { icon });
+          mk.bindTooltip(tooltipEnd(r), { sticky:true, direction:'top', opacity:0.95 });
+          endPointLayer.addLayer(mk);
+        }
+      }
+
+      // respect toggles
+      if (!showStartPoints && map.hasLayer(startPointLayer)) map.removeLayer(startPointLayer);
+      if (!showEndPoints && map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer);
+      if (showStartPoints && !map.hasLayer(startPointLayer)) map.addLayer(startPointLayer);
+      if (showEndPoints && !map.hasLayer(endPointLayer)) map.addLayer(endPointLayer);
     }
 
     // =============================
@@ -840,9 +1275,16 @@
       }
 
       allRows = rowsPA;
-      renderTableRows(allRows);
+      displayedRows = [...allRows];
+      sortKey = '';
+      sortDir = 1;
+      renderTableRows(displayedRows);
       setSelectionTag('');
 
+      // points layer build
+      rebuildPointLayers(rowsPA);
+
+      // clear layers & caches
       for (const k of ['RES8','RES9','RES10','RES11']) {
         h3Layers[k].clearLayers();
         redAgg[k].clear();
@@ -855,8 +1297,14 @@
       function addRed(resKey, h3Index, row) {
         if (!h3Index) return;
         let meta = redAgg[resKey].get(h3Index);
-        if (!meta) { meta = initMetaRed(resKey, h3Index); redAgg[resKey].set(h3Index, meta); }
+        if (!meta) {
+          meta = initMetaRed(resKey, h3Index);
+          // ✅ 存一筆代表 row，用於 tooltip 取 KM+M / county / area / center
+          meta.__sampleRow = row;
+          redAgg[resKey].set(h3Index, meta);
+        }
         meta.count += 1;
+
         const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
         const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
         if (sn) meta.startNames.add(sn);
@@ -908,6 +1356,7 @@
 
         for (const [h3Index, meta] of redAgg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
+
           const poly = addPolygonCell(meta, lg, 'red');
           boundsAcc.extend(poly.getBounds());
           redCells++;
