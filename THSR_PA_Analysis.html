@@ -39,6 +39,129 @@
     }
     #map { flex: 1 1 auto; min-height: 0; }
 
+    /* ✅ Map top overlay filter bar */
+    .mapTopBar{
+      position:absolute;
+      top:10px;
+      left:50%;
+      transform: translateX(-50%);
+      z-index: 900;
+      pointer-events: none; /* allow map drag */
+    }
+    .filter-bar{
+      pointer-events: auto; /* clickable */
+      background: rgba(10,19,40,0.92);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.38);
+      padding: 8px 10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      backdrop-filter: blur(6px);
+      min-width: 520px;
+      max-width: min(92vw, 860px);
+    }
+    .filter-bar .ttl{
+      font-weight:1000;
+      color:#d7e6ff;
+      letter-spacing:.5px;
+      white-space:nowrap;
+      padding:0 4px;
+      text-shadow: 0 0 10px rgba(255,154,60,0.18);
+    }
+    .msel{
+      position:relative;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .msel .lbl{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(231,238,252,0.88);
+      white-space:nowrap;
+    }
+    .msel-btn{
+      width: 150px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: var(--txt);
+      border-radius:10px;
+      padding:6px 8px;
+      cursor:pointer;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      user-select:none;
+    }
+    .msel-btn:hover{
+      background: rgba(255,154,60,0.10);
+      border-color: rgba(255,154,60,0.30);
+    }
+    .msel-btn .sum{
+      flex:1;
+      text-align:left;
+      font-size:11px;
+      color: rgba(154,176,216,0.95);
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow: ellipsis;
+      max-width: 110px;
+    }
+    .msel-menu{
+      position:absolute;
+      top: calc(100% + 6px);
+      left:0;
+      width: 260px;
+      max-height: 260px;
+      overflow:auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(6,18,40,0.98);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+      display:none;
+      z-index: 10000;
+      padding: 8px;
+    }
+    .msel-tools{
+      display:flex; gap:8px; margin-bottom:8px;
+      position: sticky;
+      top: 0;
+      background: rgba(6,18,40,0.98);
+      padding-bottom: 8px;
+      z-index: 1;
+    }
+    .tbtn{
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: var(--txt);
+      border-radius:10px;
+      padding:5px 8px;
+      font-weight:900;
+      cursor:pointer;
+      font-size:11px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .tbtn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.30); }
+    .msel-menu .item{
+      display:flex; align-items:center; gap:8px;
+      padding: 6px 6px;
+      border-radius: 8px;
+      cursor:pointer;
+      user-select:none;
+      color: rgba(231,238,252,0.92);
+      border: 1px solid transparent;
+    }
+    .msel-menu .item:hover{
+      background: rgba(43,124,255,0.12);
+      border-color: rgba(43,124,255,0.20);
+    }
+    .msel-menu input{ cursor:pointer; }
+
     /* RIGHT */
     #panel{
       width:50vw; height:100vh; overflow:hidden;
@@ -102,7 +225,6 @@
       border-color: rgba(43,124,255,0.40);
       box-shadow: 0 0 18px rgba(43,124,255,0.12);
     }
-
     .tag{
       border:1px solid rgba(255,255,255,0.14);
       background: rgba(255,255,255,0.04);
@@ -130,7 +252,6 @@
 
     .table-wrap { position:relative; z-index:2; flex:1; overflow:auto; padding: 10px 10px 12px 10px; }
     table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; color: var(--txt); }
-
     thead th{
       position: sticky; top: 0; z-index: 2;
       background: rgba(10,19,40,0.92);
@@ -245,7 +366,7 @@
     .h3-tip { line-height: 1.35; color:#fff; }
     .h3-tip b { display:inline-block; min-width: 170px; color: rgba(210,232,255,0.95); }
 
-    /* Leaflet controls tech look */
+    /* Leaflet controls */
     .res-ctrl, .layer-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
@@ -264,8 +385,6 @@
       color: #d7e6ff;
       text-shadow: 0 0 10px rgba(43,124,255,0.25);
     }
-    .layer-ctrl .ttl{ text-shadow: 0 0 10px rgba(0,214,255,0.18); }
-
     .res-ctrl label, .layer-ctrl label{
       display:flex; align-items:center; gap:6px;
       margin:6px 0; cursor:pointer; user-select:none;
@@ -308,153 +427,7 @@
       box-shadow: 0 0 18px rgba(255,43,43,0.18);
     }
 
-    /* point marker */
-    .pmk{
-      width: 28px; height: 28px;
-      border-radius: 10px;
-      display:flex; align-items:center; justify-content:center;
-      border: 1px solid rgba(255,255,255,0.35);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.45);
-      position: relative;
-      overflow: visible;
-    }
-    .pmk svg{ width: 18px; height: 18px; display:block; }
-    .badgeSE{
-      position:absolute;
-      left:50%;
-      bottom:-6px;
-      transform: translateX(-50%);
-      width: 18px; height: 18px;
-      border-radius: 8px;
-      background: rgba(0,0,0,0.72);
-      border: 1px solid rgba(255,255,255,0.35);
-      display:flex; align-items:center; justify-content:center;
-      font-size: 11px;
-      font-weight: 1000;
-      color: #fff;
-    }
-
-    /* ===========================
-       ✅ NEW: Top Filter Bar
-       =========================== */
-    .filter-bar{
-      background: rgba(10,19,40,0.92);
-      border:1px solid rgba(255,255,255,0.16);
-      border-radius: 14px;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.38);
-      padding: 8px 10px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      backdrop-filter: blur(6px);
-      min-width: 520px;
-      max-width: min(92vw, 820px);
-    }
-    .filter-bar .ttl{
-      font-weight:1000;
-      color:#d7e6ff;
-      letter-spacing:.5px;
-      white-space:nowrap;
-      padding:0 4px;
-      text-shadow: 0 0 10px rgba(255,154,60,0.18);
-    }
-    .msel{
-      position:relative;
-      display:flex;
-      align-items:center;
-      gap:6px;
-    }
-    .msel .lbl{
-      font-size:12px;
-      font-weight:900;
-      color: rgba(231,238,252,0.88);
-      white-space:nowrap;
-    }
-    .msel-btn{
-      width: 150px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.05);
-      color: var(--txt);
-      border-radius:10px;
-      padding:6px 8px;
-      cursor:pointer;
-      font-weight:900;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-      user-select:none;
-    }
-    .msel-btn:hover{
-      background: rgba(255,154,60,0.10);
-      border-color: rgba(255,154,60,0.30);
-    }
-    .msel-btn .sum{
-      flex:1;
-      text-align:left;
-      font-size:11px;
-      color: rgba(154,176,216,0.95);
-      overflow:hidden;
-      white-space:nowrap;
-      text-overflow: ellipsis; /* <-- .... */
-      max-width: 110px;
-    }
-
-    .msel-menu{
-      position:absolute;
-      top: calc(100% + 6px);
-      left:0;
-      width: 260px;
-      max-height: 260px;
-      overflow:auto;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(6,18,40,0.98);
-      box-shadow: 0 18px 40px rgba(0,0,0,0.55);
-      display:none;
-      z-index: 10000;
-      padding: 8px;
-    }
-    .msel-tools{
-      display:flex; gap:8px; margin-bottom:8px;
-      position: sticky;
-      top: 0;
-      background: rgba(6,18,40,0.98);
-      padding-bottom: 8px;
-      z-index: 1;
-    }
-    .tbtn{
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.05);
-      color: var(--txt);
-      border-radius:10px;
-      padding:5px 8px;
-      font-weight:900;
-      cursor:pointer;
-      font-size:11px;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .tbtn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.30); }
-
-    .msel-menu .item{
-      display:flex; align-items:center; gap:8px;
-      padding: 6px 6px;
-      border-radius: 8px;
-      cursor:pointer;
-      user-select:none;
-      color: rgba(231,238,252,0.92);
-      border: 1px solid transparent;
-    }
-    .msel-menu .item:hover{
-      background: rgba(43,124,255,0.12);
-      border-color: rgba(43,124,255,0.20);
-    }
-    .msel-menu input{ cursor:pointer; }
-
-    /* ===========================
-       ✅ NEW: Chart floating window
-       =========================== */
+    /* Chart float (保持你要的：點紅格才出現) */
     .chart-float{
       position:absolute;
       left: 12px;
@@ -472,12 +445,11 @@
     .chart-float::before{
       content:"";
       position:absolute; inset:0;
-      background:
-        repeating-linear-gradient(to bottom,
-          rgba(255,255,255,0.02) 0px,
-          rgba(255,255,255,0.02) 1px,
-          rgba(0,0,0,0) 3px,
-          rgba(0,0,0,0) 6px);
+      background: repeating-linear-gradient(to bottom,
+        rgba(255,255,255,0.02) 0px,
+        rgba(255,255,255,0.02) 1px,
+        rgba(0,0,0,0) 3px,
+        rgba(0,0,0,0) 6px);
       pointer-events:none;
       opacity:.35;
       mix-blend-mode: overlay;
@@ -515,15 +487,41 @@
       position:absolute; left:0; top:38px; width:100%; height: calc(100% - 38px);
       z-index:1;
     }
+
+    /* ✅ Fail-safe error banner */
+    #fatalBanner{
+      position: fixed;
+      left: 10px;
+      top: 10px;
+      z-index: 20000;
+      background: rgba(255,43,43,0.92);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.45);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 1000;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.55);
+      display:none;
+      max-width: min(92vw, 980px);
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 
 <body>
+  <div id="fatalBanner"></div>
+
   <div class="app">
     <div class="leftCol">
       <div id="map"></div>
 
-      <!-- ✅ floating chart window (hidden by default) -->
+      <div class="mapTopBar">
+        <div class="filter-bar" id="filterBar">
+          <div class="ttl">Filter</div>
+          <div id="filterMount" style="display:flex;align-items:center;gap:10px;"></div>
+        </div>
+      </div>
+
       <div class="chart-float" id="chartFloat">
         <div class="chart-head">
           <div class="ctitle" id="chartTitle">start_location_name：</div>
@@ -593,11 +591,24 @@
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
 
   <script>
-    // =============================
-    // Version
-    // =============================
-    const APP_VERSION = "ver 6.1";
+    /* ===========================
+       ✅ ver 6.2 修正重點
+       - 修掉 layersByLocName 重複 const 宣告（會直接讓整個 JS 中斷）
+       - Filter 改為 map top overlay，不依賴 topcenter hack
+       - 加入 fatalBanner，JS若炸會直接顯示錯誤在畫面
+       =========================== */
+
+    const APP_VERSION = "ver 6.2";
     document.getElementById('verTag').textContent = APP_VERSION;
+
+    // =============================
+    // Fail-safe banner
+    // =============================
+    const fatalBanner = document.getElementById('fatalBanner');
+    function showFatal(msg){
+      fatalBanner.style.display = 'block';
+      fatalBanner.textContent = msg;
+    }
 
     // =============================
     // Modal / status
@@ -747,20 +758,20 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // Zoom tag (right panel)
-    const zoomLevelEl = document.getElementById('zoomLevel');
-    function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
-    updateZoomTag();
-    map.on('zoomend', updateZoomTag);
-
     const baseLayers = {
       'NLSC 彩色 (EMAP)': baseEMAP,
       'NLSC 灰階 (EMAP01)': baseEMAP01
     };
     L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
 
+    // Zoom tag
+    const zoomLevelEl = document.getElementById('zoomLevel');
+    function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
+    updateZoomTag();
+    map.on('zoomend', updateZoomTag);
+
     // =============================
-    // Global data
+    // Global data + layers
     // =============================
     const locMap = new Map(); // location_name -> rows
     let allRowsRaw = [];
@@ -769,44 +780,30 @@
     let selectionLocationNames = [];
     let selectionPrimaryName = '';
 
-    // =============================
-    // Filter state (✅ NEW: explicit include sets)
-    // rule: checked = included
-    // =============================
-    const filterState = {
-      Date: new Set(),
-      measurement_NetWork: new Set(),
-      measurement_Script: new Set(),
-      Marea: new Set(),
-    };
-    const filterAllOptions = {
-      Date: [],
-      measurement_NetWork: [],
-      measurement_Script: [],
-      Marea: [],
-    };
+    // ✅ IMPORTANT: declare ONCE (修掉你遇到的炸掉原因)
+    const layersByLocName = new Map(); // location_name -> Set(polygons)
+    let highlightedLayers = new Set();
 
-    function inChecked(set, v){
-      // set contains "allowed values"
-      return set.has(v);
+    function clearHoverHighlights() {
+      for (const ly of highlightedLayers) {
+        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
+      }
+      highlightedLayers.clear();
+    }
+    function highlightByLocationNames(names) {
+      clearHoverHighlights();
+      for (const nm of names) {
+        const set = layersByLocName.get(nm);
+        if (!set) continue;
+        for (const ly of set) {
+          if (!ly.__baseStyle) continue;
+          ly.setStyle({ weight: 4, color: '#b300ff', opacity: 1.0 });
+          highlightedLayers.add(ly);
+        }
+      }
     }
 
-    function applyFiltersToRows(rows){
-      return rows.filter(r => {
-        const d = toClean(r.Date);
-        const n = toClean(r.measurement_NetWork);
-        const s = toClean(r.measurement_Script);
-        const a = toClean(r.Marea);
-        return inChecked(filterState.Date, d)
-            && inChecked(filterState.measurement_NetWork, n)
-            && inChecked(filterState.measurement_Script, s)
-            && inChecked(filterState.Marea, a);
-      });
-    }
-
-    // =============================
     // H3 layers
-    // =============================
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     const aggLabelLayer = L.layerGroup().addTo(map);
     const nameLabelLayer = L.layerGroup().addTo(map);
@@ -839,30 +836,7 @@
     const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
-
-    // highlight same location_name
-    const layersByLocName = new Map();
-    let highlightedLayers = new Set();
     let currentResKey = 'RES9';
-
-    function clearHoverHighlights() {
-      for (const ly of highlightedLayers) {
-        if (ly && ly.__baseStyle) ly.setStyle(ly.__baseStyle);
-      }
-      highlightedLayers.clear();
-    }
-    function highlightByLocationNames(names) {
-      clearHoverHighlights();
-      for (const nm of names) {
-        const set = layersByLocName.get(nm);
-        if (!set) continue;
-        for (const ly of set) {
-          if (!ly.__baseStyle) continue;
-          ly.setStyle({ weight: 4, color: '#b300ff', opacity: 1.0 });
-          highlightedLayers.add(ly);
-        }
-      }
-    }
 
     function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
@@ -934,7 +908,7 @@
     }
 
     // =============================
-    // Controls: Resolution / Points
+    // Controls: Resolution / Points / Measure
     // =============================
     const ResControl = L.Control.extend({
       options: { position: 'topleft' },
@@ -1043,14 +1017,24 @@
     map.addControl(new MeasureControl());
 
     // =============================
-    // ✅ NEW: Top Filter (horizontal bar at map top)
+    // Filter state (checked = include)
     // =============================
-    const filterWidgets = {};
+    const filterState = {
+      Date: new Set(),
+      measurement_NetWork: new Set(),
+      measurement_Script: new Set(),
+      Marea: new Set(),
+    };
+    const filterAllOptions = {
+      Date: [],
+      measurement_NetWork: [],
+      measurement_Script: [],
+      Marea: [],
+    };
 
     function uniqSorted(values){
       return Array.from(new Set(values.filter(v => v !== ''))).sort();
     }
-
     function summaryText(key){
       const all = filterAllOptions[key] || [];
       const set = filterState[key];
@@ -1090,7 +1074,6 @@
       menu.appendChild(list);
 
       function setOpen(v){ menu.style.display = v ? 'block' : 'none'; }
-
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
         const t = summaryText(key);
@@ -1111,7 +1094,6 @@
         }
         updateButton();
         applyFilterAndRerender();
-        // sync checkboxes
         list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
           const v = cb.dataset.v;
           cb.checked = filterState[key].has(v);
@@ -1132,7 +1114,6 @@
           list.innerHTML = '';
           filterAllOptions[key] = options.slice();
 
-          // default: all checked
           filterState[key].clear();
           for (const v of options) filterState[key].add(v);
 
@@ -1153,248 +1134,38 @@
 
             item.addEventListener('click', (ev) => {
               if (ev.target !== cb) cb.checked = !cb.checked;
-
               if (cb.checked) filterState[key].add(v);
               else filterState[key].delete(v);
-
               updateButton();
               applyFilterAndRerender();
             });
 
             list.appendChild(item);
           }
-
           updateButton();
         },
         updateButton
       };
     }
 
-    const FilterTopControl = L.Control.extend({
-      options:{ position:'topcenter' }, // Leaflet supports this in practice via CSS; we also fix with class
-      onAdd: function(){
-        const div = L.DomUtil.create('div','filter-bar');
-        div.innerHTML = `<div class="ttl">Filter</div>`;
-        L.DomEvent.disableClickPropagation(div);
+    const filterMount = document.getElementById('filterMount');
+    const filterWidgets = {};
 
-        const wDate = createMultiSelectInline({title:'Date', key:'Date', width:170});
-        const wNet  = createMultiSelectInline({title:'Net',  key:'measurement_NetWork', width:120});
-        const wScr  = createMultiSelectInline({title:'Script', key:'measurement_Script', width:160});
-        const wArea = createMultiSelectInline({title:'Marea', key:'Marea', width:150});
+    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:170});
+    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:120});
+    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:160});
+    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:150});
 
-        filterWidgets.Date = wDate;
-        filterWidgets.measurement_NetWork = wNet;
-        filterWidgets.measurement_Script = wScr;
-        filterWidgets.Marea = wArea;
-
-        div.appendChild(wDate.el);
-        div.appendChild(wNet.el);
-        div.appendChild(wScr.el);
-        div.appendChild(wArea.el);
-
-        return div;
-      }
-    });
-
-    // Leaflet doesn't officially have topcenter, so we place in topleft then force center
-    const topFilterCtrl = new FilterTopControl({ position:'topleft' });
-    topFilterCtrl.addTo(map);
-
-    // center it
-    function centerTopFilter(){
-      const c = document.querySelector('.filter-bar');
-      if (!c) return;
-      c.style.position = 'relative';
-      c.style.left = '50%';
-      c.style.transform = 'translateX(-50%)';
-      c.style.marginTop = '6px';
-    }
-    setTimeout(centerTopFilter, 0);
+    filterMount.appendChild(filterWidgets.Date.el);
+    filterMount.appendChild(filterWidgets.measurement_NetWork.el);
+    filterMount.appendChild(filterWidgets.measurement_Script.el);
+    filterMount.appendChild(filterWidgets.Marea.el);
 
     // =============================
-    // Chart floating window logic
-    // =============================
-    const chartFloat = document.getElementById('chartFloat');
-    const chartTitleEl = document.getElementById('chartTitle');
-    const chartClose = document.getElementById('chartClose');
-    const chartCanvas = document.getElementById('gridChart');
-    const ctx = chartCanvas.getContext('2d');
-
-    chartClose.addEventListener('click', () => {
-      chartFloat.style.display = 'none';
-      // keep selection but hide chart
-    });
-
-    function showChartWindow(){
-      chartFloat.style.display = 'block';
-      resizeCanvasToDisplaySize();
-    }
-    function hideChartWindow(){
-      chartFloat.style.display = 'none';
-    }
-
-    function resizeCanvasToDisplaySize(){
-      const rect = chartCanvas.getBoundingClientRect();
-      const w = Math.max(10, Math.floor(rect.width));
-      const h = Math.max(10, Math.floor(rect.height));
-      if (chartCanvas.width !== w || chartCanvas.height !== h) {
-        chartCanvas.width = w;
-        chartCanvas.height = h;
-      }
-    }
-    window.addEventListener('resize', () => {
-      centerTopFilter();
-      if (chartFloat.style.display === 'block' && selectionPrimaryName) {
-        renderStackedChartForLocation(selectionPrimaryName);
-      }
-    });
-
-    function clearChart(){
-      resizeCanvasToDisplaySize();
-      ctx.clearRect(0,0,chartCanvas.width, chartCanvas.height);
-      chartTitleEl.textContent = '點選紅色網格以顯示圖表';
-    }
-
-    function scriptColor(s){
-      if (s === 'YoutubeLive') return 'rgba(255,154,60,0.92)';
-      if (s === 'VoLTEmos') return 'rgba(43,124,255,0.92)';
-      let hash = 0; for (let i=0;i<s.length;i++) hash = ((hash<<5)-hash) + s.charCodeAt(i), hash|=0;
-      const r = 120 + (Math.abs(hash) % 100);
-      const g = 120 + (Math.abs(hash*7) % 100);
-      const b = 120 + (Math.abs(hash*13) % 100);
-      return `rgba(${r},${g},${b},0.92)`;
-    }
-
-    // ✅ requirement: "統計數量的方法已Data與tart_location_name"
-    // => we aggregate rows where start_location_name == locationName by Date, stack by measurement_Script
-    function renderStackedChartForLocation(locationName){
-      if (!locationName) { clearChart(); hideChartWindow(); return; }
-
-      const rows = filteredRows.filter(r => toClean(r.start_location_name) === locationName);
-      showChartWindow();
-
-      chartTitleEl.textContent = `start_location_name：${locationName}（${rows.length}）`;
-
-      resizeCanvasToDisplaySize();
-      const W = chartCanvas.width, H = chartCanvas.height;
-      ctx.clearRect(0,0,W,H);
-
-      const dateMap = new Map();
-      const scriptSet = new Set();
-
-      for (const r of rows) {
-        const d = toClean(r.Date) || '(blank)';
-        const s = toClean(r.measurement_Script) || '(blank)';
-        scriptSet.add(s);
-        if (!dateMap.has(d)) dateMap.set(d, new Map());
-        const m = dateMap.get(d);
-        m.set(s, (m.get(s)||0)+1);
-      }
-
-      const dates = Array.from(dateMap.keys()).sort();
-      const scripts = Array.from(scriptSet.values()).sort();
-
-      if (dates.length === 0) {
-        ctx.fillStyle = 'rgba(154,176,216,0.95)';
-        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
-        ctx.fillText('（此 start_location_name 在目前 Filter 下沒有資料）', 12, 28);
-        return;
-      }
-
-      let maxY = 0;
-      for (const d of dates) {
-        const m = dateMap.get(d);
-        let sum = 0;
-        for (const s of scripts) sum += (m.get(s)||0);
-        maxY = Math.max(maxY, sum);
-      }
-      if (maxY === 0) maxY = 1;
-
-      const padL = 42, padR = 14, padT = 18, padB = 34;
-      const plotW = W - padL - padR;
-      const plotH = H - padT - padB;
-
-      // axes
-      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(padL, padT);
-      ctx.lineTo(padL, padT + plotH);
-      ctx.lineTo(padL + plotW, padT + plotH);
-      ctx.stroke();
-
-      // y ticks
-      ctx.fillStyle = 'rgba(231,238,252,0.85)';
-      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
-      const tickN = 4;
-      for (let i=0;i<=tickN;i++){
-        const v = Math.round(maxY * (i/tickN));
-        const y = padT + plotH - (plotH * (v/maxY));
-        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(padL + plotW, y);
-        ctx.stroke();
-        ctx.fillText(String(v), 10, y+4);
-      }
-
-      const n = dates.length;
-      const gap = Math.max(6, Math.min(14, plotW / (n*6)));
-      const barW = Math.max(10, (plotW - gap*(n-1)) / n);
-
-      for (let i=0;i<n;i++){
-        const d = dates[i];
-        const m = dateMap.get(d);
-        let y0 = padT + plotH;
-
-        for (const s of scripts) {
-          const c = (m.get(s)||0);
-          if (!c) continue;
-          const h = plotH * (c / maxY);
-          y0 -= h;
-
-          ctx.fillStyle = scriptColor(s);
-          ctx.fillRect(padL + i*(barW+gap), y0, barW, h);
-          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-          ctx.strokeRect(padL + i*(barW+gap), y0, barW, h);
-        }
-
-        // x label
-        ctx.fillStyle = 'rgba(154,176,216,0.95)';
-        const x = padL + i*(barW+gap) + barW/2;
-        const y = padT + plotH + 16;
-        ctx.save();
-        ctx.translate(x, y);
-        if (n > 8) ctx.rotate(-Math.PI/5);
-        ctx.textAlign = 'center';
-        ctx.fillText(d, 0, 0);
-        ctx.restore();
-      }
-
-      // legend top-right
-      let lx = padL + plotW - 10;
-      let ly = 8;
-      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
-      for (let i=scripts.length-1; i>=0; i--){
-        const s = scripts[i];
-        const w = ctx.measureText(s).width;
-        const box = 10;
-        ctx.fillStyle = scriptColor(s);
-        ctx.fillRect(lx - w - box - 10, ly, box, box);
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-        ctx.strokeRect(lx - w - box - 10, ly, box, box);
-        ctx.fillStyle = 'rgba(231,238,252,0.9)';
-        ctx.fillText(s, lx - w - 10, ly + 9);
-        ly += 16;
-      }
-    }
-
-    // =============================
-    // UI elements on right panel
+    // Right panel UI
     // =============================
     const selectionTag = document.getElementById('selectionTag');
     const btnClear = document.getElementById('btnClear');
-
     function setSelectionTag(text) {
       selectionTag.textContent = text || '';
       selectionTag.title = text || '';
@@ -1407,13 +1178,11 @@
       hideChartWindow();
       clearChart();
 
-      // reset filters to all checked
       for (const k of Object.keys(filterState)) {
         filterState[k].clear();
         for (const v of filterAllOptions[k]) filterState[k].add(v);
       }
       for (const k of Object.keys(filterWidgets)) filterWidgets[k]?.updateButton?.();
-
       applyFilterAndRerender();
     });
 
@@ -1540,10 +1309,164 @@
     renderTableHeader();
 
     // =============================
+    // Chart floating window (same behavior)
+    // =============================
+    const chartFloat = document.getElementById('chartFloat');
+    const chartTitleEl = document.getElementById('chartTitle');
+    const chartClose = document.getElementById('chartClose');
+    const chartCanvas = document.getElementById('gridChart');
+    const ctx = chartCanvas.getContext('2d');
+
+    chartClose.addEventListener('click', () => chartFloat.style.display = 'none');
+
+    function showChartWindow(){ chartFloat.style.display = 'block'; resizeCanvasToDisplaySize(); }
+    function hideChartWindow(){ chartFloat.style.display = 'none'; }
+
+    function resizeCanvasToDisplaySize(){
+      const rect = chartCanvas.getBoundingClientRect();
+      const w = Math.max(10, Math.floor(rect.width));
+      const h = Math.max(10, Math.floor(rect.height));
+      if (chartCanvas.width !== w || chartCanvas.height !== h) {
+        chartCanvas.width = w;
+        chartCanvas.height = h;
+      }
+    }
+    function clearChart(){
+      resizeCanvasToDisplaySize();
+      ctx.clearRect(0,0,chartCanvas.width, chartCanvas.height);
+      chartTitleEl.textContent = '點選紅色網格以顯示圖表';
+    }
+
+    function scriptColor(s){
+      if (s === 'YoutubeLive') return 'rgba(255,154,60,0.92)';
+      if (s === 'VoLTEmos') return 'rgba(43,124,255,0.92)';
+      let hash = 0; for (let i=0;i<s.length;i++) hash = ((hash<<5)-hash) + s.charCodeAt(i), hash|=0;
+      const r = 120 + (Math.abs(hash) % 100);
+      const g = 120 + (Math.abs(hash*7) % 100);
+      const b = 120 + (Math.abs(hash*13) % 100);
+      return `rgba(${r},${g},${b},0.92)`;
+    }
+
+    function renderStackedChartForLocation(locationName){
+      if (!locationName) { clearChart(); hideChartWindow(); return; }
+      const rows = filteredRows.filter(r => toClean(r.start_location_name) === locationName);
+      showChartWindow();
+      chartTitleEl.textContent = `start_location_name：${locationName}（${rows.length}）`;
+
+      resizeCanvasToDisplaySize();
+      const W = chartCanvas.width, H = chartCanvas.height;
+      ctx.clearRect(0,0,W,H);
+
+      const dateMap = new Map();
+      const scriptSet = new Set();
+
+      for (const r of rows) {
+        const d = toClean(r.Date) || '(blank)';
+        const s = toClean(r.measurement_Script) || '(blank)';
+        scriptSet.add(s);
+        if (!dateMap.has(d)) dateMap.set(d, new Map());
+        const m = dateMap.get(d);
+        m.set(s, (m.get(s)||0)+1);
+      }
+
+      const dates = Array.from(dateMap.keys()).sort();
+      const scripts = Array.from(scriptSet.values()).sort();
+
+      if (dates.length === 0) {
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+        ctx.fillText('（此 start_location_name 在目前 Filter 下沒有資料）', 12, 28);
+        return;
+      }
+
+      let maxY = 0;
+      for (const d of dates) {
+        const m = dateMap.get(d);
+        let sum = 0;
+        for (const s of scripts) sum += (m.get(s)||0);
+        maxY = Math.max(maxY, sum);
+      }
+      if (maxY === 0) maxY = 1;
+
+      const padL = 42, padR = 14, padT = 18, padB = 34;
+      const plotW = W - padL - padR;
+      const plotH = H - padT - padB;
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + plotH);
+      ctx.lineTo(padL + plotW, padT + plotH);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(231,238,252,0.85)';
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      const tickN = 4;
+      for (let i=0;i<=tickN;i++){
+        const v = Math.round(maxY * (i/tickN));
+        const y = padT + plotH - (plotH * (v/maxY));
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + plotW, y);
+        ctx.stroke();
+        ctx.fillText(String(v), 10, y+4);
+      }
+
+      const n = dates.length;
+      const gap = Math.max(6, Math.min(14, plotW / (n*6)));
+      const barW = Math.max(10, (plotW - gap*(n-1)) / n);
+
+      for (let i=0;i<n;i++){
+        const d = dates[i];
+        const m = dateMap.get(d);
+        let y0 = padT + plotH;
+
+        for (const s of scripts) {
+          const c = (m.get(s)||0);
+          if (!c) continue;
+          const h = plotH * (c / maxY);
+          y0 -= h;
+
+          ctx.fillStyle = scriptColor(s);
+          ctx.fillRect(padL + i*(barW+gap), y0, barW, h);
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.strokeRect(padL + i*(barW+gap), y0, barW, h);
+        }
+
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        const x = padL + i*(barW+gap) + barW/2;
+        const y = padT + plotH + 16;
+        ctx.save();
+        ctx.translate(x, y);
+        if (n > 8) ctx.rotate(-Math.PI/5);
+        ctx.textAlign = 'center';
+        ctx.fillText(d, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    // =============================
+    // Filtering apply
+    // =============================
+    function applyFiltersToRows(rows){
+      return rows.filter(r => {
+        const d = toClean(r.Date);
+        const n = toClean(r.measurement_NetWork);
+        const s = toClean(r.measurement_Script);
+        const a = toClean(r.Marea);
+        return filterState.Date.has(d)
+            && filterState.measurement_NetWork.has(n)
+            && filterState.measurement_Script.has(s)
+            && filterState.Marea.has(a);
+      });
+    }
+
+    // =============================
     // H3 meta + hover/click
     // =============================
     function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
-
     function initMetaRed(resKey, h3Index) {
       return { resKey, resNum: resNumOfKey(resKey), h3Index, count: 0, paNums: new Set(), startNames: new Set(), endNames: new Set(), sample:null };
     }
@@ -1578,7 +1501,6 @@
         </div>
       `;
     }
-
     function addLayerToLocIndex(names, poly) {
       for (const nm of names) {
         if (!nm) continue;
@@ -1603,7 +1525,6 @@
       setSelectionTag(`已篩選 start_location_name：${names.join('、')}（${selectedTable.length} 筆）`);
       renderTableRows(selectedTable);
 
-      // ✅ show floating chart window
       renderStackedChartForLocation(selectionPrimaryName);
     }
 
@@ -1622,10 +1543,7 @@
       poly.__meta = meta;
       layerGroup.addLayer(poly);
 
-      const html = (type === 'red')
-        ? buildHoverHtmlRed(meta)
-        : buildHoverHtmlBlue(meta);
-
+      const html = (type === 'red') ? buildHoverHtmlRed(meta) : buildHoverHtmlBlue(meta);
       poly.bindTooltip(html, { sticky:true, direction:'top', opacity:0.95 });
 
       poly.on('mouseover', () => {
@@ -1643,6 +1561,90 @@
       else addLayerToLocIndex(Array.from(meta.names), poly);
 
       return poly;
+    }
+
+    function rebuildH3FromRows(rowsPA){
+      for (const k of ['RES8','RES9','RES10','RES11']) {
+        h3Layers[k].clearLayers();
+        redAgg[k].clear();
+        blueAgg[k].clear();
+        redLabelItems[k] = [];
+      }
+      layersByLocName.clear();
+      clearHoverHighlights();
+
+      function addRed(resKey, h3Index, row) {
+        if (!h3Index) return;
+        let meta = redAgg[resKey].get(h3Index);
+        if (!meta) {
+          meta = initMetaRed(resKey, h3Index);
+          meta.sample = row;
+          redAgg[resKey].set(h3Index, meta);
+        }
+        meta.count += 1;
+        const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
+        const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
+        if (sn) meta.startNames.add(sn);
+        if (en) meta.endNames.add(en);
+      }
+
+      for (const r of rowsPA) {
+        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
+        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
+        addRed('RES10', toClean(r.start_H3_Res_10), r);
+        addRed('RES11', toClean(r.start_H3_Res_11), r);
+      }
+
+      function addBlue(resKey, h3Index, startName) {
+        if (!h3Index) return;
+        let meta = blueAgg[resKey].get(h3Index);
+        if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg[resKey].set(h3Index, meta); }
+        if (startName) meta.names.add(startName);
+      }
+
+      for (const r of rowsPA) {
+        const startName = toClean(r.start_location_name);
+        if (!startName) continue;
+        const matches = locMap.get(startName);
+        if (!matches || !matches.length) continue;
+        for (const locRow of matches) {
+          addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
+          addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
+          addBlue('RES10', toClean(locRow.H3_Res_10), startName);
+          addBlue('RES11', toClean(locRow.H3_Res_11), startName);
+        }
+      }
+
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        for (const h3Index of blueAgg[resKey].keys()) {
+          if (redAgg[resKey].has(h3Index)) blueAgg[resKey].delete(h3Index);
+        }
+      }
+
+      let redCells=0, blueCells=0;
+      for (const resKey of ['RES8','RES9','RES10','RES11']) {
+        const lg = h3Layers[resKey];
+
+        for (const [h3Index, meta] of redAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          addPolygonCell(meta, lg, 'red');
+          redCells++;
+          const center = h3.cellToLatLng(h3Index);
+          const nameText = Array.from(meta.startNames).filter(Boolean)[0] || '';
+          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
+        }
+
+        for (const [h3Index, meta] of blueAgg[resKey].entries()) {
+          if (!h3.isValidCell(h3Index)) continue;
+          addPolygonCell(meta, lg, 'blue');
+          blueCells++;
+        }
+      }
+
+      renderAggLabels();
+      renderNameLabels();
+      updatePointsVisibility();
+      return {redCells, blueCells};
     }
 
     // =============================
@@ -1676,196 +1678,28 @@
     }
 
     // =============================
-    // Point markers
+    // Points (先保留原本策略：zoom>=12才顯示)
+    // 這版為了修復主流程，points layer細節後續再補回你自訂 icon
     // =============================
-    function netColor(net){
-      const s = String(net ?? '').trim().toUpperCase();
-      if (s === '4G') return 'rgba(18,64,255,0.92)';
-      if (s === '5G') return 'rgba(255,154,60,0.92)';
-      return 'rgba(43,124,255,0.92)';
-    }
-    function svgYouTube(){
-      return `
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#fff" opacity="0.92" d="M21.5 7.7a2.6 2.6 0 0 0-1.8-1.9C18 5.3 12 5.3 12 5.3s-6 0-7.7.5A2.6 2.6 0 0 0 2.5 7.7 27 27 0 0 0 2.2 12c0 1.4.1 2.9.3 4.3a2.6 2.6 0 0 0 1.8 1.9c1.7.5 7.7.5 7.7.5s6 0 7.7-.5a2.6 2.6 0 0 0 1.8-1.9c.2-1.4.3-2.9.3-4.3s-.1-2.9-.3-4.3z"/>
-        <path fill="#0b1020" d="M10.2 15.6V8.4L16.4 12l-6.2 3.6z"/>
-      </svg>`;
-    }
-    function svgPhone(){
-      return `
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="#fff" d="M6.6 10.8c1.2 2.3 3.1 4.2 5.4 5.4l1.8-1.8c.2-.2.6-.3.9-.2 1 .3 2 .5 3.1.5.5 0 .9.4.9.9v2.9c0 .5-.4.9-.9.9C10.7 19.4 4.6 13.3 4.6 6c0-.5.4-.9.9-.9h2.9c.5 0 .9.4.9.9 0 1.1.2 2.1.5 3.1.1.3 0 .7-.2.9l-1.6 1.8z"/>
-      </svg>`;
-    }
-    function scriptIcon(script){
-      const s = String(script ?? '').trim();
-      if (s === 'YoutubeLive') return svgYouTube();
-      if (s === 'VoLTEmos') return svgPhone();
-      return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="#fff"/></svg>`;
-    }
-    function pointDivIcon({isStart, net, script}) {
-      const bg = netColor(net);
-      const badge = isStart ? 'S' : 'E';
-      const html = `
-        <div class="pmk" style="background:${bg}">
-          ${scriptIcon(script)}
-          <div class="badgeSE">${badge}</div>
-        </div>
-      `;
-      return L.divIcon({ className:'', html, iconSize:[28,28], iconAnchor:[14,14] });
-    }
     function isValidLatLng(lat, lon){
       const a = Number(lat), b = Number(lon);
       return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
     }
-    function tooltipStart(r){
-      return `
-        <div class="h3-tip">
-          <div><b>Date:</b> ${escapeHtml(toClean(r.Date))}</div>
-          <div><b>PA_Num:</b> ${escapeHtml(toClean(r.PA_Num))}</div>
-          <div><b>lag_end_tw:</b> ${escapeHtml(toClean(r.lag_end_tw))}</div>
-          <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
-          <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
-          <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
-          <div><b>lat/lon:</b> ${escapeHtml(toClean(r.start_lat))}, ${escapeHtml(toClean(r.start_lon))}</div>
-          <div><b>NetWork:</b> ${escapeHtml(toClean(r.measurement_NetWork))}</div>
-          <div><b>Script:</b> ${escapeHtml(toClean(r.measurement_Script))}</div>
-          <div><b>KM+M:</b> ${escapeHtml(toClean(r["start_location_KM+M"]))}</div>
-        </div>
-      `;
-    }
-    function tooltipEnd(r){
-      return `
-        <div class="h3-tip">
-          <div><b>Date:</b> ${escapeHtml(toClean(r.Date))}</div>
-          <div><b>PA_Num:</b> ${escapeHtml(toClean(r.PA_Num))}</div>
-          <div><b>lag_start_tw:</b> ${escapeHtml(toClean(r.lag_start_tw))}</div>
-          <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
-          <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
-          <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
-          <div><b>lat/lon:</b> ${escapeHtml(toClean(r.end_lat))}, ${escapeHtml(toClean(r.end_lon))}</div>
-          <div><b>NetWork:</b> ${escapeHtml(toClean(r.measurement_NetWork))}</div>
-          <div><b>Script:</b> ${escapeHtml(toClean(r.measurement_Script))}</div>
-          <div><b>KM+M:</b> ${escapeHtml(toClean(r["end_location_KM+M"]))}</div>
-        </div>
-      `;
-    }
-
     function rebuildPointLayers(rows){
       startPointLayer.clearLayers();
       endPointLayer.clearLayers();
 
       for (const r of rows) {
-        const net = toClean(r.measurement_NetWork);
-        const script = toClean(r.measurement_Script);
-
         if (isValidLatLng(r.start_lat, r.start_lon)) {
-          const icon = pointDivIcon({isStart:true, net, script});
-          const mk = L.marker([Number(r.start_lat), Number(r.start_lon)], { icon });
-          mk.bindTooltip(tooltipStart(r), { sticky:true, direction:'top', opacity:0.95 });
+          const mk = L.circleMarker([Number(r.start_lat), Number(r.start_lon)], {radius:4, weight:1, fillOpacity:0.75});
           startPointLayer.addLayer(mk);
         }
-
         if (isValidLatLng(r.end_lat, r.end_lon)) {
-          const icon = pointDivIcon({isStart:false, net, script});
-          const mk = L.marker([Number(r.end_lat), Number(r.end_lon)], { icon });
-          mk.bindTooltip(tooltipEnd(r), { sticky:true, direction:'top', opacity:0.95 });
+          const mk = L.circleMarker([Number(r.end_lat), Number(r.end_lon)], {radius:4, weight:1, fillOpacity:0.75});
           endPointLayer.addLayer(mk);
         }
       }
-
       updatePointsVisibility();
-    }
-
-    // =============================
-    // Build H3 from filtered rows
-    // =============================
-    const layersByLocName = new Map(); // re-declare for safety in this standalone
-    const redAgg2 = redAgg; const blueAgg2 = blueAgg;
-
-    function rebuildH3FromRows(rowsPA){
-      for (const k of ['RES8','RES9','RES10','RES11']) {
-        h3Layers[k].clearLayers();
-        redAgg2[k].clear();
-        blueAgg2[k].clear();
-        redLabelItems[k] = [];
-      }
-      layersByLocName.clear();
-      clearHoverHighlights();
-
-      function addRed(resKey, h3Index, row) {
-        if (!h3Index) return;
-        let meta = redAgg2[resKey].get(h3Index);
-        if (!meta) {
-          meta = initMetaRed(resKey, h3Index);
-          meta.sample = row;
-          redAgg2[resKey].set(h3Index, meta);
-        }
-        meta.count += 1;
-        const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
-        const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
-        if (sn) meta.startNames.add(sn);
-        if (en) meta.endNames.add(en);
-      }
-
-      for (const r of rowsPA) {
-        addRed('RES8',  toClean(r.start_H3_Res_8),  r);
-        addRed('RES9',  toClean(r.start_H3_Res_9),  r);
-        addRed('RES10', toClean(r.start_H3_Res_10), r);
-        addRed('RES11', toClean(r.start_H3_Res_11), r);
-      }
-
-      function addBlue(resKey, h3Index, startName) {
-        if (!h3Index) return;
-        let meta = blueAgg2[resKey].get(h3Index);
-        if (!meta) { meta = initMetaBlue(resKey, h3Index); blueAgg2[resKey].set(h3Index, meta); }
-        if (startName) meta.names.add(startName);
-      }
-
-      for (const r of rowsPA) {
-        const startName = toClean(r.start_location_name);
-        if (!startName) continue;
-        const matches = locMap.get(startName);
-        if (!matches || !matches.length) continue;
-        for (const locRow of matches) {
-          addBlue('RES8',  toClean(locRow.H3_Res_8),  startName);
-          addBlue('RES9',  toClean(locRow.H3_Res_9),  startName);
-          addBlue('RES10', toClean(locRow.H3_Res_10), startName);
-          addBlue('RES11', toClean(locRow.H3_Res_11), startName);
-        }
-      }
-
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        for (const h3Index of blueAgg2[resKey].keys()) {
-          if (redAgg2[resKey].has(h3Index)) blueAgg2[resKey].delete(h3Index);
-        }
-      }
-
-      let redCells=0, blueCells=0;
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        const lg = h3Layers[resKey];
-
-        for (const [h3Index, meta] of redAgg2[resKey].entries()) {
-          if (!h3.isValidCell(h3Index)) continue;
-          addPolygonCell(meta, lg, 'red');
-          redCells++;
-
-          const center = h3.cellToLatLng(h3Index);
-          const nameText = Array.from(meta.startNames).filter(Boolean)[0] || '';
-          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count: meta.count, nameText });
-        }
-
-        for (const [h3Index, meta] of blueAgg2[resKey].entries()) {
-          if (!h3.isValidCell(h3Index)) continue;
-          addPolygonCell(meta, lg, 'blue');
-          blueCells++;
-        }
-      }
-
-      renderAggLabels();
-      renderNameLabels();
-      updatePointsVisibility();
-      return {redCells, blueCells};
     }
 
     // =============================
@@ -1889,13 +1723,11 @@
       lastUpdateTime = new Date().toISOString();
       setStatus(`ok: filtered_rows=${filteredRows.length}, red_cells=${stats.redCells}, blue_cells=${stats.blueCells}`);
 
-      // if chart open, re-render with filtered data
       if (chartFloat.style.display === 'block' && selectionPrimaryName) {
         renderStackedChartForLocation(selectionPrimaryName);
       }
     }
 
-    // keep labels reactive
     map.on('zoomend moveend', () => {
       renderAggLabels();
       renderNameLabels();
@@ -1903,7 +1735,7 @@
     });
 
     // =============================
-    // CSV load + init filter options
+    // Load CSVs
     // =============================
     async function loadBothCSVsAndInit() {
       setStatus("starting...");
@@ -1947,7 +1779,6 @@
 
       allRowsRaw = rowsPA;
 
-      // options
       const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)));
       const optNet  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_NetWork)));
       const optScr  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_Script)));
@@ -1958,7 +1789,6 @@
       filterWidgets.measurement_Script.setOptions(optScr);
       filterWidgets.Marea.setOptions(optArea);
 
-      // initial filter = all checked
       filteredRows = [...allRowsRaw];
 
       renderTableRows(filteredRows);
@@ -1989,9 +1819,9 @@
         setStatus("booting...");
         setTimeout(async () => {
           try { await loadBothCSVsAndInit(); }
-          catch (e) { logError(e); }
+          catch (e) { logError(e); showFatal(String(e?.stack || e)); }
         }, 0);
-      } catch (e) { logError(e); }
+      } catch (e) { logError(e); showFatal(String(e?.stack || e)); }
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startApp);
