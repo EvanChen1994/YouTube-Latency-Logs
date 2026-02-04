@@ -27,7 +27,7 @@
     }
 
     html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
-    .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
+    .app { display:flex; height:100vh; width:100vw; overflow:visible; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
 
     /* LEFT */
     .leftCol{
@@ -45,7 +45,7 @@
       top:10px;
       left:50%;
       transform: translateX(-50%);
-      z-index: 900;
+      z-index: 2000;
       pointer-events: auto; /* ✅ 修正：讓 filter 可點 */
     }
 
@@ -107,8 +107,8 @@
       position:absolute;
       top: calc(100% + 6px);
       left:0;
-      width: 260px;
-      max-height: 260px;
+      width: 220px;
+      max-height: 240px;
       overflow:auto;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.18);
@@ -2047,4 +2047,5 @@
   </script>
 </body>
 </html>
+
 
