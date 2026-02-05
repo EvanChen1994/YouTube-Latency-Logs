@@ -111,60 +111,46 @@
 
     /* ✅ 下拉選單：改成固定定位 + 掛在 body，不會被裁切 */
     .msel-menu{
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: 240px;
+      position:absolute;
+      top: calc(100% + 6px);
+      left:0;
+    
+      /* ✅ 寬度跟按鈕一致（你之前已做過，這裡保留可用 JS 動態覆蓋） */
+      width: 220px;
+      max-width: 240px;
       box-sizing: border-box;
-
+    
+      /* ✅ 不要在 menu 本體做 scroll，避免你之前遇到「要滾一下才看到」的問題 */
+      overflow: visible;
+    
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.18);
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 200000; /* ✅ 壓過一切 */
-
+      z-index: 10000;
       padding: 8px;
-
-      /* ✅ 依你要求：不要出現垂直/水平捲動 */
+    
+      /* ✅ 防止水平捲動 */
       max-height: none;
-      overflow: visible;
     }
-    .msel-tools{
-      display:flex; gap:8px; margin-bottom:8px;
-      position: sticky;
-      top: 0;
-      background: rgba(6,18,40,0.98);
-      padding-bottom: 8px;
-      z-index: 1;
+    
+    /* ✅ 清單容器只顯示 TOP5，超過就「在清單裡」垂直捲動 */
+    .msel-menu .list-scroll{
+      /* 你目前 item 大約 28~30px，高度抓 5 筆 */
+      max-height: 150px;         /* ✅ TOP 5 */
+      overflow-y: auto;          /* ✅ 只垂直 */
+      overflow-x: hidden;        /* ✅ 禁水平 */
+      padding-right: 2px;        /* ✅ 讓捲軸不壓文字 */
     }
-    .tbtn{
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.05);
-      color: var(--txt);
-      border-radius:10px;
-      padding:5px 8px;
-      font-weight:900;
-      cursor:pointer;
-      font-size:11px;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .tbtn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.30); }
+    
+    /* ✅ 讓每一列不要撐出水平卷軸 */
     .msel-menu .item{
-      display:flex; align-items:center; gap:8px;
-      padding: 6px 6px;
-      border-radius: 8px;
-      cursor:pointer;
-      user-select:none;
-      color: rgba(231,238,252,0.92);
-      border: 1px solid transparent;
-      font-size: 12px;
+      width: 100%;
+      box-sizing: border-box;
+      white-space: nowrap;
     }
-    .msel-menu .item:hover{
-      background: rgba(43,124,255,0.12);
-      border-color: rgba(43,124,255,0.20);
-    }
+
     .msel-menu input{ cursor:pointer; }
 
     /* RIGHT */
@@ -1198,7 +1184,9 @@
       menu.appendChild(tools);
 
       const list = document.createElement('div');
+      list.className = 'list-scroll';   // ✅ TOP5 scroll container
       menu.appendChild(list);
+
 
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
@@ -1233,8 +1221,9 @@
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (activeMenu === menu) { closeActiveMenu(); return; }
-        openMenu();
+        const opening = (menu.style.display !== 'block');
+        setOpen(opening);
+        if (opening) list.scrollTop = 0;   // ✅ 每次打開回到TOP
       });
 
       tools.addEventListener('click', (e) => {
@@ -2085,3 +2074,4 @@
   </script>
 </body>
 </html>
+
