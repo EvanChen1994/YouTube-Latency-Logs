@@ -47,11 +47,11 @@
       transform: translateX(-50%);
       z-index: 2000;
       pointer-events: auto;
-      max-width: min(96vw, 820px);
+      max-width: min(96vw, 860px);
       width: auto;
     }
 
-    /* ✅ Filter 單列固定 + 可水平捲動 */
+    /* ✅ Filter 單列固定：不捲動、不換行 */
     .filter-bar{
       pointer-events: auto;
       background: rgba(10,19,40,0.92);
@@ -64,21 +64,14 @@
       gap:8px;
       backdrop-filter: blur(6px);
 
-      flex-wrap: nowrap;         /* ✅ 不換行：單列 */
-      overflow-x: auto;          /* ✅ 太窄就水平捲動 */
-      overflow-y: visible;
+      flex-wrap: nowrap;     /* ✅ 單列 */
       white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
-    }
-    .filter-bar::-webkit-scrollbar{ height: 8px; }
-    .filter-bar::-webkit-scrollbar-thumb{
-      background: rgba(255,255,255,0.10);
-      border-radius: 10px;
+      overflow: visible;     /* ✅ 不要裁切（menu 也不靠這裡顯示了） */
     }
 
     .msel{ position:relative; display:flex; align-items:center; gap:6px; flex: 0 0 auto; }
     .msel .lbl{
-      font-size:11px;            /* ✅ 字體縮小 */
+      font-size:11px;
       font-weight:900;
       color: rgba(231,238,252,0.88);
       white-space:nowrap;
@@ -88,7 +81,7 @@
       background: rgba(255,255,255,0.05);
       color: var(--txt);
       border-radius:10px;
-      padding:5px 7px;           /* ✅ 更精緻更短 */
+      padding:5px 7px;
       cursor:pointer;
       font-weight:900;
       display:flex;
@@ -96,8 +89,9 @@
       justify-content:space-between;
       gap:8px;
       user-select:none;
-      min-width: 84px;           /* ✅ 縮短 */
-      max-width: 140px;          /* ✅ 避免超出 */
+
+      /* ✅ 盡量縮短，避免超寬 */
+      width: 120px;
       font-size: 11px;
     }
     .msel-btn:hover{
@@ -107,30 +101,34 @@
     .msel-btn .sum{
       flex:1;
       text-align:left;
-      font-size:10.5px;          /* ✅ 更小 */
+      font-size:10.5px;
       color: rgba(154,176,216,0.95);
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 98px;
+      max-width: 90px;
     }
 
+    /* ✅ 下拉選單：改成固定定位 + 掛在 body，不會被裁切 */
     .msel-menu{
-      position:absolute;
-      top: calc(100% + 6px);
-      left:0;
-      width: 220px;          /* 會在 JS 打開時自適應成 btn 寬度 */
-      max-width: 240px;
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 240px;
       box-sizing: border-box;
-      max-height: 260px;
-      overflow:auto;
+
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.18);
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 10000;
+      z-index: 200000; /* ✅ 壓過一切 */
+
       padding: 8px;
+
+      /* ✅ 依你要求：不要出現垂直/水平捲動 */
+      max-height: none;
+      overflow: visible;
     }
     .msel-tools{
       display:flex; gap:8px; margin-bottom:8px;
@@ -513,7 +511,7 @@
       z-index:1;
     }
 
-    /* Bottom-right PA Points legend (hover expand) */
+    /* ✅ Bottom-right PA Points legend (Leaflet Control) */
     .legend-wrap{ position: relative; }
     .legend-tab{
       width: 40px; height: 40px;
@@ -565,6 +563,13 @@
       flex: 0 0 auto;
       position: relative;
       display:flex; align-items:center; justify-content:center;
+    }
+    .lg-dot .mini{
+      font-size:10px;
+      font-weight:1000;
+      color:#00d6ff;
+      text-shadow: 0 0 10px rgba(0,0,0,0.7);
+      line-height:1;
     }
 
     /* Fail-safe error banner */
@@ -670,16 +675,15 @@
 
   <script>
     /* ===========================
-       ver 7.3
-       - Filter 固定單列：nowrap + 可水平捲動
-       - Filter 字體/寬度縮小，避免超出
-       - 下拉選單寬度自適應：與按鈕同寬
+       ver 7.4
+       - 下拉選單改成 body portal + fixed 定位：不裁切、不用滾輪
+       - Filter bar 不出現水平/垂直捲動
+       - 右下角 legend（Leaflet control）恢復
        =========================== */
 
-    const APP_VERSION = "ver 7.3";
+    const APP_VERSION = "ver 7.4";
     document.getElementById('verTag').textContent = APP_VERSION;
 
-    // Fail-safe banner
     const fatalBanner = document.getElementById('fatalBanner');
     function showFatal(msg){
       fatalBanner.style.display = 'block';
@@ -737,7 +741,6 @@
     btnModalClose.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
-    // Utils
     function escapeHtml(s) {
       return String(s ?? '')
         .replaceAll('&', '&amp;')
@@ -825,7 +828,6 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
-    // pane to ensure PA points always on top
     map.createPane('paPointsPane');
     map.getPane('paPointsPane').style.zIndex = 950;
 
@@ -835,6 +837,31 @@
     };
     L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
     L.control.scale({ position:'bottomright', imperial:false, metric:true }).addTo(map);
+
+    // ✅ 右下角 legend control（恢復）
+    const LegendControl = L.Control.extend({
+      options: { position:'bottomright' },
+      onAdd: function(){
+        const div = L.DomUtil.create('div', 'legend-wrap');
+        div.innerHTML = `
+          <div class="legend-panel">
+            <div class="legend-ttl">PA Points Legend</div>
+            <div class="legend-grid">
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;"><span class="mini">S</span></div><div>4G Start</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;"><span class="mini">E</span></div><div>4G End</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;"><span class="mini">S</span></div><div>5G Start</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;"><span class="mini">E</span></div><div>5G End</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">YT</div><div>YoutubeLive</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">TEL</div><div>VoLTEmos</div></div>
+            </div>
+          </div>
+          <div class="legend-tab" title="PA Points Legend（滑鼠移上去）">ⓘ</div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      }
+    });
+    map.addControl(new LegendControl());
 
     // Zoom tag
     const zoomLevelEl = document.getElementById('zoomLevel');
@@ -1109,14 +1136,42 @@
       if (set.size === all.length) return 'all';
       const arr = Array.from(set);
       if (arr.length <= 2) return arr.join('、');
-      return `${arr.slice(0,2).join('、')} +${arr.length-2}`;
+      return `${arr[0]} +${arr.length-1}`;
+    }
+
+    // ✅ 全局只允許同時開一個 menu
+    let activeMenu = null;
+    let activeAnchorBtn = null;
+    let activeCloseHandler = null;
+
+    function closeActiveMenu(){
+      if (!activeMenu) return;
+      activeMenu.style.display = 'none';
+      if (activeMenu.__mountedToBody) {
+        document.body.removeChild(activeMenu);
+        activeMenu.__mountedToBody = false;
+      }
+      activeMenu = null;
+      activeAnchorBtn = null;
+      if (activeCloseHandler) {
+        window.removeEventListener('resize', activeCloseHandler);
+        window.removeEventListener('scroll', activeCloseHandler, true);
+        activeCloseHandler = null;
+      }
+    }
+
+    function positionMenuToButton(menu, btn){
+      const r = btn.getBoundingClientRect();
+      const gap = 6;
+      menu.style.left = Math.round(r.left) + 'px';
+      menu.style.top = Math.round(r.bottom + gap) + 'px';
+      menu.style.width = Math.max(200, Math.round(r.width)) + 'px';
     }
 
     function createMultiSelectInline({title, key, width=120}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
-      // prevent Leaflet from eating clicks/scrolls
       L.DomEvent.disableClickPropagation(wrap);
       L.DomEvent.disableScrollPropagation(wrap);
       wrap.style.pointerEvents = 'auto';
@@ -1145,14 +1200,6 @@
       const list = document.createElement('div');
       menu.appendChild(list);
 
-      function syncMenuWidth(){
-        // ✅ 下拉選單跟按鈕同寬（更精緻）
-        menu.style.width = btn.offsetWidth + 'px';
-      }
-      function setOpen(v){
-        if (v) syncMenuWidth();
-        menu.style.display = v ? 'block' : 'none';
-      }
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
         const t = summaryText(key);
@@ -1160,16 +1207,40 @@
         sumEl.title = Array.from(filterState[key]).join('、') || '(none)';
       }
 
+      function openMenu(){
+        // 先關掉其他的
+        closeActiveMenu();
+
+        // 掛到 body（避免被任何 overflow 裁切）
+        document.body.appendChild(menu);
+        menu.__mountedToBody = true;
+        menu.style.display = 'block';
+
+        // 定位
+        positionMenuToButton(menu, btn);
+
+        // 監聽 resize/scroll 重新定位（或直接關閉也可）
+        activeCloseHandler = () => {
+          if (!activeMenu || !activeAnchorBtn) return;
+          positionMenuToButton(activeMenu, activeAnchorBtn);
+        };
+        window.addEventListener('resize', activeCloseHandler);
+        window.addEventListener('scroll', activeCloseHandler, true);
+
+        activeMenu = menu;
+        activeAnchorBtn = btn;
+      }
+
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const open = (menu.style.display === 'block');
-        setOpen(!open);
+        if (activeMenu === menu) { closeActiveMenu(); return; }
+        openMenu();
       });
 
       tools.addEventListener('click', (e) => {
         const act = e.target?.dataset?.act;
         if (!act) return;
-        if (act === 'close') { setOpen(false); return; }
+        if (act === 'close') { closeActiveMenu(); return; }
         if (act === 'none') { filterState[key].clear(); }
         if (act === 'all') {
           filterState[key].clear();
@@ -1183,19 +1254,18 @@
         });
       });
 
-      // click outside closes
+      // 點擊外部關閉
       document.addEventListener('click', (e) => {
-        if (!wrap.contains(e.target)) setOpen(false);
+        if (activeMenu && !menu.contains(e.target) && !wrap.contains(e.target)) closeActiveMenu();
       });
 
-      // on resize keep menu width correct
-      window.addEventListener('resize', () => {
-        if (menu.style.display === 'block') syncMenuWidth();
+      // ESC 關閉
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeActiveMenu();
       });
 
       wrap.appendChild(lbl);
       wrap.appendChild(btn);
-      wrap.appendChild(menu);
 
       return {
         el: wrap,
@@ -1240,9 +1310,7 @@
 
     const filterMount = document.getElementById('filterMount');
     const filterWidgets = {};
-
-    // ✅ 按鈕更窄：確保單列好看、不超出
-    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:140});
+    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
     filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:92});
     filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:120});
     filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:110});
@@ -1266,6 +1334,7 @@
       setSelectionTag('');
       hideChartWindow();
       clearChart();
+      closeActiveMenu();
 
       for (const k of Object.keys(filterState)) {
         filterState[k].clear();
