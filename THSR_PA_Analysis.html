@@ -47,31 +47,27 @@
       transform: translateX(-50%);
       z-index: 2000;
       pointer-events: auto;
-      max-width: min(96vw, 860px);
-      width: auto;
     }
-
-    /* ✅ Filter 單列固定：不捲動、不換行 */
     .filter-bar{
       pointer-events: auto;
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
       border-radius: 14px;
       box-shadow: 0 8px 22px rgba(0,0,0,0.38);
-      padding: 6px 8px;
+      padding: 8px 10px;
       display:flex;
       align-items:center;
-      gap:8px;
+      gap:10px;
       backdrop-filter: blur(6px);
-
-      flex-wrap: nowrap;     /* ✅ 單列 */
-      white-space: nowrap;
-      overflow: visible;     /* ✅ 不要裁切（menu 也不靠這裡顯示了） */
+      min-width: 420px;
+      max-width: min(92vw, 720px);
+      overflow: visible;
     }
 
-    .msel{ position:relative; display:flex; align-items:center; gap:6px; flex: 0 0 auto; }
+    /* ===== Multi-select (portal dropdown) ===== */
+    .msel{ position:relative; display:flex; align-items:center; gap:6px; }
     .msel .lbl{
-      font-size:11px;
+      font-size:12px;
       font-weight:900;
       color: rgba(231,238,252,0.88);
       white-space:nowrap;
@@ -81,7 +77,7 @@
       background: rgba(255,255,255,0.05);
       color: var(--txt);
       border-radius:10px;
-      padding:5px 7px;
+      padding:6px 8px;
       cursor:pointer;
       font-weight:900;
       display:flex;
@@ -89,10 +85,8 @@
       justify-content:space-between;
       gap:8px;
       user-select:none;
-
-      /* ✅ 盡量縮短，避免超寬 */
-      width: 120px;
-      font-size: 11px;
+      min-width: 92px;
+      max-width: 160px;
     }
     .msel-btn:hover{
       background: rgba(255,154,60,0.10);
@@ -101,56 +95,80 @@
     .msel-btn .sum{
       flex:1;
       text-align:left;
-      font-size:10.5px;
+      font-size:11px;
       color: rgba(154,176,216,0.95);
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 90px;
+      max-width: 108px;
     }
 
-    /* ✅ 下拉選單：改成固定定位 + 掛在 body，不會被裁切 */
+    /* ✅ Portal menu: attach to body + fixed positioning */
     .msel-menu{
-      position:absolute;
-      top: calc(100% + 6px);
-      left:0;
-    
-      /* ✅ 寬度跟按鈕一致（你之前已做過，這裡保留可用 JS 動態覆蓋） */
-      width: 220px;
-      max-width: 240px;
+      position: fixed;              /* ✅ key fix */
+      left: 0;
+      top: 0;
+
       box-sizing: border-box;
-    
-      /* ✅ 不要在 menu 本體做 scroll，避免你之前遇到「要滾一下才看到」的問題 */
-      overflow: visible;
-    
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.18);
       background: rgba(6,18,40,0.98);
       box-shadow: 0 18px 40px rgba(0,0,0,0.55);
       display:none;
-      z-index: 10000;
+      z-index: 100000;              /* ✅ above Leaflet panes */
       padding: 8px;
-    
-      /* ✅ 防止水平捲動 */
-      max-height: none;
+
+      overflow: hidden;             /* keep inner scroll clean */
+      max-width: min(92vw, 360px);
+
+      /* ✅ no horizontal scroll */
+      overscroll-behavior: contain;
     }
-    
-    /* ✅ 清單容器只顯示 TOP5，超過就「在清單裡」垂直捲動 */
+    .msel-tools{
+      display:flex; gap:8px; margin-bottom:8px;
+      position: sticky;
+      top: 0;
+      background: rgba(6,18,40,0.98);
+      padding-bottom: 8px;
+      z-index: 1;
+    }
+    .tbtn{
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: var(--txt);
+      border-radius:10px;
+      padding:5px 8px;
+      font-weight:900;
+      cursor:pointer;
+      font-size:11px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .tbtn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.30); }
+
+    /* ✅ show TOP5 then vertical scroll */
     .msel-menu .list-scroll{
-      /* 你目前 item 大約 28~30px，高度抓 5 筆 */
-      max-height: 150px;         /* ✅ TOP 5 */
-      overflow-y: auto;          /* ✅ 只垂直 */
-      overflow-x: hidden;        /* ✅ 禁水平 */
-      padding-right: 2px;        /* ✅ 讓捲軸不壓文字 */
+      max-height: 160px;             /* ~ 5 rows */
+      overflow-y: auto;              /* ✅ vertical only */
+      overflow-x: hidden;            /* ✅ no horizontal */
+      padding-right: 2px;
     }
-    
-    /* ✅ 讓每一列不要撐出水平卷軸 */
     .msel-menu .item{
+      display:flex; align-items:center; gap:8px;
+      padding: 6px 6px;
+      border-radius: 8px;
+      cursor:pointer;
+      user-select:none;
+      color: rgba(231,238,252,0.92);
+      border: 1px solid transparent;
       width: 100%;
       box-sizing: border-box;
       white-space: nowrap;
     }
-
+    .msel-menu .item:hover{
+      background: rgba(43,124,255,0.12);
+      border-color: rgba(43,124,255,0.20);
+    }
     .msel-menu input{ cursor:pointer; }
 
     /* RIGHT */
@@ -497,7 +515,7 @@
       z-index:1;
     }
 
-    /* ✅ Bottom-right PA Points legend (Leaflet Control) */
+    /* Bottom-right PA Points legend (hover expand) */
     .legend-wrap{ position: relative; }
     .legend-tab{
       width: 40px; height: 40px;
@@ -549,13 +567,9 @@
       flex: 0 0 auto;
       position: relative;
       display:flex; align-items:center; justify-content:center;
-    }
-    .lg-dot .mini{
-      font-size:10px;
-      font-weight:1000;
-      color:#00d6ff;
-      text-shadow: 0 0 10px rgba(0,0,0,0.7);
-      line-height:1;
+      font-size: 10px;
+      font-weight: 1000;
+      color: rgba(231,238,252,0.95);
     }
 
     /* Fail-safe error banner */
@@ -587,7 +601,7 @@
 
       <div class="mapTopBar">
         <div class="filter-bar" id="filterBar">
-          <div id="filterMount" style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;"></div>
+          <div id="filterMount" style="display:flex;align-items:center;gap:10px;"></div>
         </div>
       </div>
 
@@ -617,8 +631,8 @@
 
       <div class="hint">
         Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
-        數字統計僅紅格；點紅格→右表依 start_location_name 篩選，並跳出圖表視窗（可關閉）。
-        <br><span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
+        數字統計僅紅格；點紅格→右表依 start_location_name 篩選，並跳出圖表視窗（可關閉）。<br>
+        <span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
       </div>
 
       <div class="table-wrap">
@@ -661,15 +675,16 @@
 
   <script>
     /* ===========================
-       ver 7.4
-       - 下拉選單改成 body portal + fixed 定位：不裁切、不用滾輪
-       - Filter bar 不出現水平/垂直捲動
-       - 右下角 legend（Leaflet control）恢復
+       ver 7.3
+       - FIX: dropdown invisible -> portal menu (append to body) + fixed positioning
+       - Feature: menu shows TOP5, overflow-y for more
+       - FIX: chart legend width auto-fit
        =========================== */
 
-    const APP_VERSION = "ver 7.4";
+    const APP_VERSION = "ver 7.3";
     document.getElementById('verTag').textContent = APP_VERSION;
 
+    // Fail-safe banner
     const fatalBanner = document.getElementById('fatalBanner');
     function showFatal(msg){
       fatalBanner.style.display = 'block';
@@ -727,6 +742,7 @@
     btnModalClose.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
+    // Utils
     function escapeHtml(s) {
       return String(s ?? '')
         .replaceAll('&', '&amp;')
@@ -814,6 +830,7 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
+    // ✅ pane to ensure PA points always on top
     map.createPane('paPointsPane');
     map.getPane('paPointsPane').style.zIndex = 950;
 
@@ -824,24 +841,27 @@
     L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
     L.control.scale({ position:'bottomright', imperial:false, metric:true }).addTo(map);
 
-    // ✅ 右下角 legend control（恢復）
+    // ✅ Bottom-right hover legend control (restore)
     const LegendControl = L.Control.extend({
-      options: { position:'bottomright' },
-      onAdd: function(){
+      options: { position: 'bottomright' },
+      onAdd: function () {
         const div = L.DomUtil.create('div', 'legend-wrap');
         div.innerHTML = `
+          <div class="legend-tab" title="PA Points 圖例">ℹ</div>
           <div class="legend-panel">
-            <div class="legend-ttl">PA Points Legend</div>
+            <div class="legend-ttl">PA Points 圖例</div>
             <div class="legend-grid">
-              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;"><span class="mini">S</span></div><div>4G Start</div></div>
-              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;"><span class="mini">E</span></div><div>4G End</div></div>
-              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;"><span class="mini">S</span></div><div>5G Start</div></div>
-              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;"><span class="mini">E</span></div><div>5G End</div></div>
-              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">YT</div><div>YoutubeLive</div></div>
-              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">TEL</div><div>VoLTEmos</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">S</div><div>4G / Start</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">E</div><div>4G / End</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;">S</div><div>5G / Start</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;">E</div><div>5G / End</div></div>
+
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">YT</div><div>4G / YoutubeLive</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;">YT</div><div>5G / YoutubeLive</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#0b2d6e;">TEL</div><div>4G / VoLTEmos</div></div>
+              <div class="lg-item"><div class="lg-dot" style="background:#ff9a3c;">TEL</div><div>5G / VoLTEmos</div></div>
             </div>
           </div>
-          <div class="legend-tab" title="PA Points Legend（滑鼠移上去）">ⓘ</div>
         `;
         L.DomEvent.disableClickPropagation(div);
         return div;
@@ -1122,42 +1142,21 @@
       if (set.size === all.length) return 'all';
       const arr = Array.from(set);
       if (arr.length <= 2) return arr.join('、');
-      return `${arr[0]} +${arr.length-1}`;
+      return `${arr.slice(0,2).join('、')} +${arr.length-2}`;
     }
 
-    // ✅ 全局只允許同時開一個 menu
+    // ✅ Global: only one open dropdown at a time
     let activeMenu = null;
-    let activeAnchorBtn = null;
-    let activeCloseHandler = null;
-
     function closeActiveMenu(){
-      if (!activeMenu) return;
-      activeMenu.style.display = 'none';
-      if (activeMenu.__mountedToBody) {
-        document.body.removeChild(activeMenu);
-        activeMenu.__mountedToBody = false;
-      }
+      if (activeMenu && activeMenu.style.display === 'block') activeMenu.style.display = 'none';
       activeMenu = null;
-      activeAnchorBtn = null;
-      if (activeCloseHandler) {
-        window.removeEventListener('resize', activeCloseHandler);
-        window.removeEventListener('scroll', activeCloseHandler, true);
-        activeCloseHandler = null;
-      }
     }
 
-    function positionMenuToButton(menu, btn){
-      const r = btn.getBoundingClientRect();
-      const gap = 6;
-      menu.style.left = Math.round(r.left) + 'px';
-      menu.style.top = Math.round(r.bottom + gap) + 'px';
-      menu.style.width = Math.max(200, Math.round(r.width)) + 'px';
-    }
-
-    function createMultiSelectInline({title, key, width=120}) {
+    function createMultiSelectInline({title, key, width=140}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
+      // prevent Leaflet from eating clicks/scrolls
       L.DomEvent.disableClickPropagation(wrap);
       L.DomEvent.disableScrollPropagation(wrap);
       wrap.style.pointerEvents = 'auto';
@@ -1171,8 +1170,10 @@
       btn.style.width = width + 'px';
       btn.innerHTML = `<span class="sum" title=""></span><span>▾</span>`;
 
+      // ✅ portal menu
       const menu = document.createElement('div');
       menu.className = 'msel-menu';
+      document.body.appendChild(menu);
 
       const tools = document.createElement('div');
       tools.className = 'msel-tools';
@@ -1184,9 +1185,12 @@
       menu.appendChild(tools);
 
       const list = document.createElement('div');
-      list.className = 'list-scroll';   // ✅ TOP5 scroll container
+      list.className = 'list-scroll'; // ✅ TOP5 scroll container
       menu.appendChild(list);
 
+      // stop wheel scroll leaking to map/page
+      L.DomEvent.disableClickPropagation(menu);
+      L.DomEvent.disableScrollPropagation(menu);
 
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
@@ -1195,41 +1199,62 @@
         sumEl.title = Array.from(filterState[key]).join('、') || '(none)';
       }
 
+      function positionMenu(){
+        // menu must be visible to measure height
+        const rect = btn.getBoundingClientRect();
+        menu.style.width = rect.width + 'px';
+
+        // default open downward
+        let left = rect.left;
+        let top  = rect.bottom + 6;
+
+        // keep inside viewport horizontally
+        const vw = window.innerWidth;
+        const mw = Math.min(menu.offsetWidth || rect.width, vw - 12);
+        if (left + mw > vw - 6) left = Math.max(6, vw - mw - 6);
+        if (left < 6) left = 6;
+
+        // if bottom overflow, open upward
+        const mh = menu.offsetHeight || 260;
+        const vh = window.innerHeight;
+        if (top + mh > vh - 6) {
+          top = rect.top - mh - 6;
+          if (top < 6) top = 6;
+        }
+
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+      }
+
       function openMenu(){
-        // 先關掉其他的
         closeActiveMenu();
-
-        // 掛到 body（避免被任何 overflow 裁切）
-        document.body.appendChild(menu);
-        menu.__mountedToBody = true;
         menu.style.display = 'block';
-
-        // 定位
-        positionMenuToButton(menu, btn);
-
-        // 監聽 resize/scroll 重新定位（或直接關閉也可）
-        activeCloseHandler = () => {
-          if (!activeMenu || !activeAnchorBtn) return;
-          positionMenuToButton(activeMenu, activeAnchorBtn);
-        };
-        window.addEventListener('resize', activeCloseHandler);
-        window.addEventListener('scroll', activeCloseHandler, true);
-
         activeMenu = menu;
-        activeAnchorBtn = btn;
+        // reset scroll to top so user sees TOP5 immediately
+        list.scrollTop = 0;
+        // position after display so offsetHeight is correct
+        positionMenu();
+      }
+      function closeMenu(){
+        menu.style.display = 'none';
+        if (activeMenu === menu) activeMenu = null;
+      }
+      function toggleMenu(){
+        const opening = (menu.style.display !== 'block');
+        if (opening) openMenu();
+        else closeMenu();
       }
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const opening = (menu.style.display !== 'block');
-        setOpen(opening);
-        if (opening) list.scrollTop = 0;   // ✅ 每次打開回到TOP
+        toggleMenu();
       });
 
       tools.addEventListener('click', (e) => {
+        e.stopPropagation();
         const act = e.target?.dataset?.act;
         if (!act) return;
-        if (act === 'close') { closeActiveMenu(); return; }
+        if (act === 'close') { closeMenu(); return; }
         if (act === 'none') { filterState[key].clear(); }
         if (act === 'all') {
           filterState[key].clear();
@@ -1243,15 +1268,17 @@
         });
       });
 
-      // 點擊外部關閉
+      // click outside closes
       document.addEventListener('click', (e) => {
-        if (activeMenu && !menu.contains(e.target) && !wrap.contains(e.target)) closeActiveMenu();
+        if (!wrap.contains(e.target) && !menu.contains(e.target)) closeMenu();
       });
-
-      // ESC 關閉
+      // ESC closes
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeActiveMenu();
+        if (e.key === 'Escape') closeMenu();
       });
+      // reposition on scroll/resize
+      window.addEventListener('resize', () => { if (menu.style.display === 'block') positionMenu(); });
+      window.addEventListener('scroll',  () => { if (menu.style.display === 'block') positionMenu(); }, true);
 
       wrap.appendChild(lbl);
       wrap.appendChild(btn);
@@ -1293,16 +1320,18 @@
           }
           updateButton();
         },
-        updateButton
+        updateButton,
+        closeMenu
       };
     }
 
     const filterMount = document.getElementById('filterMount');
     const filterWidgets = {};
+
     filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
-    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:92});
-    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:120});
-    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:110});
+    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:105});
+    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:140});
+    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:120});
 
     filterMount.appendChild(filterWidgets.Date.el);
     filterMount.appendChild(filterWidgets.measurement_NetWork.el);
@@ -1474,13 +1503,18 @@
       const b = 120 + (Math.abs(hash*13) % 100);
       return `rgba(${r},${g},${b},0.92)`;
     }
-    function drawLegendBox(scripts, x0, y0, w){
+
+    // ✅ auto-fit legend width (fix "外框過長")
+    function drawLegendBoxAuto(scripts, x0, y0){
       ctx.save();
       ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
-      ctx.textAlign = 'left';
+      let maxW = 0;
+      for (const s of scripts) maxW = Math.max(maxW, ctx.measureText(s).width);
+      const w = Math.max(110, Math.min(190, Math.ceil(maxW + 44))); // ✅ fit
+      const h = scripts.length * 14 + 10;
+
       ctx.fillStyle = 'rgba(6,18,40,0.90)';
       ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-      const h = scripts.length * 14 + 10;
       ctx.fillRect(x0, y0, w, h);
       ctx.strokeRect(x0, y0, w, h);
 
@@ -1496,7 +1530,7 @@
         y += 14;
       }
       ctx.restore();
-      return h;
+      return {w, h};
     }
 
     function renderStackedChartForLocation(locationName){
@@ -1542,7 +1576,13 @@
 
       const padL = 42, padR = 14, padT = 16, padB = 34;
 
-      const legendW = 165;
+      // pre-calc legend size for layout
+      ctx.save();
+      ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
+      let maxW = 0;
+      for (const s of scripts) maxW = Math.max(maxW, ctx.measureText(s).width);
+      ctx.restore();
+      const legendW = Math.max(110, Math.min(190, Math.ceil(maxW + 44)));
       const legendX = W - padR - legendW;
       const legendY = padT;
 
@@ -1603,7 +1643,7 @@
         ctx.restore();
       }
 
-      drawLegendBox(scripts, legendX, legendY, legendW);
+      drawLegendBoxAuto(scripts, legendX, legendY);
     }
 
     function applyFiltersToRows(rows){
@@ -2074,4 +2114,3 @@
   </script>
 </body>
 </html>
-
