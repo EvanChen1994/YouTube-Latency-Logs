@@ -29,6 +29,7 @@
     html, body { height: 100%; margin: 0; background:var(--bg1); color:var(--txt); }
     .app { display:flex; height:100vh; width:100vw; overflow:hidden; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; }
 
+    /* LEFT */
     .leftCol{
       width:50vw; height:100vh;
       display:flex; flex-direction:column;
@@ -38,6 +39,7 @@
     }
     #map { flex: 1 1 auto; min-height: 0; }
 
+    /* Map top overlay filter bar */
     .mapTopBar{
       position:absolute;
       top:10px;
@@ -54,35 +56,63 @@
       box-shadow: 0 8px 22px rgba(0,0,0,0.38);
       padding: 8px 10px;
       display:flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap:6px;
+      flex-direction: column;          /* ✅ 說明在上、下拉在下 */
+      align-items:flex-start;
+      gap:8px;
       backdrop-filter: blur(6px);
-      min-width: 320px;
-      max-width: min(92vw, 720px);
+      min-width: 360px;               /* ✅ 不要太長 */
+      max-width: min(92vw, 760px);
       overflow: visible;
     }
     .filter-desc{
       font-size: 11px;
+      font-weight: 900;
       color: rgba(154,176,216,0.95);
       line-height: 1.25;
-      font-weight: 900;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .filter-row{
       display:flex;
       align-items:center;
-      gap:8px;
-      flex-wrap: nowrap;
+      gap:10px;
+      flex-wrap: wrap;
     }
 
+    /* Count mode (single select) */
+    .cmode{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 4px 6px;
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+    }
+    .cmode .ttl{
+      font-size: 11px;
+      font-weight: 1000;
+      color: rgba(231,238,252,0.88);
+      white-space: nowrap;
+    }
+    .cmode label{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size: 11px;
+      font-weight: 900;
+      color: rgba(231,238,252,0.88);
+      white-space: nowrap;
+      cursor:pointer;
+      user-select:none;
+    }
+    .cmode input{ cursor:pointer; accent-color: var(--accent2); }
+
+    /* ===== Multi-select (portal dropdown) ===== */
     .msel{ position:relative; display:flex; align-items:center; gap:6px; }
     .msel .lbl{
-      font-size:11px;
+      font-size:11px;                 /* ✅ 字體縮小 */
       font-weight:1000;
-      color: rgba(231,238,252,0.86);
+      color: rgba(231,238,252,0.88);
       white-space:nowrap;
     }
     .msel-btn{
@@ -90,17 +120,16 @@
       background: rgba(255,255,255,0.05);
       color: var(--txt);
       border-radius:10px;
-      padding:5px 7px;
+      padding:5px 8px;
       cursor:pointer;
-      font-weight:1000;
+      font-weight:900;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:8px;
       user-select:none;
       min-width: 86px;
-      max-width: 150px;
-      font-size: 11px;
+      max-width: 160px;
     }
     .msel-btn:hover{
       background: rgba(255,154,60,0.10);
@@ -109,19 +138,19 @@
     .msel-btn .sum{
       flex:1;
       text-align:left;
-      font-size:10px;
+      font-size:10px;                 /* ✅ 字體縮小 */
       color: rgba(154,176,216,0.95);
       overflow:hidden;
       white-space:nowrap;
       text-overflow: ellipsis;
-      max-width: 102px;
+      max-width: 108px;
     }
 
+    /* ✅ Portal menu: attach to body + fixed positioning */
     .msel-menu{
       position: fixed;
       left: 0;
       top: 0;
-
       box-sizing: border-box;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.18);
@@ -130,7 +159,6 @@
       display:none;
       z-index: 100000;
       padding: 8px;
-
       overflow: hidden;
       max-width: min(92vw, 360px);
       overscroll-behavior: contain;
@@ -149,15 +177,17 @@
       color: var(--txt);
       border-radius:10px;
       padding:5px 8px;
-      font-weight:1000;
+      font-weight:900;
       cursor:pointer;
       font-size:11px;
       user-select:none;
       white-space:nowrap;
     }
     .tbtn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.30); }
+
+    /* ✅ show TOP5 then vertical scroll */
     .msel-menu .list-scroll{
-      max-height: 160px;
+      max-height: 160px;             /* ~ 5 rows */
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 2px;
@@ -180,6 +210,7 @@
     }
     .msel-menu input{ cursor:pointer; }
 
+    /* RIGHT */
     #panel{
       width:50vw; height:100vh; overflow:hidden;
       box-sizing:border-box; border-left:1px solid var(--line);
@@ -303,6 +334,7 @@
     .err { color: #ffb0b0; white-space:pre-wrap; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
 
+    /* modal */
     .modal-backdrop{
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.55);
@@ -349,6 +381,7 @@
     }
     .close-btn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
 
+    /* H3 labels */
     .lblWrap{
       position: relative;
       transform: translate(-50%, 0);
@@ -364,11 +397,25 @@
       line-height: 18px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.40);
       border: 1px solid rgba(255,255,255,0.35);
-      background: rgba(220, 20, 20, 0.92);
+      background: rgba(220, 20, 20, 0.92); /* 預設紅（若沒帶 bg） */
       text-shadow: 0 0 10px rgba(255,80,80,0.35);
       display:inline-block;
     }
+    .name-label{
+      color:#fff;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 1000;
+      line-height: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.20);
+      background: rgba(220, 20, 20, 0.70);
+      text-shadow: 0 0 10px rgba(255,80,80,0.25);
+      display:inline-block;
+    }
 
+    /* tooltip */
     .leaflet-tooltip{
       background: var(--tipbg) !important;
       color: #ffffff !important;
@@ -385,7 +432,8 @@
     .h3-tip { line-height: 1.35; color:#fff; }
     .h3-tip b { display:inline-block; min-width: 170px; color: rgba(210,232,255,0.95); }
 
-    .res-ctrl, .layer-ctrl, .count-ctrl{
+    /* Leaflet controls */
+    .res-ctrl, .layer-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
       border-radius:12px;
@@ -396,23 +444,22 @@
       color: var(--txt);
       backdrop-filter: blur(6px);
     }
-    .res-ctrl .ttl, .layer-ctrl .ttl, .count-ctrl .ttl{
+    .res-ctrl .ttl, .layer-ctrl .ttl{
       font-weight:1000;
       margin-bottom:8px;
       letter-spacing:.5px;
       color: #d7e6ff;
       text-shadow: 0 0 10px rgba(43,124,255,0.25);
     }
-    .res-ctrl label, .layer-ctrl label, .count-ctrl label{
+    .res-ctrl label, .layer-ctrl label{
       display:flex; align-items:center; gap:6px;
       margin:6px 0; cursor:pointer; user-select:none;
       color: rgba(231,238,252,0.92);
     }
     .res-ctrl input{ cursor:pointer; accent-color: var(--accent); }
     .layer-ctrl input{ cursor:pointer; accent-color: var(--accent2); }
-    .count-ctrl input{ cursor:pointer; accent-color: var(--orange); }
-    .count-ctrl .muted-note{ margin-top:6px; color: rgba(154,176,216,0.95); font-size:11px; line-height:1.25; }
 
+    /* measure */
     .measure-ctrl{
       background: rgba(10,19,40,0.92);
       border:1px solid rgba(255,255,255,0.16);
@@ -446,6 +493,7 @@
       box-shadow: 0 0 18px rgba(255,43,43,0.18);
     }
 
+    /* Chart float */
     .chart-float{
       position:absolute;
       left: 12px;
@@ -506,6 +554,7 @@
       z-index:1;
     }
 
+    /* Bottom-right PA Points legend (hover expand) */
     .legend-wrap{ position: relative; }
     .legend-tab{
       width: 40px; height: 40px;
@@ -562,6 +611,7 @@
       color: rgba(231,238,252,0.95);
     }
 
+    /* Fail-safe error banner */
     #fatalBanner{
       position: fixed;
       left: 10px;
@@ -590,10 +640,17 @@
 
       <div class="mapTopBar">
         <div class="filter-bar" id="filterBar">
-          <div class="filter-desc" id="filterDesc">
-            Filter（多選，下拉顯示 TOP5；超出用滾輪）｜Count 依統計方式影響拉遠聚合數字
+          <div class="filter-desc">Filter（多選）＋ Count Mode（單選，影響拉遠聚合數字）</div>
+
+          <div class="filter-row" id="filterRow">
+            <div class="cmode" id="countModeBox" title="控制 count 的統計方式（影響拉遠後聚合數字）">
+              <div class="ttl">Count Mode</div>
+              <label><input type="radio" name="countMode" value="rows" checked> rows</label>
+              <label><input type="radio" name="countMode" value="names"> names</label>
+            </div>
+
+            <div id="filterMount" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"></div>
           </div>
-          <div class="filter-row" id="filterMount"></div>
         </div>
       </div>
 
@@ -624,7 +681,7 @@
       <div class="hint">
         Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
         數字統計僅紅格；點紅格→右表依 start_location_name 篩選，並跳出圖表視窗（可關閉）。<br>
-        <span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。Count 統計方式會影響拉遠後聚合顯示。</span>
+        <span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
       </div>
 
       <div class="table-wrap">
@@ -667,23 +724,27 @@
 
   <script>
     /* ===========================
-       ver 7.5
-       - 修正：不再顯示任何 zoom>=11 的 start_location_name 網格文字（已禁用網格 name label）
-       - 新增：Count 統計方式（單選）：
-         1) rows：網格內有多少筆資料（原本 count）
-         2) names：網格內有幾個 unique start_location_name
-       - Count 會影響：網格上的數字 + 拉遠 bucket 聚合數字 + tooltip 的 count 欄位
+       ver 7.4
+       - UI: mapTopBar 改成「說明在上、下拉在下」，下拉字體縮小
+       - Feature: Count Mode（單選）：rows / names（影響聚合數字）
+       - names 模式：相同 start_location_name 只在其中一個紅格顯示 count=1，其它不顯示
+       - FIX: zoom>=11 不顯示 start_location_name（name labels 全關閉）
        =========================== */
 
-    const APP_VERSION = "ver 7.5";
+    const APP_VERSION = "ver 7.4";
     document.getElementById('verTag').textContent = APP_VERSION;
 
+    // Count mode
+    let COUNT_MODE = 'rows'; // 'rows' | 'names'
+
+    // Fail-safe banner
     const fatalBanner = document.getElementById('fatalBanner');
     function showFatal(msg){
       fatalBanner.style.display = 'block';
       fatalBanner.textContent = msg;
     }
 
+    // Modal / status
     const modalBackdrop = document.getElementById('modalBackdrop');
     const btnInfo = document.getElementById('btnInfo');
     const btnModalClose = document.getElementById('btnModalClose');
@@ -734,6 +795,7 @@
     btnModalClose.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
+    // Utils
     function escapeHtml(s) {
       return String(s ?? '')
         .replaceAll('&', '&amp;')
@@ -809,6 +871,7 @@
     }
     initUrls();
 
+    // Leaflet map + base layers
     const baseEMAP = L.tileLayer(
       'https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}',
       { maxZoom: 19 }
@@ -820,6 +883,7 @@
 
     const map = L.map('map', { center:[23.7,121.0], zoom:8, layers:[baseEMAP] });
 
+    // ✅ pane to ensure PA points always on top
     map.createPane('paPointsPane');
     map.getPane('paPointsPane').style.zIndex = 950;
 
@@ -830,6 +894,7 @@
     L.control.layers(baseLayers, null, { collapsed:true }).addTo(map);
     L.control.scale({ position:'bottomright', imperial:false, metric:true }).addTo(map);
 
+    // ✅ Bottom-right hover legend control (restore)
     const LegendControl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function () {
@@ -857,11 +922,22 @@
     });
     map.addControl(new LegendControl());
 
+    // Zoom tag
     const zoomLevelEl = document.getElementById('zoomLevel');
     function updateZoomTag(){ zoomLevelEl.textContent = String(map.getZoom()); }
     updateZoomTag();
     map.on('zoomend', updateZoomTag);
 
+    // Count mode UI
+    document.querySelectorAll('input[name="countMode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const v = document.querySelector('input[name="countMode"]:checked')?.value || 'rows';
+        COUNT_MODE = (v === 'names') ? 'names' : 'rows';
+        applyFilterAndRerender(); // ✅ 重新算 labels + 聚合
+      });
+    });
+
+    // Data + layers
     const locMap = new Map();
     let allRowsRaw = [];
     let filteredRows = [];
@@ -891,11 +967,9 @@
       }
     }
 
+    // H3 layers
     const h3Layers = { RES8:L.layerGroup(), RES9:L.layerGroup(), RES10:L.layerGroup(), RES11:L.layerGroup() };
     const aggLabelLayer = L.layerGroup().addTo(map);
-
-    // ✅ ver 7.5：禁用 name label（不再顯示 start_location_name 在網格上）
-    // 保留一個空 LayerGroup 以兼容既有結構（但永遠不畫）
     const nameLabelLayer = L.layerGroup().addTo(map);
 
     // points layers
@@ -922,6 +996,7 @@
       else { if (map.hasLayer(endPointLayer)) map.removeLayer(endPointLayer); }
     }
 
+    // aggregation maps
     const redAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const blueAgg = { RES8:new Map(), RES9:new Map(), RES10:new Map(), RES11:new Map() };
     const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
@@ -929,40 +1004,12 @@
 
     function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
-    // ✅ Count 統計模式（單選）：rows / names
-    let COUNT_MODE = 'rows'; // default：原本方式
-
-    function getMetaCount(meta){
-      if (!meta) return 0;
-      return (COUNT_MODE === 'names') ? (meta.nameCount || 0) : (meta.rowCount || 0);
-    }
-
-    function countBgFromScripts(meta){
-      const yt = meta?.scriptCounts?.get('YoutubeLive') || 0;
-      const tel = meta?.scriptCounts?.get('VoLTEmos') || 0;
-      const total = (meta?.rowCount || 0);
-
-      if (!total) return 'rgba(220, 20, 20, 0.92)';
-
-      let other = 0;
-      if (meta?.scriptCounts) {
-        for (const [k,v] of meta.scriptCounts.entries()) {
-          if (k !== 'YoutubeLive' && k !== 'VoLTEmos') other += (v||0);
-        }
-      }
-
-      if (other > 0) return 'rgba(220, 20, 20, 0.92)';
-      if (yt > 0 && tel === 0) return 'rgba(255,154,60,0.92)';   // 橘
-      if (tel > 0 && yt === 0) return 'rgba(43,124,255,0.92)';   // 藍
-      if (yt > 0 && tel > 0) return 'rgba(220, 20, 20, 0.92)';   // 紅
-      return 'rgba(220, 20, 20, 0.92)';
-    }
-
     function makeCountIconHtml(count, bg){
-      const b = bg || 'rgba(220, 20, 20, 0.92)';
-      return `<div class="lblWrap" style="transform:translate(-50%, 10px);">
-        <span class="count-label" style="background:${b};">${escapeHtml(count)}</span>
-      </div>`;
+      const styleBg = bg ? ` style="background:${bg};"` : '';
+      return `<div class="lblWrap" style="transform:translate(-50%, 10px);"><span class="count-label"${styleBg}>${escapeHtml(count)}</span></div>`;
+    }
+    function makeNameIconHtml(text){
+      return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
     }
 
     function renderAggLabels() {
@@ -987,9 +1034,8 @@
         const by = Math.floor(p.y / bs);
         const key = `${bx},${by}`;
         let b = buckets.get(key);
-        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0 };
-
-        b.sum += it.count; // ✅ 這裡會反映 COUNT_MODE 的 count
+        if (!b) b = { sum:0, n:0, latSum:0, lngSum:0, bg: it.bg || null };
+        b.sum += it.count;
         b.n += 1;
         b.latSum += it.latlng.lat;
         b.lngSum += it.latlng.lng;
@@ -1000,12 +1046,12 @@
         if (!b.sum) continue;
         const lat = b.latSum / b.n;
         const lng = b.lngSum / b.n;
-        const icon = L.divIcon({ className: '', html: makeCountIconHtml(b.sum, 'rgba(220,20,20,0.92)'), iconSize: null });
+        const icon = L.divIcon({ className: '', html: makeCountIconHtml(b.sum, b.bg), iconSize: null });
         L.marker([lat, lng], { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
       }
     }
 
-    // ✅ ver 7.5：不畫任何 name labels
+    // ✅ zoom>=11 不顯示 start_location_name：直接關閉 name labels
     function renderNameLabels() {
       nameLabelLayer.clearLayers();
       return;
@@ -1022,7 +1068,7 @@
       clearHoverHighlights();
     }
 
-    // Controls: Resolution / CountMode / Points / Measure
+    // Controls: Resolution / Points / Measure
     const ResControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function() {
@@ -1042,30 +1088,6 @@
       }
     });
     map.addControl(new ResControl());
-
-    // ✅ 新增：Count 統計方式（單選）
-    const CountModeControl = L.Control.extend({
-      options: { position: 'topleft' },
-      onAdd: function(){
-        const div = L.DomUtil.create('div', 'count-ctrl');
-        div.innerHTML = `
-          <div class="ttl">Count Mode</div>
-          <label><input type="radio" name="cntmode" value="rows" checked> rows（資料筆數）</label>
-          <label><input type="radio" name="cntmode" value="names"> names（unique start_location_name）</label>
-          <div class="muted-note">會影響：網格數字、拉遠聚合、tooltip 的 count</div>
-        `;
-        L.DomEvent.disableClickPropagation(div);
-        div.querySelectorAll('input[name="cntmode"]').forEach(inp => {
-          inp.addEventListener('change', (e) => {
-            if (!e.target.checked) return;
-            COUNT_MODE = e.target.value;  // rows / names
-            applyFilterAndRerender();     // ✅ 直接重建 H3 + labels + tooltip
-          });
-        });
-        return div;
-      }
-    });
-    map.addControl(new CountModeControl());
 
     const LayerCtrl = L.Control.extend({
       options: { position:'topleft' },
@@ -1089,6 +1111,7 @@
     });
     map.addControl(new LayerCtrl());
 
+    // measure tool
     let measureActive = false;
     let measureStart = null;
     let measureStartMarker = null;
@@ -1178,6 +1201,7 @@
       return `${arr.slice(0,2).join('、')} +${arr.length-2}`;
     }
 
+    // ✅ Global: only one open dropdown at a time
     let activeMenu = null;
     function closeActiveMenu(){
       if (activeMenu && activeMenu.style.display === 'block') activeMenu.style.display = 'none';
@@ -1188,6 +1212,7 @@
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
+      // prevent Leaflet from eating clicks/scrolls
       L.DomEvent.disableClickPropagation(wrap);
       L.DomEvent.disableScrollPropagation(wrap);
       wrap.style.pointerEvents = 'auto';
@@ -1201,6 +1226,7 @@
       btn.style.width = width + 'px';
       btn.innerHTML = `<span class="sum" title=""></span><span>▾</span>`;
 
+      // ✅ portal menu
       const menu = document.createElement('div');
       menu.className = 'msel-menu';
       document.body.appendChild(menu);
@@ -1215,9 +1241,10 @@
       menu.appendChild(tools);
 
       const list = document.createElement('div');
-      list.className = 'list-scroll';
+      list.className = 'list-scroll'; // ✅ TOP5 scroll container
       menu.appendChild(list);
 
+      // stop wheel scroll leaking to map/page
       L.DomEvent.disableClickPropagation(menu);
       L.DomEvent.disableScrollPropagation(menu);
 
@@ -1332,8 +1359,8 @@
               if (ev.target !== cb) cb.checked = !cb.checked;
               if (cb.checked) filterState[key].add(v);
               else filterState[key].delete(v);
-              updateButton();
               applyFilterAndRerender();
+              updateButton();
             });
 
             list.appendChild(item);
@@ -1348,16 +1375,17 @@
     const filterMount = document.getElementById('filterMount');
     const filterWidgets = {};
 
-    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:138});
-    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:92});
-    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:128});
-    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:108});
+    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:150});
+    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:105});
+    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:140});
+    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:120});
 
     filterMount.appendChild(filterWidgets.Date.el);
     filterMount.appendChild(filterWidgets.measurement_NetWork.el);
     filterMount.appendChild(filterWidgets.measurement_Script.el);
     filterMount.appendChild(filterWidgets.Marea.el);
 
+    // Right panel
     const selectionTag = document.getElementById('selectionTag');
     const btnClear = document.getElementById('btnClear');
     function setSelectionTag(text) {
@@ -1373,6 +1401,11 @@
       clearChart();
       closeActiveMenu();
 
+      // reset count mode UI
+      COUNT_MODE = 'rows';
+      const r = document.querySelector('input[name="countMode"][value="rows"]');
+      if (r) r.checked = true;
+
       for (const k of Object.keys(filterState)) {
         filterState[k].clear();
         for (const v of filterAllOptions[k]) filterState[k].add(v);
@@ -1381,6 +1414,7 @@
       applyFilterAndRerender();
     });
 
+    // Table
     const evtHeadRow = document.getElementById('evtHeadRow');
     const evtBody = document.getElementById('evtBody');
 
@@ -1485,6 +1519,7 @@
 
     renderTableHeader();
 
+    // Chart float
     const chartFloat = document.getElementById('chartFloat');
     const chartTitleEl = document.getElementById('chartTitle');
     const chartClose = document.getElementById('chartClose');
@@ -1521,6 +1556,7 @@
       return `rgba(${r},${g},${b},0.92)`;
     }
 
+    // ✅ auto-fit legend width
     function drawLegendBoxAuto(scripts, x0, y0){
       ctx.save();
       ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
@@ -1675,23 +1711,31 @@
     }
 
     function resNumOfKey(resKey) { return resKey === 'RES8' ? 8 : resKey === 'RES9' ? 9 : resKey === 'RES10' ? 10 : 11; }
-
     function initMetaRed(resKey, h3Index) {
       return {
         resKey,
         resNum: resNumOfKey(resKey),
         h3Index,
         rowCount: 0,
-        nameCount: 0,
         paNums: new Set(),
         startNames: new Set(),
         endNames: new Set(),
-        sample:null,
-        scriptCounts: new Map()
+        scripts: new Set(),
+        sample:null
       };
     }
     function initMetaBlue(resKey, h3Index) {
       return { resKey, resNum: resNumOfKey(resKey), h3Index, names: new Set() };
+    }
+
+    function pickCountBgFromScripts(scriptSet){
+      const hasYT  = scriptSet.has('YoutubeLive');
+      const hasTEL = scriptSet.has('VoLTEmos');
+      if (hasYT && !hasTEL && scriptSet.size === 1) return 'rgba(255,154,60,0.92)'; // 橘
+      if (hasTEL && !hasYT && scriptSet.size === 1) return 'rgba(43,124,255,0.92)'; // 藍
+      if (hasYT && hasTEL) return 'rgba(220,20,20,0.92)';                             // 紅
+      // 其他腳本/混合：紅
+      return 'rgba(220,20,20,0.92)';
     }
 
     function buildHoverHtmlRed(meta) {
@@ -1699,8 +1743,7 @@
       const r = meta.sample || {};
       const locNameLine = `${toClean(r.start_location_name)}/${toClean(r.end_location_name)}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
       const kmLine = `${toClean(r["start_location_KM+M"])}/${toClean(r["end_location_KM+M"])}`.replaceAll('//','/').replace(/^\/|\/$/g,'');
-      const shownCount = getMetaCount(meta);
-      const shownLabel = (COUNT_MODE === 'names') ? 'count(names)' : 'count(rows)';
+      const countShow = (COUNT_MODE === 'names') ? '(names 模式：此格 count 顯示僅代表唯一 start_location_name)' : '';
       return `
         <div class="h3-tip">
           <div><b>H3_res${meta.resNum}:</b> ${escapeHtml(meta.h3Index)}</div>
@@ -1710,7 +1753,7 @@
           <div><b>Marea:</b> ${escapeHtml(toClean(r.Marea))}</div>
           <div><b>Mcenter:</b> ${escapeHtml(toClean(r.Mcenter))}</div>
           <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
-          <div><b>${shownLabel}:</b> ${escapeHtml(shownCount)}</div>
+          <div><b>count:</b> ${escapeHtml(getMetaCount(meta))} <span class="muted">${escapeHtml(countShow)}</span></div>
         </div>
       `;
     }
@@ -1722,6 +1765,12 @@
           <div><b>location_name:</b> ${escapeHtml(names.slice(0,6).join('、') + (names.length>6?'…':''))}</div>
         </div>
       `;
+    }
+
+    function getMetaCount(meta){
+      if (!meta) return 0;
+      if (COUNT_MODE === 'names') return 1; // ✅ names 模式顯示值固定 1（但不代表每格都顯示）
+      return (meta.rowCount || 0);
     }
 
     function addLayerToLocIndex(names, poly) {
@@ -1805,14 +1854,12 @@
           redAgg[resKey].set(h3Index, meta);
         }
         meta.rowCount += 1;
-
         const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
         const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
         if (sn) meta.startNames.add(sn);
         if (en) meta.endNames.add(en);
-
-        const sc = toClean(row.measurement_Script) || '(blank)';
-        meta.scriptCounts.set(sc, (meta.scriptCounts.get(sc) || 0) + 1);
+        const sc = toClean(row.measurement_Script);
+        if (sc) meta.scripts.add(sc);
       }
 
       for (const r of rowsPA) {
@@ -1820,13 +1867,6 @@
         addRed('RES9',  toClean(r.start_H3_Res_9),  r);
         addRed('RES10', toClean(r.start_H3_Res_10), r);
         addRed('RES11', toClean(r.start_H3_Res_11), r);
-      }
-
-      // ✅ finalize nameCount
-      for (const resKey of ['RES8','RES9','RES10','RES11']) {
-        for (const meta of redAgg[resKey].values()) {
-          meta.nameCount = meta.startNames.size;
-        }
       }
 
       function addBlue(resKey, h3Index, startName) {
@@ -1859,15 +1899,30 @@
       for (const resKey of ['RES8','RES9','RES10','RES11']) {
         const lg = h3Layers[resKey];
 
+        // ✅ names 模式：同一個 start_location_name 只在其中一個紅格顯示 1
+        const seenStartNames = new Set();
+
         for (const [h3Index, meta] of redAgg[resKey].entries()) {
           if (!h3.isValidCell(h3Index)) continue;
           addPolygonCell(meta, lg, 'red');
           redCells++;
 
           const center = h3.cellToLatLng(h3Index);
-          const bg = countBgFromScripts(meta);
-          const count = getMetaCount(meta); // ✅ 依 COUNT_MODE
-          redLabelItems[resKey].push({ latlng: L.latLng(center[0], center[1]), count, bg });
+          const latlng = L.latLng(center[0], center[1]);
+          const bg = pickCountBgFromScripts(meta.scripts || new Set());
+
+          if (COUNT_MODE === 'names') {
+            const names = Array.from(meta.startNames || []).map(toClean).filter(Boolean);
+            // 這格如果包含多個 name：只放「第一個尚未出現」的 name（避免同點重疊）
+            for (const nm of names) {
+              if (seenStartNames.has(nm)) continue;
+              seenStartNames.add(nm);
+              redLabelItems[resKey].push({ latlng, count: 1, bg });
+              break;
+            }
+          } else {
+            redLabelItems[resKey].push({ latlng, count: getMetaCount(meta), bg });
+          }
         }
 
         for (const [h3Index, meta] of blueAgg[resKey].entries()) {
@@ -1910,6 +1965,7 @@
       }
     }
 
+    // PA Points icon
     function isValidLatLng(lat, lon){
       const a = Number(lat), b = Number(lon);
       return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
@@ -2132,7 +2188,7 @@
       clearChart();
 
       lastUpdateTime = new Date().toISOString();
-      setStatus(`ok: rows=${rowsPA.length}, count_mode=${COUNT_MODE}`);
+      setStatus(`ok: rows=${rowsPA.length}`);
 
       const bounds = L.latLngBounds([]);
       for (const r of filteredRows) {
