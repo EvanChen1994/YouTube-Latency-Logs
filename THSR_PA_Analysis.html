@@ -260,6 +260,26 @@
       box-shadow: 0 0 14px rgba(0,0,0,0.25);
     }
     .tag b{ color: var(--accent2); }
+    .toggle-label { 
+      display:flex; align-items:center; gap:6px; 
+      border:1px solid var(--line2); 
+      background: rgba(255,255,255,0.04); 
+      border-radius:10px; 
+      padding:6px 10px; 
+      cursor:pointer; 
+      font-weight:800; 
+      font-size:12px; 
+      color: var(--txt); 
+      user-select:none; 
+      transition: .15s ease;
+    }
+    .toggle-label:hover { 
+      background: rgba(43,124,255,0.10); 
+      border-color: rgba(43,124,255,0.40); 
+    }
+    .toggle-label input[type="checkbox"] { 
+      width:14px; height:14px; cursor:pointer; margin:0; 
+    }
 
     .hint{
       position:relative;
@@ -656,6 +676,10 @@
 
         <div class="btns">
           <div class="tag" id="zoomTag">Zoom: <b id="zoomLevel">-</b></div>
+          <label class="toggle-label" title="勾選=隱藏含有*的隧道路段">
+            <input type="checkbox" id="chkHideTunnel" checked>
+            <span>隱藏隧道</span>
+          </label>
           <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
           <div class="btn" id="btnExport" title="匯出右側表格（目前顯示/篩選結果）">匯出CSV</div>
           <div class="btn" id="btnClear" title="清除篩選與選取">清除篩選</div>
@@ -942,6 +966,7 @@
     let allRowsRaw = [];
     let filteredRows = [];
     let displayedRows = [];
+    let hideTunnelSegments = true; // 默认隐藏隧道路段
     let selectionLocationNames = [];
     let selectionPrimaryName = '';
 
@@ -1377,12 +1402,16 @@
 
       return {
         el: wrap,
-        setOptions: (options) => {
+        setOptions: (options, defaultSelected = null) => {
           list.innerHTML = '';
           filterAllOptions[key] = options.slice();
 
           filterState[key].clear();
-          for (const v of options) filterState[key].add(v);
+          // 如果提供了defaultSelected，只选中这些；否则选中所有
+          const selectedSet = defaultSelected ? new Set(defaultSelected) : new Set(options);
+          for (const v of selectedSet) {
+            if (options.includes(v)) filterState[key].add(v);
+          }
 
           for (const v of options) {
             const item = document.createElement('div');
@@ -1390,7 +1419,7 @@
 
             const cb = document.createElement('input');
             cb.type = 'checkbox';
-            cb.checked = true;
+            cb.checked = filterState[key].has(v);
             cb.dataset.v = v;
 
             const sp = document.createElement('div');
@@ -1440,6 +1469,12 @@
       selectionTag.title = text || '';
     }
 
+    const chkHideTunnel = document.getElementById('chkHideTunnel');
+    chkHideTunnel.addEventListener('change', () => {
+      hideTunnelSegments = chkHideTunnel.checked;
+      applyFilterAndRerender();
+    });
+    
     btnClear.addEventListener('click', () => {
       selectionLocationNames = [];
       selectionPrimaryName = '';
@@ -2095,10 +2130,18 @@
         const n = toClean(r.measurement_NetWork);
         const s = toClean(r.measurement_Script);
         const a = toClean(r.Marea);
-        return filterState.Date.has(d)
+        const passesFilter = filterState.Date.has(d)
             && filterState.measurement_NetWork.has(n)
             && filterState.measurement_Script.has(s)
             && filterState.Marea.has(a);
+        
+        // 应用隧道路段过滤
+        if (passesFilter && hideTunnelSegments) {
+          const locName = toClean(r.start_location_name);
+          return !locName.includes('*');
+        }
+        
+        return passesFilter;
       });
     }
 
@@ -2549,19 +2592,9 @@
       const optScr  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_Script)));
       const optArea = uniqSorted(allRowsRaw.map(r => toClean(r.Marea)));
 
-      filterWidgets.Date.setOptions(optDate);
-      // 默认只勾选最新日期
-      if (optDate.length > 0) {
-        const latestDate = optDate[optDate.length - 1];
-        filterState.Date.clear();
-        filterState.Date.add(latestDate);
-        // 更新复选框UI状态
-        const dateCheckboxes = filterWidgets.Date.el.querySelectorAll('input[type="checkbox"]');
-        dateCheckboxes.forEach(cb => {
-          cb.checked = (cb.dataset.v === latestDate);
-        });
-        filterWidgets.Date.updateButton();
-      }
+      // Date默认只选择最新日期
+      const latestDate = optDate.length > 0 ? optDate[optDate.length - 1] : null;
+      filterWidgets.Date.setOptions(optDate, latestDate ? [latestDate] : null);
       filterWidgets.measurement_NetWork.setOptions(optNet);
       filterWidgets.measurement_Script.setOptions(optScr);
       filterWidgets.Marea.setOptions(optArea);
