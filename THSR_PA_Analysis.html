@@ -1709,8 +1709,15 @@
         statsHeadRow.appendChild(th);
       }
       
+      // 添加总计列
+      const thTotal = document.createElement('th');
+      thTotal.textContent = '總計';
+      thTotal.style.fontWeight = '1000';
+      thTotal.style.color = 'var(--accent2)';
+      statsHeadRow.appendChild(thTotal);
+      
       // 如果列数不同，需要调整colspan
-      const colCount = columns.length + 1;
+      const colCount = columns.length + 2;
 
       const areas = columns;
       
@@ -1853,8 +1860,10 @@
       for (const row of rows) {
         html += '<tr>';
         html += `<td class="row-label">${escapeHtml(row.label)}</td>`;
+        let rowTotal = 0;
         for (const area of areas) {
           const val = stats[area] ? stats[area][row.key] : 0;
+          rowTotal += val;
           let displayText = val;
           
           // 为改善数添加比例显示
@@ -1871,6 +1880,30 @@
           
           html += `<td>${displayText}</td>`;
         }
+        
+        // 添加总计列
+        let totalDisplayText = rowTotal;
+        // 如果是改善数，计算总体比例
+        if (row.key === 'improvedAll') {
+          const totalBase = areas.reduce((sum, area) => sum + (stats[area] ? stats[area].total : 0), 0);
+          if (totalBase > 0) {
+            const ratio = (rowTotal / totalBase * 100).toFixed(2);
+            totalDisplayText = `${rowTotal}(${ratio}%)`;
+          }
+        } else if (row.key === 'improvedTunnel') {
+          const totalBase = areas.reduce((sum, area) => sum + (stats[area] ? stats[area].tunnel : 0), 0);
+          if (totalBase > 0) {
+            const ratio = (rowTotal / totalBase * 100).toFixed(2);
+            totalDisplayText = `${rowTotal}(${ratio}%)`;
+          }
+        } else if (row.key === 'improvedOpen') {
+          const totalBase = areas.reduce((sum, area) => sum + (stats[area] ? stats[area].open : 0), 0);
+          if (totalBase > 0) {
+            const ratio = (rowTotal / totalBase * 100).toFixed(2);
+            totalDisplayText = `${rowTotal}(${ratio}%)`;
+          }
+        }
+        html += `<td style="font-weight:800;background:rgba(43,124,255,0.08);">${totalDisplayText}</td>`;
         html += '</tr>';
       }
 
