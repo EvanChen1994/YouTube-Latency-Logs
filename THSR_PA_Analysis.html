@@ -273,7 +273,22 @@
       line-height: 1.35;
     }
 
-    .table-wrap { position:relative; z-index:2; flex:1; overflow:auto; padding: 10px 10px 12px 10px; }
+    .table-wrap { position:relative; z-index:2; flex: 0 0 60%; overflow:auto; padding: 10px 10px 12px 10px; }
+    .bottom-area { position:relative; z-index:2; flex: 1; padding: 10px 12px; border-top:1px solid var(--line); background: rgba(11,26,51,0.42); backdrop-filter: blur(6px); overflow:auto; }
+    .stats-title { font-size:14px; font-weight:1000; color: var(--accent2); margin-bottom:8px; text-shadow: 0 0 10px rgba(43,124,255,0.25); }
+    .stats-filter { display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12px; }
+    .stats-filter label { color: var(--muted); font-weight:700; }
+    .stats-filter select { padding:4px 8px; border-radius:6px; border:1px solid rgba(43,124,255,0.40); background: rgba(20,50,120,0.60); color:var(--txt); font-size:11px; cursor:pointer; }
+    .stats-filter select:hover { background: rgba(30,70,160,0.70); border-color: rgba(43,124,255,0.60); }
+    .stats-back-btn { padding:3px 10px; border-radius:6px; border:1px solid var(--line2); background: rgba(255,255,255,0.04); color:var(--txt); font-size:11px; cursor:pointer; font-weight:700; transition:.15s ease; }
+    .stats-back-btn:hover { background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.40); }
+    #statsTable th.clickable { cursor:pointer; user-select:none; transition:.15s ease; }
+    #statsTable th.clickable:hover { background: rgba(43,124,255,0.15); color:var(--accent2); }
+    #statsTable { font-size:11px; }
+    #statsTable th { background: rgba(10,19,40,0.92); padding: 6px 8px; font-weight:800; }
+    #statsTable td { padding: 5px 8px; text-align:center; }
+    #statsTable tbody tr:hover { background: rgba(43,124,255,0.08); }
+    #statsTable .row-label { text-align:left; font-weight:700; color: rgba(231,238,252,0.95); }
     table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; color: var(--txt); }
     thead th{
       position: sticky; top: 0; z-index: 2;
@@ -385,8 +400,8 @@
       line-height: 16px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.35);
       border: 1px solid rgba(255,255,255,0.20);
-      background: rgba(220, 20, 20, 0.70);
-      text-shadow: 0 0 10px rgba(255,80,80,0.25);
+      background: rgba(128, 0, 128, 0.70);
+      text-shadow: 0 0 10px rgba(180,100,255,0.25);
       display:inline-block;
     }
 
@@ -657,6 +672,36 @@
         <table id="evtTable">
           <thead><tr id="evtHeadRow"></tr></thead>
           <tbody id="evtBody"></tbody>
+        </table>
+      </div>
+
+      <div class="bottom-area" id="bottomArea">
+        <div class="stats-title">PA路段統計追蹤</div>
+        <div class="stats-filter">
+          <label for="statsYearFilter">年份：</label>
+          <select id="statsYearFilter">
+            <option value="">全部</option>
+          </select>
+          <label for="statsTypeFilter" style="margin-left:16px;">路段類型：</label>
+          <select id="statsTypeFilter">
+            <option value="ALL">ALL</option>
+            <option value="open" selected>開放路段</option>
+            <option value="tunnel">隧道</option>
+          </select>
+          <button class="stats-back-btn" id="statsBackBtn" style="display:none;">← 返回Marea</button>
+        </div>
+        <table id="statsTable">
+          <thead>
+            <tr id="statsHeadRow">
+              <th style="text-align:left;">統計項目</th>
+              <th class="clickable" data-col="0">行動北區營運處</th>
+              <th class="clickable" data-col="1">行動中區營運處</th>
+              <th class="clickable" data-col="2">行動南區營運處</th>
+            </tr>
+          </thead>
+          <tbody id="statsBody">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);">載入中...</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -930,8 +975,8 @@
     // points layers
     const startPointLayer = L.layerGroup().addTo(map);
     const endPointLayer = L.layerGroup().addTo(map);
-    let showStartPoints = true;
-    let showEndPoints = true;
+    let showStartPoints = false;
+    let showEndPoints = false;
     const POINTS_MIN_ZOOM = 12;
 
     function updatePointsVisibility() {
@@ -1078,8 +1123,8 @@
         const div = L.DomUtil.create('div', 'res-ctrl');
         div.innerHTML = `
           <div class="ttl">H3 Resolution</div>
-          <label><input type="radio" name="res" value="RES8"> RES8</label>
-          <label><input type="radio" name="res" value="RES9" checked> RES9</label>
+          <label><input type="radio" name="res" value="RES8" checked> RES8</label>
+          <label><input type="radio" name="res" value="RES9"> RES9</label>
           <label><input type="radio" name="res" value="RES10"> RES10</label>
           <label><input type="radio" name="res" value="RES11"> RES11</label>
         `;
@@ -1098,8 +1143,8 @@
         const div = L.DomUtil.create('div', 'layer-ctrl');
         div.innerHTML = `
           <div class="ttl">PA Points</div>
-          <label><input type="checkbox" id="chkStart" checked> Start</label>
-          <label><input type="checkbox" id="chkEnd" checked> End</label>
+          <label><input type="checkbox" id="chkStart"> Start</label>
+          <label><input type="checkbox" id="chkEnd"> End</label>
           <div class="muted" style="margin-top:6px;">顯示條件：zoom ≥ ${POINTS_MIN_ZOOM}</div>
         `;
         L.DomEvent.disableClickPropagation(div);
@@ -1554,6 +1599,282 @@
       }
       renderTableHeader();
       renderTableRows(rows, {skipHeader:true});
+    }
+
+    // PA Statistics
+    let selectedStatsYear = '';
+    let selectedStatsType = 'open'; // 'ALL', 'open', 'tunnel'
+    let statsViewMode = 'Marea'; // 'Marea' or 'Mcenter'
+    let statsSelectedArea = null; // 当显示Mcenter时，记录选中的Marea
+    const statsYearFilter = document.getElementById('statsYearFilter');
+    const statsTypeFilter = document.getElementById('statsTypeFilter');
+    const statsBackBtn = document.getElementById('statsBackBtn');
+    const statsHeadRow = document.getElementById('statsHeadRow');
+    
+    function initStatsYearFilter() {
+      const allDates = [...new Set(allRowsRaw.map(r => toClean(r.Date)).filter(d => d))];
+      const years = [...new Set(allDates.map(d => d.substring(0, 4)))].sort();
+      
+      let html = '<option value="">全部</option>';
+      for (const year of years) {
+        html += `<option value="${year}">${year}</option>`;
+      }
+      statsYearFilter.innerHTML = html;
+      
+      // 默认选择最新年份
+      if (years.length > 0) {
+        selectedStatsYear = years[years.length - 1];
+        statsYearFilter.value = selectedStatsYear;
+      }
+    }
+    
+    statsYearFilter.addEventListener('change', (e) => {
+      selectedStatsYear = e.target.value;
+      renderPAStatistics();
+    });
+    
+    statsTypeFilter.addEventListener('change', (e) => {
+      selectedStatsType = e.target.value;
+      renderPAStatistics();
+    });
+    
+    statsBackBtn.addEventListener('click', () => {
+      statsViewMode = 'Marea';
+      statsSelectedArea = null;
+      statsBackBtn.style.display = 'none';
+      renderPAStatistics();
+    });
+    
+    // 点击表头切换到Mcenter
+    statsHeadRow.addEventListener('click', (e) => {
+      const th = e.target.closest('th.clickable');
+      if (!th || statsViewMode === 'Mcenter') return;
+      
+      const colIndex = parseInt(th.dataset.col);
+      const areas = ['行動北區營運處', '行動中區營運處', '行動南區營運處'];
+      statsSelectedArea = areas[colIndex];
+      statsViewMode = 'Mcenter';
+      statsBackBtn.style.display = 'inline-block';
+      renderPAStatistics();
+    });
+    
+    function renderPAStatistics() {
+      const statsBody = document.getElementById('statsBody');
+      if (!allRowsRaw || allRowsRaw.length === 0) {
+        statsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">無資料</td></tr>';
+        return;
+      }
+
+      // 定义每个营运处的Mcenter顺序
+      const mcenterOrder = {
+        '行動北區營運處': ['基隆營運中心', '台北營運中心', '新北營運中心', '桃園營運中心', '新竹營運中心', '宜蘭營運中心', '花蓮營運中心'],
+        '行動中區營運處': ['苗栗營運中心', '豐原/台中營運中心', '彰化營運中心', '南投營運中心', '雲林營運中心'],
+        '行動南區營運處': ['嘉義營運中心', '台南營運中心', '鳳山/高雄營運中心', '屏東營運中心', '台東營運中心']
+      };
+
+      // 根据当前视图模式决定列
+      let columns, columnField;
+      if (statsViewMode === 'Marea') {
+        columns = ['行動北區營運處', '行動中區營運處', '行動南區營運處'];
+        columnField = 'Marea';
+      } else {
+        // Mcenter模式：按预定义顺序获取有数据的Mcenter
+        const centersInData = new Set(
+          allRowsRaw
+            .filter(r => toClean(r.Marea) === statsSelectedArea)
+            .map(r => toClean(r.Mcenter))
+            .filter(c => c)
+        );
+        
+        const orderedCenters = mcenterOrder[statsSelectedArea] || [];
+        columns = orderedCenters.filter(center => centersInData.has(center));
+        
+        if (columns.length === 0) columns = ['(無資料)'];
+        columnField = 'Mcenter';
+      }
+      
+      // 更新表头
+      const headers = statsHeadRow.querySelectorAll('th');
+      const firstHeader = headers[0];
+      statsHeadRow.innerHTML = '';
+      statsHeadRow.appendChild(firstHeader);
+      
+      for (let i = 0; i < columns.length; i++) {
+        const th = document.createElement('th');
+        th.textContent = columns[i];
+        if (statsViewMode === 'Marea') {
+          th.className = 'clickable';
+          th.dataset.col = i;
+        }
+        statsHeadRow.appendChild(th);
+      }
+      
+      // 如果列数不同，需要调整colspan
+      const colCount = columns.length + 1;
+
+      const areas = columns;
+      
+      // 根据选择的年份过滤数据
+      let filteredData = allRowsRaw;
+      if (selectedStatsYear) {
+        filteredData = allRowsRaw.filter(r => {
+          const date = toClean(r.Date);
+          return date && date.startsWith(selectedStatsYear);
+        });
+      }
+      
+      // 找出所有日期並排序，取最新日期
+      const allDates = [...new Set(filteredData.map(r => toClean(r.Date)).filter(d => d))].sort();
+      if (allDates.length === 0) {
+        statsBody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:var(--muted);">該年份無資料</td></tr>`;
+        return;
+      }
+      
+      const latestDate = allDates[allDates.length - 1];
+      const otherDates = allDates.slice(0, -1);
+
+      function getUniqueLocations(rows, tunnelOnly = null) {
+        const locs = new Set();
+        for (const r of rows) {
+          const loc = toClean(r.start_location_name);
+          if (!loc) continue;
+          if (tunnelOnly === true && !loc.includes('*')) continue;
+          if (tunnelOnly === false && loc.includes('*')) continue;
+          locs.add(loc);
+        }
+        return locs;
+      }
+
+      const stats = {};
+      for (const area of areas) {
+        const areaRows = filteredData.filter(r => toClean(r[columnField]) === area);
+        const latestRows = areaRows.filter(r => toClean(r.Date) === latestDate);
+        const otherRows = areaRows.filter(r => otherDates.includes(toClean(r.Date)));
+
+        // 1. PA總數
+        const total = getUniqueLocations(areaRows);
+        
+        // 2. PA隧道路段（含*）
+        const tunnel = getUniqueLocations(areaRows, true);
+        
+        // 3. PA開放路段（不含*）
+        const open = getUniqueLocations(areaRows, false);
+        
+        // 最新日期的數據
+        const latestAll = getUniqueLocations(latestRows);
+        const latestTunnel = getUniqueLocations(latestRows, true);
+        const latestOpen = getUniqueLocations(latestRows, false);
+        
+        // 其他日期的數據
+        const otherAll = getUniqueLocations(otherRows);
+        const otherTunnel = getUniqueLocations(otherRows, true);
+        const otherOpen = getUniqueLocations(otherRows, false);
+        
+        // 4. PA重複發生數（最新日期中，在其他日期也出現過的）
+        const repeatAll = [...latestAll].filter(loc => otherAll.has(loc)).length;
+        
+        // 5. PA重複發生數(隧道)
+        const repeatTunnel = [...latestTunnel].filter(loc => otherTunnel.has(loc)).length;
+        
+        // 6. PA重複發生數(開放路段)
+        const repeatOpen = [...latestOpen].filter(loc => otherOpen.has(loc)).length;
+        
+        // 7. PA新增數(隧道)：最新日期有，其他日期沒有
+        const newTunnel = [...latestTunnel].filter(loc => !otherTunnel.has(loc)).length;
+        
+        // 8. PA新增數(開放)：最新日期有，其他日期沒有
+        const newOpen = [...latestOpen].filter(loc => !otherOpen.has(loc)).length;
+        
+        // 9. PA改善數(總體)：其他日期有，最新日期沒有
+        const improvedAll = [...otherAll].filter(loc => !latestAll.has(loc)).length;
+        
+        // 10. PA改善數(隧道)：其他日期有，最新日期沒有
+        const improvedTunnel = [...otherTunnel].filter(loc => !latestTunnel.has(loc)).length;
+        
+        // 11. PA改善數(開放路段)：其他日期有，最新日期沒有
+        const improvedOpen = [...otherOpen].filter(loc => !latestOpen.has(loc)).length;
+
+        stats[area] = {
+          total: total.size,
+          tunnel: tunnel.size,
+          open: open.size,
+          repeatAll,
+          repeatTunnel,
+          repeatOpen,
+          newTunnel,
+          newOpen,
+          improvedAll,
+          improvedTunnel,
+          improvedOpen
+        };
+      }
+
+      // 提取年份和月份用于标签显示
+      const yearLabel = selectedStatsYear || '全部';
+      const latestMonth = latestDate.length >= 7 ? latestDate.substring(5, 7) : '';
+      const monthLabel = latestMonth ? `${parseInt(latestMonth)}月` : '';
+
+      // 根据路段类型筛选显示的行
+      let rows = [];
+      
+      if (selectedStatsType === 'ALL') {
+        rows = [
+          { label: `PA總數[${yearLabel}]`, key: 'total' },
+          { label: `PA隧道路段[${yearLabel}]`, key: 'tunnel' },
+          { label: `PA開放路段[${yearLabel}]`, key: 'open' },
+          { label: `PA重複發生數{${monthLabel}}`, key: 'repeatAll' },
+          { label: `PA重複發生數(隧道){${monthLabel}}`, key: 'repeatTunnel' },
+          { label: `PA重複發生數(開放路段){${monthLabel}}`, key: 'repeatOpen' },
+          { label: `PA新增數(隧道){${monthLabel}}`, key: 'newTunnel' },
+          { label: `PA新增數(開放路段){${monthLabel}}`, key: 'newOpen' },
+          { label: `PA改善數(總體){${monthLabel}}`, key: 'improvedAll' },
+          { label: `PA改善數(隧道){${monthLabel}}`, key: 'improvedTunnel' },
+          { label: `PA改善數(開放路段){${monthLabel}}`, key: 'improvedOpen' }
+        ];
+      } else if (selectedStatsType === 'open') {
+        rows = [
+          { label: `PA總數[${yearLabel}]`, key: 'total' },
+          { label: `PA開放路段[${yearLabel}]`, key: 'open' },
+          { label: `PA重複發生數(開放路段){${monthLabel}}`, key: 'repeatOpen' },
+          { label: `PA新增數(開放路段){${monthLabel}}`, key: 'newOpen' },
+          { label: `PA改善數(開放路段){${monthLabel}}`, key: 'improvedOpen' }
+        ];
+      } else if (selectedStatsType === 'tunnel') {
+        rows = [
+          { label: `PA總數[${yearLabel}]`, key: 'total' },
+          { label: `PA隧道路段[${yearLabel}]`, key: 'tunnel' },
+          { label: `PA重複發生數(隧道){${monthLabel}}`, key: 'repeatTunnel' },
+          { label: `PA新增數(隧道){${monthLabel}}`, key: 'newTunnel' },
+          { label: `PA改善數(隧道){${monthLabel}}`, key: 'improvedTunnel' }
+        ];
+      }
+
+      let html = '';
+      for (const row of rows) {
+        html += '<tr>';
+        html += `<td class="row-label">${escapeHtml(row.label)}</td>`;
+        for (const area of areas) {
+          const val = stats[area] ? stats[area][row.key] : 0;
+          let displayText = val;
+          
+          // 为改善数添加比例显示
+          if (row.key === 'improvedAll' && stats[area] && stats[area].total > 0) {
+            const ratio = (val / stats[area].total * 100).toFixed(2);
+            displayText = `${val}(${ratio}%)`;
+          } else if (row.key === 'improvedTunnel' && stats[area] && stats[area].tunnel > 0) {
+            const ratio = (val / stats[area].tunnel * 100).toFixed(2);
+            displayText = `${val}(${ratio}%)`;
+          } else if (row.key === 'improvedOpen' && stats[area] && stats[area].open > 0) {
+            const ratio = (val / stats[area].open * 100).toFixed(2);
+            displayText = `${val}(${ratio}%)`;
+          }
+          
+          html += `<td>${displayText}</td>`;
+        }
+        html += '</tr>';
+      }
+
+      statsBody.innerHTML = html;
     }
 
     renderTableHeader();
@@ -2196,16 +2517,30 @@
       const optArea = uniqSorted(allRowsRaw.map(r => toClean(r.Marea)));
 
       filterWidgets.Date.setOptions(optDate);
+      // 默认只勾选最新日期
+      if (optDate.length > 0) {
+        const latestDate = optDate[optDate.length - 1];
+        filterState.Date.clear();
+        filterState.Date.add(latestDate);
+        // 更新复选框UI状态
+        const dateCheckboxes = filterWidgets.Date.el.querySelectorAll('input[type="checkbox"]');
+        dateCheckboxes.forEach(cb => {
+          cb.checked = (cb.dataset.v === latestDate);
+        });
+        filterWidgets.Date.updateButton();
+      }
       filterWidgets.measurement_NetWork.setOptions(optNet);
       filterWidgets.measurement_Script.setOptions(optScr);
       filterWidgets.Marea.setOptions(optArea);
 
-      filteredRows = [...allRowsRaw];
+      filteredRows = applyFiltersToRows(allRowsRaw);
 
       renderTableRows(filteredRows);
       rebuildPointLayers(filteredRows);
       rebuildH3FromRows(filteredRows);
-      showOnlyRes('RES9');
+      showOnlyRes('RES8');
+      initStatsYearFilter();
+      renderPAStatistics();
 
       hideChartWindow();
       clearChart();
