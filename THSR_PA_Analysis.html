@@ -712,6 +712,10 @@
             <option value="open" selected>開放路段</option>
             <option value="tunnel">隧道</option>
           </select>
+          <label for="settlementModeToggle" style="margin-left:16px;">
+            <input type="checkbox" id="settlementModeToggle" style="margin-right:4px;vertical-align:middle;">
+            <span style="vertical-align:middle;">結算模式</span>
+          </label>
           <button class="stats-back-btn" id="statsBackBtn" style="display:none;">← 返回Marea</button>
         </div>
         <table id="statsTable">
@@ -1639,10 +1643,12 @@
     // PA Statistics
     let selectedStatsYear = '';
     let selectedStatsType = 'open'; // 'ALL', 'open', 'tunnel'
+    let settlementMode = false; // 結算模式，預設關閉
     let statsViewMode = 'Marea'; // 'Marea' or 'Mcenter'
     let statsSelectedArea = null; // 当显示Mcenter时，记录选中的Marea
     const statsYearFilter = document.getElementById('statsYearFilter');
     const statsTypeFilter = document.getElementById('statsTypeFilter');
+    const settlementModeToggle = document.getElementById('settlementModeToggle');
     const statsBackBtn = document.getElementById('statsBackBtn');
     const statsHeadRow = document.getElementById('statsHeadRow');
     
@@ -1670,6 +1676,11 @@
     
     statsTypeFilter.addEventListener('change', (e) => {
       selectedStatsType = e.target.value;
+      renderPAStatistics();
+    });
+    
+    settlementModeToggle.addEventListener('change', (e) => {
+      settlementMode = e.target.checked;
       renderPAStatistics();
     });
     
@@ -1773,6 +1784,7 @@
       }
       
       const latestDate = allDates[allDates.length - 1];
+      const secondLatestDate = allDates.length >= 2 ? allDates[allDates.length - 2] : null;
       const otherDates = allDates.slice(0, -1);
 
       function getUniqueLocations(rows, tunnelOnly = null) {
@@ -1812,6 +1824,17 @@
         const otherTunnel = getUniqueLocations(otherRows, true);
         const otherOpen = getUniqueLocations(otherRows, false);
         
+        // 上一次日期的數據 (用於結算模式)
+        let secondLatestAll = new Set();
+        let secondLatestTunnel = new Set();
+        let secondLatestOpen = new Set();
+        if (settlementMode && secondLatestDate) {
+          const secondLatestRows = areaRows.filter(r => toClean(r.Date) === secondLatestDate);
+          secondLatestAll = getUniqueLocations(secondLatestRows);
+          secondLatestTunnel = getUniqueLocations(secondLatestRows, true);
+          secondLatestOpen = getUniqueLocations(secondLatestRows, false);
+        }
+        
         // 4. PA重複發生數（最新日期中，在其他日期也出現過的）
         const repeatAll = [...latestAll].filter(loc => otherAll.has(loc)).length;
         
@@ -1828,13 +1851,31 @@
         const newOpen = [...latestOpen].filter(loc => !otherOpen.has(loc)).length;
         
         // 9. PA改善數(總體)：其他日期有，最新日期沒有
-        const improvedAll = [...otherAll].filter(loc => !latestAll.has(loc)).length;
+        // 結算模式：需額外檢核上一次日期也沒有
+        let improvedAll;
+        if (settlementMode && secondLatestDate) {
+          improvedAll = [...otherAll].filter(loc => !latestAll.has(loc) && !secondLatestAll.has(loc)).length;
+        } else {
+          improvedAll = [...otherAll].filter(loc => !latestAll.has(loc)).length;
+        }
         
         // 10. PA改善數(隧道)：其他日期有，最新日期沒有
-        const improvedTunnel = [...otherTunnel].filter(loc => !latestTunnel.has(loc)).length;
+        // 結算模式：需額外檢核上一次日期也沒有
+        let improvedTunnel;
+        if (settlementMode && secondLatestDate) {
+          improvedTunnel = [...otherTunnel].filter(loc => !latestTunnel.has(loc) && !secondLatestTunnel.has(loc)).length;
+        } else {
+          improvedTunnel = [...otherTunnel].filter(loc => !latestTunnel.has(loc)).length;
+        }
         
         // 11. PA改善數(開放路段)：其他日期有，最新日期沒有
-        const improvedOpen = [...otherOpen].filter(loc => !latestOpen.has(loc)).length;
+        // 結算模式：需額外檢核上一次日期也沒有
+        let improvedOpen;
+        if (settlementMode && secondLatestDate) {
+          improvedOpen = [...otherOpen].filter(loc => !latestOpen.has(loc) && !secondLatestOpen.has(loc)).length;
+        } else {
+          improvedOpen = [...otherOpen].filter(loc => !latestOpen.has(loc)).length;
+        }
 
         stats[area] = {
           total: total.size,
