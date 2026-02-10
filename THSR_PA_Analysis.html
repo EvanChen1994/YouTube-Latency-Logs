@@ -767,12 +767,15 @@
 
   <script>
     /* ===========================
-       ver 7.6
-       - Fix: zoom<=11 聚合數字亂跳（bucket 改用 map.project 的「世界像素座標」做分桶，與視窗無關，拖曳不會重分群）
-       - New: 匯出右側 CSV（目前顯示/篩選後結果 displayedRows）
+       ver 8.0
+       - New: PA路段統計追蹤 - 新增「結算模式」功能（預設關閉）
+       - New: PA改善數在結算模式下需檢核上一次日期也沒有出現
+       - Update: PA重複發生數改為PA重複發生數(總體)
+       - New: 匯出功能 - 根據篩選條件匯出資料，並標註PA種類（TRUE/FALSE）
+       - Fix: CSV匯出添加UTF-8 BOM以正確顯示繁體中文
        =========================== */
 
-    const APP_VERSION = "ver 7.6";
+    const APP_VERSION = "ver 8.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
