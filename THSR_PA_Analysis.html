@@ -716,6 +716,7 @@
             <input type="checkbox" id="settlementModeToggle" style="margin-right:4px;vertical-align:middle;">
             <span style="vertical-align:middle;">結算模式</span>
           </label>
+          <button class="stats-back-btn" id="statsExportBtn" style="margin-left:16px;">匯出資料</button>
           <button class="stats-back-btn" id="statsBackBtn" style="display:none;">← 返回Marea</button>
         </div>
         <table id="statsTable">
@@ -1649,6 +1650,7 @@
     const statsYearFilter = document.getElementById('statsYearFilter');
     const statsTypeFilter = document.getElementById('statsTypeFilter');
     const settlementModeToggle = document.getElementById('settlementModeToggle');
+    const statsExportBtn = document.getElementById('statsExportBtn');
     const statsBackBtn = document.getElementById('statsBackBtn');
     const statsHeadRow = document.getElementById('statsHeadRow');
     
@@ -1684,6 +1686,10 @@
       renderPAStatistics();
     });
     
+    statsExportBtn.addEventListener('click', () => {
+      exportPAData();
+    });
+    
     statsBackBtn.addEventListener('click', () => {
       statsViewMode = 'Marea';
       statsSelectedArea = null;
@@ -1703,6 +1709,131 @@
       statsBackBtn.style.display = 'inline-block';
       renderPAStatistics();
     });
+    
+    function exportPAData() {
+      // 根據當前篩選條件過濾資料
+      let filteredData = allRowsRaw;
+      if (selectedStatsYear) {
+        filteredData = allRowsRaw.filter(r => {
+          const date = toClean(r.Date);
+          return date && date.startsWith(selectedStatsYear);
+        });
+      }
+      
+      // 找出所有日期並排序
+      const allDates = [...new Set(filteredData.map(r => toClean(r.Date)).filter(d => d))].sort();
+      if (allDates.length === 0) {
+        alert('該年份無資料');
+        return;
+      }
+      
+      const latestDate = allDates[allDates.length - 1];
+      const secondLatestDate = allDates.length >= 2 ? allDates[allDates.length - 2] : null;
+      const otherDates = allDates.slice(0, -1);
+      
+      // 根據路段類型過濾
+      if (selectedStatsType === 'tunnel') {
+        filteredData = filteredData.filter(r => {
+          const loc = toClean(r.start_location_name);
+          return loc && loc.includes('*');
+        });
+      } else if (selectedStatsType === 'open') {
+        filteredData = filteredData.filter(r => {
+          const loc = toClean(r.start_location_name);
+          return loc && !loc.includes('*');
+        });
+      }
+      
+      // 建立location到日期的對應
+      const locationToDate = new Map();
+      for (const row of filteredData) {
+        const loc = toClean(row.start_location_name);
+        if (!loc) continue;
+        const date = toClean(row.Date);
+        if (!locationToDate.has(loc)) {
+          locationToDate.set(loc, new Set());
+        }
+        locationToDate.get(loc).add(date);
+      }
+      
+      // 為每條記錄添加PA種類判斷
+      const exportData = filteredData.map(row => {
+        const loc = toClean(row.start_location_name);
+        const date = toClean(row.Date);
+        const isTunnel = loc && loc.includes('*');
+        const isOpen = loc && !loc.includes('*');
+        const dates = locationToDate.get(loc) || new Set();
+        const isLatest = date === latestDate;
+        const isSecondLatest = date === secondLatestDate;
+        const inOtherDates = otherDates.some(d => dates.has(d));
+        const inLatest = dates.has(latestDate);
+        const inSecondLatest = secondLatestDate && dates.has(secondLatestDate);
+        
+        // 判斷各種類別
+        const categories = {
+          'PA隧道路段': isTunnel ? 'TRUE' : 'FALSE',
+          'PA開放路段': isOpen ? 'TRUE' : 'FALSE',
+          'PA重複發生數(隧道)': (isTunnel && isLatest && inOtherDates) ? 'TRUE' : 'FALSE',
+          'PA重複發生數(開放路段)': (isOpen && isLatest && inOtherDates) ? 'TRUE' : 'FALSE',
+          'PA新增數(隧道)': (isTunnel && isLatest && !inOtherDates) ? 'TRUE' : 'FALSE',
+          'PA新增數(開放路段)': (isOpen && isLatest && !inOtherDates) ? 'TRUE' : 'FALSE'
+        };
+        
+        // PA改善數判斷（根據結算模式）
+        // 改善數：非最新日期的記錄，且該location在最新日期沒有出現
+        if (settlementMode && secondLatestDate) {
+          // 結算模式：還需要檢查該location在上一次日期也沒有出現
+          categories['PA改善數(隧道)'] = (isTunnel && !isLatest && !inLatest && !inSecondLatest) ? 'TRUE' : 'FALSE';
+          categories['PA改善數(開放路段)'] = (isOpen && !isLatest && !inLatest && !inSecondLatest) ? 'TRUE' : 'FALSE';
+        } else {
+          // 一般模式：只需檢查該location在最新日期沒有出現
+          categories['PA改善數(隧道)'] = (isTunnel && !isLatest && !inLatest) ? 'TRUE' : 'FALSE';
+          categories['PA改善數(開放路段)'] = (isOpen && !isLatest && !inLatest) ? 'TRUE' : 'FALSE';
+        }
+        
+        return { ...row, ...categories };
+      });
+      
+      // 生成CSV
+      if (exportData.length === 0) {
+        alert('沒有資料可匯出');
+        return;
+      }
+      
+      // 取得所有欄位名稱（原始欄位 + PA種類欄位）
+      const headers = Object.keys(exportData[0]);
+      
+      // 建立CSV內容
+      let csv = headers.join(',') + '\n';
+      for (const row of exportData) {
+        const values = headers.map(h => {
+          let val = row[h];
+          if (val === null || val === undefined) val = '';
+          val = String(val);
+          // 如果包含逗號、換行或雙引號，需要用雙引號包住並轉義
+          if (val.includes(',') || val.includes('\n') || val.includes('"')) {
+            val = '"' + val.replace(/"/g, '""') + '"';
+          }
+          return val;
+        });
+        csv += values.join(',') + '\n';
+      }
+      
+      // 下載CSV (添加UTF-8 BOM以正確顯示繁體中文)
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const yearLabel = selectedStatsYear || 'ALL';
+      const typeLabel = selectedStatsType === 'ALL' ? 'ALL' : selectedStatsType === 'tunnel' ? 'Tunnel' : 'Open';
+      const modeLabel = settlementMode ? 'Settlement' : 'Normal';
+      link.href = url;
+      link.download = `PA_Export_${yearLabel}_${typeLabel}_${modeLabel}_${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
     
     function renderPAStatistics() {
       const statsBody = document.getElementById('statsBody');
@@ -1835,7 +1966,7 @@
           secondLatestOpen = getUniqueLocations(secondLatestRows, false);
         }
         
-        // 4. PA重複發生數（最新日期中，在其他日期也出現過的）
+        // 4. PA重複發生數(總體)（最新日期中，在其他日期也出現過的）
         const repeatAll = [...latestAll].filter(loc => otherAll.has(loc)).length;
         
         // 5. PA重複發生數(隧道)
@@ -1905,7 +2036,7 @@
           { label: `PA總數[${yearLabel}]`, key: 'total' },
           { label: `PA隧道路段[${yearLabel}]`, key: 'tunnel' },
           { label: `PA開放路段[${yearLabel}]`, key: 'open' },
-          { label: `PA重複發生數{${monthLabel}}`, key: 'repeatAll' },
+          { label: `PA重複發生數(總體){${monthLabel}}`, key: 'repeatAll' },
           { label: `PA重複發生數(隧道){${monthLabel}}`, key: 'repeatTunnel' },
           { label: `PA重複發生數(開放路段){${monthLabel}}`, key: 'repeatOpen' },
           { label: `PA新增數(隧道){${monthLabel}}`, key: 'newTunnel' },
