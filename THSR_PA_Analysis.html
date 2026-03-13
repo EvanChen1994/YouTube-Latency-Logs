@@ -302,6 +302,89 @@
     .stats-filter select:hover { background: rgba(30,70,160,0.70); border-color: rgba(43,124,255,0.60); }
     .stats-back-btn { padding:3px 10px; border-radius:6px; border:1px solid var(--line2); background: rgba(255,255,255,0.04); color:var(--txt); font-size:11px; cursor:pointer; font-weight:700; transition:.15s ease; }
     .stats-back-btn:hover { background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.40); }
+    .stats-lock-btn { padding:3px 10px; border-radius:6px; border:1px solid var(--line2); background: rgba(255,255,255,0.04); color:var(--txt); font-size:12px; cursor:pointer; font-weight:900; transition:.15s ease; }
+    .stats-lock-btn:hover { background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.40); }
+    .clone-tabs { display:flex; gap:8px; margin-bottom:8px; }
+    .clone-tab {
+      border:1px solid var(--line2);
+      background: rgba(255,255,255,0.04);
+      color: var(--txt);
+      border-radius:8px;
+      padding:5px 10px;
+      font-size:12px;
+      font-weight:800;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    .clone-tab:hover { background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.40); }
+    .clone-tab.active { background: rgba(43,124,255,0.20); border-color: rgba(43,124,255,0.55); color: var(--accent2); }
+    .clone-filter-bar {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .clone-filter-bar label {
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .clone-filter-bar select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      color-scheme: dark;
+      min-width: 110px;
+      padding: 6px 30px 6px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(71, 153, 255, 0.42);
+      background:
+        linear-gradient(180deg, rgba(20,56,125,0.82), rgba(9,29,76,0.92));
+      color: var(--txt);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .16s ease;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 6px 14px rgba(0,0,0,0.24);
+      background-image:
+        linear-gradient(180deg, rgba(20,56,125,0.82), rgba(9,29,76,0.92)),
+        linear-gradient(45deg, transparent 50%, rgba(203,226,255,0.95) 50%),
+        linear-gradient(135deg, rgba(203,226,255,0.95) 50%, transparent 50%);
+      background-position:
+        0 0,
+        calc(100% - 15px) calc(50% - 2px),
+        calc(100% - 10px) calc(50% - 2px);
+      background-size:
+        auto,
+        5px 5px,
+        5px 5px;
+      background-repeat: no-repeat;
+    }
+    .clone-filter-bar select option {
+      background: #0d1f49;
+      color: #eaf3ff;
+    }
+    .clone-filter-bar select option:checked {
+      background: #1f4ea3;
+      color: #ffffff;
+    }
+    .clone-filter-bar select:hover {
+      border-color: rgba(108, 182, 255, 0.7);
+      background-image:
+        linear-gradient(180deg, rgba(25,68,145,0.9), rgba(12,38,96,0.96)),
+        linear-gradient(45deg, transparent 50%, rgba(218,236,255,1) 50%),
+        linear-gradient(135deg, rgba(218,236,255,1) 50%, transparent 50%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 10px 18px rgba(0,0,0,0.28);
+    }
+    .clone-filter-bar select:focus {
+      outline: none;
+      border-color: rgba(140, 204, 255, 0.9);
+      box-shadow: 0 0 0 2px rgba(43,124,255,0.28), inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+    #statsCloneWrap { max-height: 62vh; overflow:auto; border:1px solid rgba(255,255,255,0.10); border-radius:10px; }
+    #statsCloneHint { color: var(--muted); font-size:12px; margin-bottom:8px; }
     #statsTable th.clickable { cursor:pointer; user-select:none; transition:.15s ease; }
     #statsTable th.clickable:hover { background: rgba(43,124,255,0.15); color:var(--accent2); }
     #statsTable { font-size:11px; }
@@ -710,13 +793,14 @@
           <select id="statsTypeFilter">
             <option value="ALL">ALL</option>
             <option value="open" selected>開放路段</option>
-            <option value="tunnel">隧道</option>
+            <option value="tunnel">室內/隧道路段</option>
           </select>
           <label for="settlementModeToggle" style="margin-left:16px;">
             <input type="checkbox" id="settlementModeToggle" style="margin-right:4px;vertical-align:middle;">
             <span style="vertical-align:middle;">結算模式</span>
           </label>
           <button class="stats-back-btn" id="statsExportBtn" style="margin-left:16px;">匯出資料</button>
+          <button class="stats-lock-btn" id="statsLockedBtn" title="密碼保護子視窗">🔒</button>
           <button class="stats-back-btn" id="statsBackBtn" style="display:none;">← 返回Marea</button>
         </div>
         <table id="statsTable">
@@ -756,14 +840,53 @@
 
         <hr style="border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;">
 
+        <div style="font-weight:1000;margin-bottom:6px;">Data Warnings</div>
+        <div class="mono" id="mDataWarnings" style="white-space:pre-wrap;max-height:160px;overflow:auto;"></div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.10);margin:12px 0;">
+
         <div style="font-weight:1000;margin-bottom:6px;">Errors</div>
         <div class="mono err" id="mErrors" style="white-space:pre-wrap;"></div>
       </div>
     </div>
   </div>
 
+  <div class="modal-backdrop" id="statsCloneBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="PA路段統計(行維處版)" style="width:min(1200px,95vw);">
+      <div class="modal-header">
+        <div style="font-weight:1000;">PA路段統計(行維處版)</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="close-btn" id="btnStatsCloneExport">匯出EXCEL</button>
+          <button class="close-btn" id="btnStatsCloneBack" style="display:none;">← 返回Marea</button>
+          <button class="close-btn" id="btnStatsCloneClose">關閉</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="clone-tabs">
+          <button class="clone-tab active" id="cloneTabStats">PA路段統計(行維處版)</button>
+          <button class="clone-tab" id="cloneTabReward">PA路段激勵統計(行維處版)</button>
+        </div>
+        <div class="clone-filter-bar">
+          <label for="cloneYearFilter">年份：</label>
+          <select id="cloneYearFilter">
+            <option value="">全部</option>
+          </select>
+          <label for="cloneTypeFilter">路段類型：</label>
+          <select id="cloneTypeFilter">
+            <option value="ALL">ALL</option>
+            <option value="open" selected>開放路段</option>
+            <option value="tunnel">室內/隧道路段</option>
+          </select>
+        </div>
+        <div id="statsCloneHint">已複製目前右下方 PA路段統計，供後續調整。</div>
+        <div id="statsCloneWrap"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <script>
     /* ===========================
@@ -775,7 +898,7 @@
        - Fix: CSV匯出添加UTF-8 BOM以正確顯示繁體中文
        =========================== */
 
-    const APP_VERSION = "ver 8.0";
+    const APP_VERSION = "ver 8.1";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -798,6 +921,7 @@
     const mH3 = document.getElementById('mH3');
     const mStatus = document.getElementById('mStatus');
     const mUpdate = document.getElementById('mUpdate');
+    const mDataWarnings = document.getElementById('mDataWarnings');
     const mErrors = document.getElementById('mErrors');
 
     let lastStatus = "init";
@@ -808,6 +932,7 @@
     let paCsvUrlAbs = "";
     let locCsvUrlAbs = "";
     let h3Info = "";
+    let dataWarningsText = '(none)';
 
     function openModal() { modalBackdrop.style.display = "flex"; }
     function closeModal() { modalBackdrop.style.display = "none"; }
@@ -830,6 +955,7 @@
       mH3.textContent = h3Info || "(pending)";
       mStatus.textContent = lastStatus;
       mUpdate.textContent = lastUpdateTime || '';
+      mDataWarnings.textContent = dataWarningsText;
       mErrors.textContent = errorLogs.length ? errorLogs.join("\n\n") : "(none)";
       openModal();
     });
@@ -855,6 +981,80 @@
       const n = Number(s);
       if (!Number.isNaN(n) && Number.isFinite(n)) return {isNum:true, num:n, raw:s};
       return {isNum:false, num:0, raw:s.toLowerCase()};
+    }
+
+    function buildDataWarnings(rowsPA, rowsLoc) {
+      if (!rowsPA?.length || !rowsLoc?.length) {
+        return '(none)';
+      }
+
+      const locationSet = new Set();
+      for (const r of rowsLoc) {
+        const n = toClean(r.location_name);
+        if (n) locationSet.add(n);
+      }
+
+      if (!locationSet.size) {
+        return 'Location 母檔為空，無法比對。';
+      }
+
+      const missingAll = new Set();
+      const missingOpen = new Set();
+      const missingTunnel = new Set();
+      const missingByDate = new Map();
+
+      for (const r of rowsPA) {
+        const name = toClean(r.start_location_name);
+        if (!name || locationSet.has(name)) continue;
+
+        missingAll.add(name);
+        if (name.includes('*')) missingTunnel.add(name);
+        else missingOpen.add(name);
+
+        const d = toClean(r.Date) || '(空白日期)';
+        if (!missingByDate.has(d)) missingByDate.set(d, new Set());
+        missingByDate.get(d).add(name);
+      }
+
+      if (!missingAll.size) {
+        return '(none)';
+      }
+
+      const lines = [];
+      lines.push(`PA start_location_name 不在 THSR_Location 母檔：${missingAll.size} 條`);
+      lines.push(`- 開放路段：${missingOpen.size} 條`);
+      lines.push(`- 室內/隧道路段：${missingTunnel.size} 條`);
+
+      const missingNames = [...missingAll].sort();
+      lines.push('名稱清單：');
+      for (const n of missingNames) lines.push(`- ${n}`);
+
+      const dateList = [...missingByDate.entries()]
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+      lines.push('日期分佈：');
+      for (const [d, s] of dateList) {
+        lines.push(`- ${d}: ${s.size} 條`);
+      }
+
+      return lines.join('\n');
+    }
+    // 確保時間格式包含秒數
+    function ensureTimeWithSeconds(timeStr) {
+      const s = toClean(timeStr);
+      if (!s) return s;
+      // 檢查是否已經包含秒數（格式：YYYY/M/D HH:mm:ss 或類似）
+      // 尋找最後一個冒號後面是否有數字
+      const colonCount = (s.match(/:/g) || []).length;
+      if (colonCount >= 2) {
+        // 已經有秒數
+        return s;
+      }
+      if (colonCount === 1) {
+        // 只有時:分，補上秒數
+        return s + ':00';
+      }
+      // 沒有冒號，返回原值
+      return s;
     }
 
     function parseCsvRobust(text) {
@@ -896,6 +1096,17 @@
         data.push(obj);
       }
       return data;
+    }
+
+    function normalizePARows(rows) {
+      if (!Array.isArray(rows)) return [];
+      return rows.map(r => {
+        const memo = toClean(r.Memo);
+        return {
+          ...r,
+          Memo: memo,
+        };
+      });
     }
 
     async function fetchNoStore(absUrl) {
@@ -972,6 +1183,7 @@
     // Data + layers
     const locMap = new Map();
     let allRowsRaw = [];
+    let allLocationRowsRaw = [];
     let filteredRows = [];
     let displayedRows = [];
     let hideTunnelSegments = true; // 默认隐藏隧道路段
@@ -1481,6 +1693,8 @@
     chkHideTunnel.addEventListener('change', () => {
       hideTunnelSegments = chkHideTunnel.checked;
       applyFilterAndRerender();
+      updateStatsTypeFilterVisibility();
+      renderPAStatistics();
     });
     
     btnClear.addEventListener('click', () => {
@@ -1511,7 +1725,14 @@
       const header = cols.map(c => csvEscapeCell(c.key)).join(',');
       const lines = [header];
       for (const r of rows) {
-        const line = cols.map(c => csvEscapeCell(r?.[c.key] ?? '')).join(',');
+        const line = cols.map(c => {
+          let val = r?.[c.key] ?? '';
+          // 如果是時間欄位，確保包含秒數
+          if (c.isTime) {
+            val = ensureTimeWithSeconds(val);
+          }
+          return csvEscapeCell(val);
+        }).join(',');
         lines.push(line);
       }
       // Excel 友善：加 BOM
@@ -1541,16 +1762,17 @@
     const COLS = [
       { key: 'Date', label: 'Date' },
       { key: 'start_location_name', label: 'S.loc' },
+      { key: 'Memo', label: 'Memo' },
       { key: 'end_location_name', label: 'E.loc' },
       { key: 'PA_Num', label: 'PA#' },
       { key: 'event', label: 'Event' },
-      { key: 'time_tw', label: 'Time' },
-      { key: 'lag_start_tw', label: 'LagStart' },
-      { key: 'resume_tw', label: 'Resume' },
+      { key: 'time_tw', label: 'Time', isTime: true },
+      { key: 'lag_start_tw', label: 'LagStart', isTime: true },
+      { key: 'resume_tw', label: 'Resume', isTime: true },
       { key: 'lag_ms', label: 'Lag(ms)' },
       { key: 'e2e_recover_ms', label: 'E2E(ms)' },
-      { key: 'e2e_recover_time', label: 'E2E(Time)' },
-      { key: 'lag_end_tw', label: 'LagEnd' },
+      { key: 'e2e_recover_time', label: 'E2E(Time)', isTime: true },
+      { key: 'lag_end_tw', label: 'LagEnd', isTime: true },
       { key: 'lag_mode', label: 'LagMode' },
       { key: 'gps_type', label: 'GPS' },
       { key: 'start_lat', label: 'S.lat' },
@@ -1616,7 +1838,11 @@
 
         for (const c of COLS) {
           const td = document.createElement('td');
-          const v = (r[c.key] ?? '');
+          let v = (r[c.key] ?? '');
+          // 如果是時間欄位，確保顯示包含秒數
+          if (c.isTime) {
+            v = ensureTimeWithSeconds(v);
+          }
           td.textContent = v;
           td.title = v;
           tr.appendChild(td);
@@ -1654,12 +1880,364 @@
     const statsTypeFilter = document.getElementById('statsTypeFilter');
     const settlementModeToggle = document.getElementById('settlementModeToggle');
     const statsExportBtn = document.getElementById('statsExportBtn');
+    const statsLockedBtn = document.getElementById('statsLockedBtn');
     const statsBackBtn = document.getElementById('statsBackBtn');
     const statsHeadRow = document.getElementById('statsHeadRow');
+    const statsCloneBackdrop = document.getElementById('statsCloneBackdrop');
+    const btnStatsCloneExport = document.getElementById('btnStatsCloneExport');
+    const btnStatsCloneBack = document.getElementById('btnStatsCloneBack');
+    const btnStatsCloneClose = document.getElementById('btnStatsCloneClose');
+    const cloneTabStats = document.getElementById('cloneTabStats');
+    const cloneTabReward = document.getElementById('cloneTabReward');
+    const cloneYearFilter = document.getElementById('cloneYearFilter');
+    const cloneTypeFilter = document.getElementById('cloneTypeFilter');
+    const statsCloneHint = document.getElementById('statsCloneHint');
+    const statsCloneWrap = document.getElementById('statsCloneWrap');
+    const STATS_LOCK_PASSWORD = '681610';
+    let statsCloneViewMode = 'Marea';
+    let statsCloneSelectedArea = null;
+    let statsCloneActiveTab = 'stats';
+    let statsCloneYear = '';
+    let statsCloneType = 'open';
+
+    function openStatsCloneModal() {
+      statsCloneBackdrop.style.display = 'flex';
+    }
+
+    function closeStatsCloneModal() {
+      statsCloneBackdrop.style.display = 'none';
+    }
+
+    function getCloneColumnsFromData() {
+      if (statsCloneViewMode === 'Marea') {
+        return { columns: ['行動北區營運處', '行動中區營運處', '行動南區營運處'], columnField: 'Marea' };
+      }
+
+      const mcenterOrder = {
+        '行動北區營運處': ['基隆營運中心', '台北營運中心', '新北營運中心', '桃園營運中心', '新竹營運中心', '宜蘭營運中心', '花蓮營運中心'],
+        '行動中區營運處': ['苗栗營運中心', '豐原/台中營運中心', '彰化營運中心', '南投營運中心', '雲林營運中心'],
+        '行動南區營運處': ['嘉義營運中心', '台南營運中心', '鳳山/高雄營運中心', '屏東營運中心', '台東營運中心']
+      };
+
+      const centersInData = new Set(
+        allLocationRowsRaw
+          .filter(r => toClean(r.marea) === statsCloneSelectedArea)
+          .map(r => toClean(r.mcenter))
+          .filter(c => c)
+      );
+      const orderedCenters = mcenterOrder[statsCloneSelectedArea] || [];
+      const columns = orderedCenters.filter(center => centersInData.has(center));
+      return { columns: columns.length ? columns : ['(無資料)'], columnField: 'Mcenter' };
+    }
+
+    function getPARowsByStatsType(rows) {
+      if (statsCloneType === 'open') {
+        return rows.filter(r => !toClean(r.start_location_name).includes('*'));
+      }
+      if (statsCloneType === 'tunnel') {
+        return rows.filter(r => toClean(r.start_location_name).includes('*'));
+      }
+      return rows;
+    }
+
+    function isDateInCloneStatsRange(dateText) {
+      if (!statsCloneYear) return true;
+      const info = parseYearMonth(dateText);
+      if (!info) return false;
+
+      const targetYear = Number(statsCloneYear);
+      if (info.year === targetYear && info.month >= 2) return true;
+      if (info.year === targetYear + 1 && info.month === 1) return true;
+      return false;
+    }
+
+    function initCloneFilters() {
+      const allDates = [...new Set(allRowsRaw.map(r => toClean(r.Date)).filter(d => d))];
+      const years = [...new Set(allDates
+        .map(d => parseDateParts(d))
+        .filter(Boolean)
+        .map(p => (p.month === 1 ? p.year - 1 : p.year).toString())
+      )].sort();
+
+      let html = '<option value="">全部</option>';
+      for (const year of years) {
+        html += `<option value="${year}">${year}</option>`;
+      }
+      cloneYearFilter.innerHTML = html;
+
+      statsCloneYear = years.length ? years[years.length - 1] : '';
+      cloneYearFilter.value = statsCloneYear;
+      statsCloneType = 'open';
+      cloneTypeFilter.value = statsCloneType;
+    }
+
+    function getCloneScopedData() {
+      const scopeFieldPA = statsCloneViewMode === 'Mcenter' ? 'Mcenter' : 'Marea';
+      const scopeFieldLoc = statsCloneViewMode === 'Mcenter' ? 'mcenter' : 'marea';
+
+      let paRows = allRowsRaw.filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      let locRows = allLocationRowsRaw.slice();
+
+      if (statsCloneViewMode === 'Mcenter' && statsCloneSelectedArea) {
+        paRows = paRows.filter(r => toClean(r[scopeFieldPA]) === statsCloneSelectedArea);
+        locRows = locRows.filter(r => toClean(r[scopeFieldLoc]) === statsCloneSelectedArea);
+      }
+
+      if (statsCloneType === 'open') {
+        paRows = paRows.filter(r => !toClean(r.start_location_name).includes('*'));
+        locRows = locRows.filter(r => !toClean(r.location_name).includes('*'));
+      } else if (statsCloneType === 'tunnel') {
+        paRows = paRows.filter(r => toClean(r.start_location_name).includes('*'));
+        locRows = locRows.filter(r => toClean(r.location_name).includes('*'));
+      }
+
+      return { paRows, locRows };
+    }
+
+    function getContinuousYmList(rows) {
+      const parts = rows
+        .map(r => parseDateParts(toClean(r.Date)))
+        .filter(Boolean)
+        .sort((a, b) => a.ordinal - b.ordinal);
+      if (!parts.length) return [];
+
+      const ymList = [];
+      let y = parts[0].year;
+      let m = parts[0].month;
+      const endY = parts[parts.length - 1].year;
+      const endM = parts[parts.length - 1].month;
+
+      while (y < endY || (y === endY && m <= endM)) {
+        ymList.push(`${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}`);
+        m += 1;
+        if (m > 12) {
+          m = 1;
+          y += 1;
+        }
+      }
+      return ymList;
+    }
+
+    function calcRewardSeries(rows, ymList) {
+      const monthMap = new Map();
+      for (const ym of ymList) monthMap.set(ym, new Set());
+      for (const r of rows) {
+        const p = parseDateParts(toClean(r.Date));
+        if (!p) continue;
+        const name = toClean(r.start_location_name);
+        if (!name) continue;
+        if (!monthMap.has(p.ym)) monthMap.set(p.ym, new Set());
+        monthMap.get(p.ym).add(name);
+      }
+
+      const allLocs = new Set(rows.map(r => toClean(r.start_location_name)).filter(v => v));
+      const state = new Map();
+      for (const loc of allLocs) state.set(loc, { seen: false, absent: 0 });
+      const threshold = 3;
+
+      const scores = new Map();
+      for (const ym of ymList) {
+        const presentSet = monthMap.get(ym) || new Set();
+        let score = 0;
+
+        for (const loc of allLocs) {
+          const st = state.get(loc);
+          if (presentSet.has(loc)) {
+            st.seen = true;
+            st.absent = 0;
+            continue;
+          }
+          if (!st.seen) continue;
+          st.absent += 1;
+          if (st.absent >= threshold) score += 1;
+        }
+        scores.set(ym, score);
+      }
+
+      return { scores, baseCount: allLocs.size };
+    }
+
+    function formatYm(ym) {
+      const m = String(ym || '').match(/^(\d{4})-(\d{2})$/);
+      if (!m) return ym;
+      return `${m[1]}/${m[2]}`;
+    }
+
+    function buildRewardCloneView() {
+      const { columns, columnField } = getCloneColumnsFromData();
+      let filteredPAData = allRowsRaw.filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      filteredPAData = getPARowsByStatsType(filteredPAData);
+      const ymList = getContinuousYmList(filteredPAData);
+
+      const rewardByArea = {};
+      for (const area of columns) {
+        const areaRows = filteredPAData.filter(r => toClean(r[columnField]) === area);
+        const result = calcRewardSeries(areaRows, ymList);
+        rewardByArea[area] = result;
+      }
+      const globalResult = calcRewardSeries(filteredPAData, ymList);
+
+      let html = '<table id="rewardStatsCloneTable"><thead><tr><th style="text-align:left;">月份</th>';
+      for (const c of columns) {
+        if (statsCloneViewMode === 'Marea') html += `<th class="clickable">${escapeHtml(c)}</th>`;
+        else html += `<th>${escapeHtml(c)}</th>`;
+      }
+      html += '<th style="font-weight:1000;color:var(--accent2);">總計</th></tr></thead><tbody>';
+
+      if (!ymList.length) {
+        html += `<tr><td colspan="${columns.length + 2}" style="text-align:center;color:var(--muted);">無可統計月份</td></tr>`;
+      } else {
+        for (const ym of ymList) {
+          let rowTotal = 0;
+          const rowValues = new Map();
+          for (const area of columns) {
+            const val = rewardByArea[area]?.scores?.get(ym) ?? 0;
+            rowValues.set(area, val);
+            rowTotal += val;
+          }
+
+          html += `<tr><td class="row-label">${escapeHtml(formatYm(ym))}</td>`;
+          for (const area of columns) {
+            const val = rowValues.get(area) ?? 0;
+            const ratio = rowTotal > 0 ? `${(val / rowTotal * 100).toFixed(2)}%` : '0.00%';
+            html += `<td>${val}(${ratio})</td>`;
+          }
+          const totalVal = globalResult.scores.get(ym) ?? rowTotal;
+          const totalRatio = totalVal > 0 ? '100.00%' : '0.00%';
+          html += `<td style="font-weight:800;background:rgba(43,124,255,0.08);">${totalVal}(${totalRatio})</td></tr>`;
+        }
+      }
+
+      html += '</tbody></table>';
+      statsCloneWrap.innerHTML = html;
+      btnStatsCloneBack.style.display = statsCloneViewMode === 'Mcenter' ? 'inline-block' : 'none';
+    }
+
+    function buildStatsCloneView() {
+      cloneTabStats.classList.toggle('active', statsCloneActiveTab === 'stats');
+      cloneTabReward.classList.toggle('active', statsCloneActiveTab === 'reward');
+
+      if (statsCloneActiveTab === 'reward') {
+        statsCloneHint.textContent = '激勵規則：路段曾出現後，連續3個月未出現起算，每多缺席1個月再+1。比例採同月份各欄位橫向占比。';
+        buildRewardCloneView();
+        return;
+      }
+
+      statsCloneHint.textContent = '已複製目前右下方 PA路段統計，供後續調整。';
+      const srcTable = document.getElementById('statsTable');
+      if (!srcTable || !statsCloneWrap) return;
+
+      const keepMode = statsViewMode;
+      const keepArea = statsSelectedArea;
+      const keepBackDisplay = statsBackBtn.style.display;
+      const keepYear = selectedStatsYear;
+      const keepType = selectedStatsType;
+
+      statsViewMode = statsCloneViewMode;
+      statsSelectedArea = statsCloneSelectedArea;
+      selectedStatsYear = statsCloneYear;
+      selectedStatsType = statsCloneType;
+      statsBackBtn.style.display = statsViewMode === 'Mcenter' ? 'inline-block' : 'none';
+      renderPAStatistics(true);
+
+      const cloneTable = srcTable.cloneNode(true);
+      cloneTable.id = 'statsTableClone';
+      statsCloneWrap.innerHTML = '';
+      statsCloneWrap.appendChild(cloneTable);
+
+      statsViewMode = keepMode;
+      statsSelectedArea = keepArea;
+      selectedStatsYear = keepYear;
+      selectedStatsType = keepType;
+      statsBackBtn.style.display = keepBackDisplay;
+      renderPAStatistics(false);
+
+      btnStatsCloneBack.style.display = statsCloneViewMode === 'Mcenter' ? 'inline-block' : 'none';
+    }
+
+    function openMcenterStatsClone(areaName) {
+      const area = toClean(areaName);
+      if (!area || statsCloneViewMode === 'Mcenter') return;
+      statsCloneSelectedArea = area;
+      statsCloneViewMode = 'Mcenter';
+      buildStatsCloneView();
+    }
+
+    function parseDateParts(dateText) {
+      const v = toClean(dateText);
+      const m = v.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+      if (!m) return null;
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const day = Number(m[3]);
+      if (!year || !month || !day) return null;
+      const ym = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
+      const ymd = `${ym}-${String(day).padStart(2, '0')}`;
+      const ordinal = year * 10000 + month * 100 + day;
+      return { year, month, day, ym, ymd, ordinal, raw: v };
+    }
+
+    function parseYearMonth(dateText) {
+      const p = parseDateParts(dateText);
+      if (!p) return null;
+      return { year: p.year, month: p.month, ym: p.ym };
+    }
+
+    function getMonthlyLastDates(rows) {
+      const monthMap = new Map();
+      for (const r of rows) {
+        const d = toClean(r.Date);
+        const info = parseDateParts(d);
+        if (!info || !d) continue;
+        const prev = monthMap.get(info.ym);
+        if (!prev || info.ordinal > prev.ordinal) {
+          monthMap.set(info.ym, { raw: d, ordinal: info.ordinal });
+        }
+      }
+      return [...monthMap.values()]
+        .sort((a, b) => a.ordinal - b.ordinal)
+        .map(v => v.raw);
+    }
+
+    function isDateInStatsRange(dateText) {
+      if (!selectedStatsYear) return true;
+      const info = parseYearMonth(dateText);
+      if (!info) return false;
+
+      const targetYear = Number(selectedStatsYear);
+      if (info.year === targetYear && info.month >= 2) return true;
+      if (info.year === targetYear + 1 && info.month === 1) return true;
+      return false;
+    }
+
+    function getImprovedMonthLabel(calcDate) {
+      const info = parseYearMonth(calcDate);
+      if (!info) return '改善';
+      const prevMonth = info.month === 1 ? 12 : info.month - 1;
+      return `${prevMonth}月改善`;
+    }
+
+    function updateStatsTypeFilterVisibility() {
+      const hideTunnel = hideTunnelSegments;
+      const options = [...statsTypeFilter.options];
+      for (const opt of options) {
+        const relatedTunnel = opt.value === 'tunnel' || opt.value === 'ALL';
+        opt.hidden = hideTunnel && relatedTunnel;
+      }
+
+      if (hideTunnel && selectedStatsType !== 'open') {
+        selectedStatsType = 'open';
+        statsTypeFilter.value = 'open';
+      }
+    }
     
     function initStatsYearFilter() {
       const allDates = [...new Set(allRowsRaw.map(r => toClean(r.Date)).filter(d => d))];
-      const years = [...new Set(allDates.map(d => d.substring(0, 4)))].sort();
+      const years = [...new Set(allDates
+        .map(d => parseDateParts(d))
+        .filter(Boolean)
+        .map(p => (p.month === 1 ? p.year - 1 : p.year).toString())
+      )].sort();
       
       let html = '<option value="">全部</option>';
       for (const year of years) {
@@ -1667,7 +2245,7 @@
       }
       statsYearFilter.innerHTML = html;
       
-      // 默认选择最新年份
+      // 默认选择最新统计年份（2月~隔年1月）
       if (years.length > 0) {
         selectedStatsYear = years[years.length - 1];
         statsYearFilter.value = selectedStatsYear;
@@ -1692,6 +2270,141 @@
     statsExportBtn.addEventListener('click', () => {
       exportPAData();
     });
+
+    statsLockedBtn.addEventListener('click', () => {
+      const pwd = window.prompt('請輸入密碼');
+      if (pwd === null) return;
+      if (String(pwd).trim() !== STATS_LOCK_PASSWORD) {
+        alert('密碼錯誤');
+        return;
+      }
+      statsCloneViewMode = 'Marea';
+      statsCloneSelectedArea = null;
+      statsCloneActiveTab = 'stats';
+      initCloneFilters();
+      buildStatsCloneView();
+      openStatsCloneModal();
+    });
+
+    cloneYearFilter.addEventListener('change', (e) => {
+      statsCloneYear = e.target.value;
+      statsCloneViewMode = 'Marea';
+      statsCloneSelectedArea = null;
+      buildStatsCloneView();
+    });
+
+    cloneTypeFilter.addEventListener('change', (e) => {
+      statsCloneType = e.target.value;
+      statsCloneViewMode = 'Marea';
+      statsCloneSelectedArea = null;
+      buildStatsCloneView();
+    });
+
+    cloneTabStats.addEventListener('click', () => {
+      statsCloneActiveTab = 'stats';
+      buildStatsCloneView();
+    });
+
+    cloneTabReward.addEventListener('click', () => {
+      statsCloneActiveTab = 'reward';
+      buildStatsCloneView();
+    });
+
+    btnStatsCloneExport.addEventListener('click', () => {
+      if (typeof XLSX === 'undefined') {
+        alert('Excel 匯出套件尚未載入');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+      const table = statsCloneWrap.querySelector('#statsTableClone') || statsCloneWrap.querySelector('#rewardStatsCloneTable');
+      if (table) {
+        const wsView = XLSX.utils.table_to_sheet(table);
+        XLSX.utils.book_append_sheet(wb, wsView, statsCloneActiveTab === 'reward' ? 'Incentive_View' : 'Stats_View');
+      }
+
+      const { paRows, locRows } = getCloneScopedData();
+      if (statsCloneActiveTab === 'stats') {
+        const wsPA = XLSX.utils.json_to_sheet(paRows);
+        const wsLoc = XLSX.utils.json_to_sheet(locRows);
+        XLSX.utils.book_append_sheet(wb, wsPA, 'PA_Raw');
+        XLSX.utils.book_append_sheet(wb, wsLoc, 'Location_Raw');
+      } else {
+        const ymList = getContinuousYmList(paRows);
+        const monthMap = new Map();
+        for (const ym of ymList) monthMap.set(ym, new Set());
+        for (const r of paRows) {
+          const p = parseDateParts(toClean(r.Date));
+          if (!p) continue;
+          const name = toClean(r.start_location_name);
+          if (!name) continue;
+          if (!monthMap.has(p.ym)) monthMap.set(p.ym, new Set());
+          monthMap.get(p.ym).add(name);
+        }
+
+        const allLocs = [...new Set(paRows.map(r => toClean(r.start_location_name)).filter(v => v))].sort();
+        const state = new Map();
+        for (const loc of allLocs) state.set(loc, { seen: false, absent: 0 });
+
+        const rewardDetail = [];
+        const threshold = 3;
+        for (const ym of ymList) {
+          const presentSet = monthMap.get(ym) || new Set();
+          for (const loc of allLocs) {
+            const st = state.get(loc);
+            const appeared = presentSet.has(loc);
+            let point = 0;
+            if (appeared) {
+              st.seen = true;
+              st.absent = 0;
+            } else if (st.seen) {
+              st.absent += 1;
+              if (st.absent >= threshold) point = 1;
+            }
+
+            rewardDetail.push({
+              month: formatYm(ym),
+              ym,
+              start_location_name: loc,
+              appeared: appeared ? 'Y' : 'N',
+              consecutive_absent_after_seen: st.absent,
+              point_add: point
+            });
+          }
+        }
+
+        const wsRewardRaw = XLSX.utils.json_to_sheet(rewardDetail);
+        const wsPA = XLSX.utils.json_to_sheet(paRows);
+        XLSX.utils.book_append_sheet(wb, wsRewardRaw, 'Incentive_Raw_Detail');
+        XLSX.utils.book_append_sheet(wb, wsPA, 'PA_Raw');
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const yearLabel = selectedStatsYear || 'ALL';
+      const typeLabel = selectedStatsType === 'ALL' ? 'ALL' : selectedStatsType === 'open' ? 'Open' : 'Tunnel';
+      const cloneYearLabel = statsCloneYear || 'ALL';
+      const cloneTypeLabel = statsCloneType === 'ALL' ? 'ALL' : statsCloneType === 'open' ? 'Open' : 'Tunnel';
+      const viewLabel = statsCloneViewMode === 'Mcenter' ? `Mcenter_${statsCloneSelectedArea || 'NA'}` : 'Marea';
+      const tabLabel = statsCloneActiveTab === 'reward' ? 'Incentive' : 'Stats';
+      XLSX.writeFile(wb, `PA_${tabLabel}_${yearLabel}_${typeLabel}_${cloneYearLabel}_${cloneTypeLabel}_${viewLabel}_${timestamp}.xlsx`);
+    });
+
+    btnStatsCloneBack.addEventListener('click', () => {
+      statsCloneViewMode = 'Marea';
+      statsCloneSelectedArea = null;
+      buildStatsCloneView();
+    });
+
+    btnStatsCloneClose.addEventListener('click', closeStatsCloneModal);
+    statsCloneBackdrop.addEventListener('click', (e) => {
+      if (e.target === statsCloneBackdrop) closeStatsCloneModal();
+    });
+
+    statsCloneWrap.addEventListener('click', (e) => {
+      const th = e.target.closest('th.clickable');
+      if (!th) return;
+      openMcenterStatsClone(th.textContent);
+    });
     
     statsBackBtn.addEventListener('click', () => {
       statsViewMode = 'Marea';
@@ -1714,112 +2427,40 @@
     });
     
     function exportPAData() {
-      // 根據當前篩選條件過濾資料
-      let filteredData = allRowsRaw;
-      if (selectedStatsYear) {
-        filteredData = allRowsRaw.filter(r => {
-          const date = toClean(r.Date);
-          return date && date.startsWith(selectedStatsYear);
-        });
-      }
-      
-      // 找出所有日期並排序
-      const allDates = [...new Set(filteredData.map(r => toClean(r.Date)).filter(d => d))].sort();
-      if (allDates.length === 0) {
-        alert('該年份無資料');
+      const statsTable = document.getElementById('statsTable');
+      if (!statsTable) {
+        alert('找不到統計表格');
         return;
       }
-      
-      const latestDate = allDates[allDates.length - 1];
-      const secondLatestDate = allDates.length >= 2 ? allDates[allDates.length - 2] : null;
-      const otherDates = allDates.slice(0, -1);
-      
-      // 根據路段類型過濾
-      if (selectedStatsType === 'tunnel') {
-        filteredData = filteredData.filter(r => {
-          const loc = toClean(r.start_location_name);
-          return loc && loc.includes('*');
-        });
-      } else if (selectedStatsType === 'open') {
-        filteredData = filteredData.filter(r => {
-          const loc = toClean(r.start_location_name);
-          return loc && !loc.includes('*');
-        });
-      }
-      
-      // 建立location到日期的對應
-      const locationToDate = new Map();
-      for (const row of filteredData) {
-        const loc = toClean(row.start_location_name);
-        if (!loc) continue;
-        const date = toClean(row.Date);
-        if (!locationToDate.has(loc)) {
-          locationToDate.set(loc, new Set());
-        }
-        locationToDate.get(loc).add(date);
-      }
-      
-      // 為每條記錄添加PA種類判斷
-      const exportData = filteredData.map(row => {
-        const loc = toClean(row.start_location_name);
-        const date = toClean(row.Date);
-        const isTunnel = loc && loc.includes('*');
-        const isOpen = loc && !loc.includes('*');
-        const dates = locationToDate.get(loc) || new Set();
-        const isLatest = date === latestDate;
-        const isSecondLatest = date === secondLatestDate;
-        const inOtherDates = otherDates.some(d => dates.has(d));
-        const inLatest = dates.has(latestDate);
-        const inSecondLatest = secondLatestDate && dates.has(secondLatestDate);
-        
-        // 判斷各種類別
-        const categories = {
-          'PA隧道路段': isTunnel ? 'TRUE' : 'FALSE',
-          'PA開放路段': isOpen ? 'TRUE' : 'FALSE',
-          'PA重複發生數(隧道)': (isTunnel && isLatest && inOtherDates) ? 'TRUE' : 'FALSE',
-          'PA重複發生數(開放路段)': (isOpen && isLatest && inOtherDates) ? 'TRUE' : 'FALSE',
-          'PA新增數(隧道)': (isTunnel && isLatest && !inOtherDates) ? 'TRUE' : 'FALSE',
-          'PA新增數(開放路段)': (isOpen && isLatest && !inOtherDates) ? 'TRUE' : 'FALSE'
-        };
-        
-        // PA改善數判斷（根據結算模式）
-        // 改善數：非最新日期的記錄，且該location在最新日期沒有出現
-        if (settlementMode && secondLatestDate) {
-          // 結算模式：還需要檢查該location在上一次日期也沒有出現
-          categories['PA改善數(隧道)'] = (isTunnel && !isLatest && !inLatest && !inSecondLatest) ? 'TRUE' : 'FALSE';
-          categories['PA改善數(開放路段)'] = (isOpen && !isLatest && !inLatest && !inSecondLatest) ? 'TRUE' : 'FALSE';
-        } else {
-          // 一般模式：只需檢查該location在最新日期沒有出現
-          categories['PA改善數(隧道)'] = (isTunnel && !isLatest && !inLatest) ? 'TRUE' : 'FALSE';
-          categories['PA改善數(開放路段)'] = (isOpen && !isLatest && !inLatest) ? 'TRUE' : 'FALSE';
-        }
-        
-        return { ...row, ...categories };
-      });
-      
-      // 生成CSV
-      if (exportData.length === 0) {
+
+      const visibleHeaders = [...statsTable.querySelectorAll('thead th')]
+        .filter(th => th.offsetParent !== null)
+        .map(th => toClean(th.textContent));
+
+      const visibleRows = [...statsTable.querySelectorAll('tbody tr')]
+        .filter(tr => tr.offsetParent !== null)
+        .map(tr => [...tr.querySelectorAll('td')]
+          .filter(td => td.offsetParent !== null)
+          .map(td => toClean(td.textContent))
+        )
+        .filter(cols => cols.length > 0);
+
+      if (!visibleHeaders.length || !visibleRows.length) {
         alert('沒有資料可匯出');
         return;
       }
-      
-      // 取得所有欄位名稱（原始欄位 + PA種類欄位）
-      const headers = Object.keys(exportData[0]);
-      
-      // 建立CSV內容
-      let csv = headers.join(',') + '\n';
-      for (const row of exportData) {
-        const values = headers.map(h => {
-          let val = row[h];
-          if (val === null || val === undefined) val = '';
-          val = String(val);
-          // 如果包含逗號、換行或雙引號，需要用雙引號包住並轉義
-          if (val.includes(',') || val.includes('\n') || val.includes('"')) {
-            val = '"' + val.replace(/"/g, '""') + '"';
-          }
-          return val;
-        });
-        csv += values.join(',') + '\n';
+
+      const csvEscape = (value) => {
+        const s = String(value ?? '');
+        if (s.includes(',') || s.includes('\n') || s.includes('"')) {
+          return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      };
+
+      let csv = visibleHeaders.map(csvEscape).join(',') + '\n';
+      for (const row of visibleRows) {
+        csv += row.map(csvEscape).join(',') + '\n';
       }
       
       // 下載CSV (添加UTF-8 BOM以正確顯示繁體中文)
@@ -1830,17 +2471,18 @@
       const yearLabel = selectedStatsYear || 'ALL';
       const typeLabel = selectedStatsType === 'ALL' ? 'ALL' : selectedStatsType === 'tunnel' ? 'Tunnel' : 'Open';
       const modeLabel = settlementMode ? 'Settlement' : 'Normal';
+      const viewLabel = statsViewMode === 'Mcenter' ? `Mcenter_${statsSelectedArea || 'NA'}` : 'Marea';
       link.href = url;
-      link.download = `PA_Export_${yearLabel}_${typeLabel}_${modeLabel}_${timestamp}.csv`;
+      link.download = `PA_Stats_${yearLabel}_${typeLabel}_${modeLabel}_${viewLabel}_${timestamp}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
     
-    function renderPAStatistics() {
+    function renderPAStatistics(useCloneImprovedRule = false) {
       const statsBody = document.getElementById('statsBody');
-      if (!allRowsRaw || allRowsRaw.length === 0) {
+      if (!allRowsRaw || allRowsRaw.length === 0 || !allLocationRowsRaw || allLocationRowsRaw.length === 0) {
         statsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">無資料</td></tr>';
         return;
       }
@@ -1860,9 +2502,9 @@
       } else {
         // Mcenter模式：按预定义顺序获取有数据的Mcenter
         const centersInData = new Set(
-          allRowsRaw
-            .filter(r => toClean(r.Marea) === statsSelectedArea)
-            .map(r => toClean(r.Mcenter))
+          allLocationRowsRaw
+            .filter(r => toClean(r.marea) === statsSelectedArea)
+            .map(r => toClean(r.mcenter))
             .filter(c => c)
         );
         
@@ -1901,30 +2543,13 @@
 
       const areas = columns;
       
-      // 根据选择的年份过滤数据
-      let filteredData = allRowsRaw;
-      if (selectedStatsYear) {
-        filteredData = allRowsRaw.filter(r => {
-          const date = toClean(r.Date);
-          return date && date.startsWith(selectedStatsYear);
-        });
-      }
-      
-      // 找出所有日期並排序，取最新日期
-      const allDates = [...new Set(filteredData.map(r => toClean(r.Date)).filter(d => d))].sort();
-      if (allDates.length === 0) {
-        statsBody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;color:var(--muted);">該年份無資料</td></tr>`;
-        return;
-      }
-      
-      const latestDate = allDates[allDates.length - 1];
-      const secondLatestDate = allDates.length >= 2 ? allDates[allDates.length - 2] : null;
-      const otherDates = allDates.slice(0, -1);
+      const filteredPAData = allRowsRaw.filter(r => isDateInStatsRange(toClean(r.Date)));
+      const monthlyDatesInRange = getMonthlyLastDates(filteredPAData);
 
-      function getUniqueLocations(rows, tunnelOnly = null) {
+      function getUniqueLocations(rows, tunnelOnly = null, fieldName = 'start_location_name') {
         const locs = new Set();
         for (const r of rows) {
-          const loc = toClean(r.start_location_name);
+          const loc = toClean(r[fieldName]);
           if (!loc) continue;
           if (tunnelOnly === true && !loc.includes('*')) continue;
           if (tunnelOnly === false && loc.includes('*')) continue;
@@ -1933,137 +2558,206 @@
         return locs;
       }
 
+      function getLocationSetAtDate(rows, targetDate, tunnelOnly = null, fieldName = 'start_location_name') {
+        const dateRows = rows.filter(r => toClean(r.Date) === targetDate);
+        return getUniqueLocations(dateRows, tunnelOnly, fieldName);
+      }
+
+      function buildImprovedSeriesWithRecovery(rows, dateList, baseSet, tunnelOnly = null, fieldName = 'start_location_name') {
+        const improvedByDate = new Map();
+        if (useCloneImprovedRule) {
+          const stateByLoc = new Map();
+          const absentEnterThreshold = settlementMode ? 4 : 3;
+
+          // 鎖頭專用規則：預設為改善；首次出現立即退出；退出後連續缺席達門檻重回改善；
+          // 進入改善後需連續出現3個月才退出。
+          for (const loc of baseSet) {
+            stateByLoc.set(loc, {
+              isImproved: true,
+              seenEver: false,
+              presentStreak: 0,
+              absentStreak: 0,
+            });
+          }
+
+          for (let i = 0; i < dateList.length; i++) {
+            const d0 = dateList[i];
+            const s0 = getLocationSetAtDate(rows, d0, tunnelOnly, fieldName);
+
+            let improvedCount = 0;
+            for (const loc of baseSet) {
+              const st = stateByLoc.get(loc);
+              const presentNow = s0.has(loc);
+              const seenBeforeThisMonth = st.seenEver === true;
+
+              if (presentNow) {
+                st.presentStreak += 1;
+                st.absentStreak = 0;
+                st.seenEver = true;
+
+                if (st.isImproved) {
+                  if (!seenBeforeThisMonth) {
+                    st.isImproved = false;
+                  } else if (st.presentStreak >= 3) {
+                    st.isImproved = false;
+                  }
+                }
+              } else {
+                st.absentStreak += 1;
+                st.presentStreak = 0;
+
+                if (!st.isImproved && st.absentStreak >= absentEnterThreshold) {
+                  st.isImproved = true;
+                }
+              }
+
+              if (st.isImproved) improvedCount++;
+            }
+
+            if (i >= 2) {
+              improvedByDate.set(d0, improvedCount);
+            }
+          }
+        } else {
+          const improvedState = new Map();
+          for (const loc of baseSet) improvedState.set(loc, false);
+
+          for (let i = 2; i < dateList.length; i++) {
+            const d0 = dateList[i];
+            const d1 = dateList[i - 1];
+            const d2 = dateList[i - 2];
+            const d3 = i >= 3 ? dateList[i - 3] : null;
+
+            const s0 = getLocationSetAtDate(rows, d0, tunnelOnly, fieldName);
+            const s1 = getLocationSetAtDate(rows, d1, tunnelOnly, fieldName);
+            const s2 = getLocationSetAtDate(rows, d2, tunnelOnly, fieldName);
+            const s3 = d3 ? getLocationSetAtDate(rows, d3, tunnelOnly, fieldName) : null;
+
+            let improvedCount = 0;
+            for (const loc of baseSet) {
+              const absent3 = !s0.has(loc) && !s1.has(loc) && !s2.has(loc);
+              const absentPrev = d3 ? !s3.has(loc) : false;
+              const present3 = s0.has(loc) && s1.has(loc) && s2.has(loc);
+
+              let isImproved = improvedState.get(loc) === true;
+              if (!isImproved) {
+                const enterImproved = settlementMode ? (absent3 && absentPrev) : absent3;
+                if (enterImproved) isImproved = true;
+              } else {
+                if (present3) isImproved = false;
+              }
+
+              improvedState.set(loc, isImproved);
+              // 外層統計避免與「當月有問題路段」重疊：僅計算當月未出現者。
+              if (isImproved && !s0.has(loc)) improvedCount++;
+            }
+
+            // 外層統計保護：若當月問題路段數採 PA 原始集合計算，可能含不在路段主檔母集合的名稱。
+            // 為避免「改善 + 問題 > 母集合總數」，對改善數做上限保護。
+            const maxImprovedAllowed = Math.max(0, baseSet.size - s0.size);
+            improvedCount = Math.min(improvedCount, maxImprovedAllowed);
+
+            improvedByDate.set(d0, improvedCount);
+          }
+        }
+
+        return improvedByDate;
+      }
+
+      function getDisplayRowsByType(type) {
+        if (type === 'open') {
+          return allLocationRowsRaw.filter(r => !toClean(r.location_name).includes('*'));
+        }
+        if (type === 'tunnel') {
+          return allLocationRowsRaw.filter(r => toClean(r.location_name).includes('*'));
+        }
+        return allLocationRowsRaw;
+      }
+
+      const locationRowsByStatsType = {
+        ALL: getDisplayRowsByType('ALL'),
+        open: getDisplayRowsByType('open'),
+        tunnel: getDisplayRowsByType('tunnel')
+      };
+
+      const globalBaseStats = {
+        total: getUniqueLocations(allLocationRowsRaw, null, 'location_name').size,
+        open: getUniqueLocations(allLocationRowsRaw, false, 'location_name').size,
+        tunnel: getUniqueLocations(allLocationRowsRaw, true, 'location_name').size
+      };
+
+      const globalImprovedByMonth = new Map();
+      const validCalcDates = monthlyDatesInRange.slice(2);
+      const globalSeriesAll = buildImprovedSeriesWithRecovery(filteredPAData, monthlyDatesInRange, getUniqueLocations(allLocationRowsRaw, null, 'location_name'), null, 'start_location_name');
+      const globalSeriesOpen = buildImprovedSeriesWithRecovery(filteredPAData, monthlyDatesInRange, getUniqueLocations(allLocationRowsRaw, false, 'location_name'), false, 'start_location_name');
+      const globalSeriesTunnel = buildImprovedSeriesWithRecovery(filteredPAData, monthlyDatesInRange, getUniqueLocations(allLocationRowsRaw, true, 'location_name'), true, 'start_location_name');
+
+      for (const calcDate of validCalcDates) {
+        globalImprovedByMonth.set(calcDate, {
+          improvedAll: globalSeriesAll.get(calcDate) ?? 0,
+          improvedOpen: globalSeriesOpen.get(calcDate) ?? 0,
+          improvedTunnel: globalSeriesTunnel.get(calcDate) ?? 0
+        });
+      }
+
       const stats = {};
       for (const area of areas) {
-        const areaRows = filteredData.filter(r => toClean(r[columnField]) === area);
-        const latestRows = areaRows.filter(r => toClean(r.Date) === latestDate);
-        const otherRows = areaRows.filter(r => otherDates.includes(toClean(r.Date)));
+        const locationRows = locationRowsByStatsType.ALL.filter(r => toClean(r[columnField === 'Marea' ? 'marea' : 'mcenter']) === area);
+        const totalLocSet = getUniqueLocations(locationRows, null, 'location_name');
+        const openLocSet = getUniqueLocations(locationRows, false, 'location_name');
+        const tunnelLocSet = getUniqueLocations(locationRows, true, 'location_name');
 
-        // 1. PA總數
-        const total = getUniqueLocations(areaRows);
-        
-        // 2. PA隧道路段（含*）
-        const tunnel = getUniqueLocations(areaRows, true);
-        
-        // 3. PA開放路段（不含*）
-        const open = getUniqueLocations(areaRows, false);
-        
-        // 最新日期的數據
-        const latestAll = getUniqueLocations(latestRows);
-        const latestTunnel = getUniqueLocations(latestRows, true);
-        const latestOpen = getUniqueLocations(latestRows, false);
-        
-        // 其他日期的數據
-        const otherAll = getUniqueLocations(otherRows);
-        const otherTunnel = getUniqueLocations(otherRows, true);
-        const otherOpen = getUniqueLocations(otherRows, false);
-        
-        // 上一次日期的數據 (用於結算模式)
-        let secondLatestAll = new Set();
-        let secondLatestTunnel = new Set();
-        let secondLatestOpen = new Set();
-        if (settlementMode && secondLatestDate) {
-          const secondLatestRows = areaRows.filter(r => toClean(r.Date) === secondLatestDate);
-          secondLatestAll = getUniqueLocations(secondLatestRows);
-          secondLatestTunnel = getUniqueLocations(secondLatestRows, true);
-          secondLatestOpen = getUniqueLocations(secondLatestRows, false);
-        }
-        
-        // 4. PA重複發生數(總體)（最新日期中，在其他日期也出現過的）
-        const repeatAll = [...latestAll].filter(loc => otherAll.has(loc)).length;
-        
-        // 5. PA重複發生數(隧道)
-        const repeatTunnel = [...latestTunnel].filter(loc => otherTunnel.has(loc)).length;
-        
-        // 6. PA重複發生數(開放路段)
-        const repeatOpen = [...latestOpen].filter(loc => otherOpen.has(loc)).length;
-        
-        // 7. PA新增數(隧道)：最新日期有，其他日期沒有
-        const newTunnel = [...latestTunnel].filter(loc => !otherTunnel.has(loc)).length;
-        
-        // 8. PA新增數(開放)：最新日期有，其他日期沒有
-        const newOpen = [...latestOpen].filter(loc => !otherOpen.has(loc)).length;
-        
-        // 9. PA改善數(總體)：其他日期有，最新日期沒有
-        // 結算模式：需額外檢核上一次日期也沒有
-        let improvedAll;
-        if (settlementMode && secondLatestDate) {
-          improvedAll = [...otherAll].filter(loc => !latestAll.has(loc) && !secondLatestAll.has(loc)).length;
-        } else {
-          improvedAll = [...otherAll].filter(loc => !latestAll.has(loc)).length;
-        }
-        
-        // 10. PA改善數(隧道)：其他日期有，最新日期沒有
-        // 結算模式：需額外檢核上一次日期也沒有
-        let improvedTunnel;
-        if (settlementMode && secondLatestDate) {
-          improvedTunnel = [...otherTunnel].filter(loc => !latestTunnel.has(loc) && !secondLatestTunnel.has(loc)).length;
-        } else {
-          improvedTunnel = [...otherTunnel].filter(loc => !latestTunnel.has(loc)).length;
-        }
-        
-        // 11. PA改善數(開放路段)：其他日期有，最新日期沒有
-        // 結算模式：需額外檢核上一次日期也沒有
-        let improvedOpen;
-        if (settlementMode && secondLatestDate) {
-          improvedOpen = [...otherOpen].filter(loc => !latestOpen.has(loc) && !secondLatestOpen.has(loc)).length;
-        } else {
-          improvedOpen = [...otherOpen].filter(loc => !latestOpen.has(loc)).length;
+        const areaPARows = filteredPAData.filter(r => toClean(r[columnField]) === area);
+        const seriesAll = buildImprovedSeriesWithRecovery(areaPARows, monthlyDatesInRange, totalLocSet, null, 'start_location_name');
+        const seriesOpen = buildImprovedSeriesWithRecovery(areaPARows, monthlyDatesInRange, openLocSet, false, 'start_location_name');
+        const seriesTunnel = buildImprovedSeriesWithRecovery(areaPARows, monthlyDatesInRange, tunnelLocSet, true, 'start_location_name');
+        const improvedByMonth = [];
+        for (const calcDate of validCalcDates) {
+          const improvedAll = seriesAll.get(calcDate) ?? 0;
+          const improvedOpen = seriesOpen.get(calcDate) ?? 0;
+          const improvedTunnel = seriesTunnel.get(calcDate) ?? 0;
+
+          improvedByMonth.push({
+            calcDate,
+            label: getImprovedMonthLabel(calcDate),
+            improvedAll,
+            improvedOpen,
+            improvedTunnel
+          });
         }
 
         stats[area] = {
-          total: total.size,
-          tunnel: tunnel.size,
-          open: open.size,
-          repeatAll,
-          repeatTunnel,
-          repeatOpen,
-          newTunnel,
-          newOpen,
-          improvedAll,
-          improvedTunnel,
-          improvedOpen
+          total: totalLocSet.size,
+          open: openLocSet.size,
+          tunnel: tunnelLocSet.size,
+          improvedByMonth
         };
       }
 
-      // 提取年份和月份用于标签显示
-      const yearLabel = selectedStatsYear || '全部';
-      const latestMonth = latestDate.length >= 7 ? latestDate.substring(5, 7) : '';
-      const monthLabel = latestMonth ? `${parseInt(latestMonth)}月` : '';
-
       // 根据路段类型筛选显示的行
-      let rows = [];
-      
+      let rows = [
+        { label: '路段總數', key: 'total' },
+        { label: '開放路段', key: 'open' },
+        { label: '室內/隧道路段', key: 'tunnel' }
+      ];
+
       if (selectedStatsType === 'ALL') {
-        rows = [
-          { label: `PA總數[${yearLabel}]`, key: 'total' },
-          { label: `PA隧道路段[${yearLabel}]`, key: 'tunnel' },
-          { label: `PA開放路段[${yearLabel}]`, key: 'open' },
-          { label: `PA重複發生數(總體){${monthLabel}}`, key: 'repeatAll' },
-          { label: `PA重複發生數(隧道){${monthLabel}}`, key: 'repeatTunnel' },
-          { label: `PA重複發生數(開放路段){${monthLabel}}`, key: 'repeatOpen' },
-          { label: `PA新增數(隧道){${monthLabel}}`, key: 'newTunnel' },
-          { label: `PA新增數(開放路段){${monthLabel}}`, key: 'newOpen' },
-          { label: `PA改善數(總體){${monthLabel}}`, key: 'improvedAll' },
-          { label: `PA改善數(隧道){${monthLabel}}`, key: 'improvedTunnel' },
-          { label: `PA改善數(開放路段){${monthLabel}}`, key: 'improvedOpen' }
-        ];
+        for (const calcDate of validCalcDates) {
+          const monthLabel = getImprovedMonthLabel(calcDate);
+          rows.push({ label: `PA路段總數(${monthLabel})`, key: 'improvedAll', calcDate });
+          rows.push({ label: `PA開放路段(${monthLabel})`, key: 'improvedOpen', calcDate });
+          rows.push({ label: `PA室內/隧道路段(${monthLabel})`, key: 'improvedTunnel', calcDate });
+        }
       } else if (selectedStatsType === 'open') {
-        rows = [
-          { label: `PA總數[${yearLabel}]`, key: 'total' },
-          { label: `PA開放路段[${yearLabel}]`, key: 'open' },
-          { label: `PA重複發生數(開放路段){${monthLabel}}`, key: 'repeatOpen' },
-          { label: `PA新增數(開放路段){${monthLabel}}`, key: 'newOpen' },
-          { label: `PA改善數(開放路段){${monthLabel}}`, key: 'improvedOpen' }
-        ];
+        for (const calcDate of validCalcDates) {
+          const monthLabel = getImprovedMonthLabel(calcDate);
+          rows.push({ label: `PA開放路段(${monthLabel})`, key: 'improvedOpen', calcDate });
+        }
       } else if (selectedStatsType === 'tunnel') {
-        rows = [
-          { label: `PA總數[${yearLabel}]`, key: 'total' },
-          { label: `PA隧道路段[${yearLabel}]`, key: 'tunnel' },
-          { label: `PA重複發生數(隧道){${monthLabel}}`, key: 'repeatTunnel' },
-          { label: `PA新增數(隧道){${monthLabel}}`, key: 'newTunnel' },
-          { label: `PA改善數(隧道){${monthLabel}}`, key: 'improvedTunnel' }
-        ];
+        for (const calcDate of validCalcDates) {
+          const monthLabel = getImprovedMonthLabel(calcDate);
+          rows.push({ label: `PA室內/隧道路段(${monthLabel})`, key: 'improvedTunnel', calcDate });
+        }
       }
 
       let html = '';
@@ -2072,18 +2766,23 @@
         html += `<td class="row-label">${escapeHtml(row.label)}</td>`;
         let rowTotal = 0;
         for (const area of areas) {
-          const val = stats[area] ? stats[area][row.key] : 0;
+          let val = 0;
+          if (row.calcDate) {
+            const monthData = stats[area]?.improvedByMonth?.find(x => x.calcDate === row.calcDate);
+            val = monthData ? (monthData[row.key] || 0) : 0;
+          } else {
+            val = stats[area] ? stats[area][row.key] : 0;
+          }
           rowTotal += val;
           let displayText = val;
-          
-          // 为改善数添加比例显示
-          if (row.key === 'improvedAll' && stats[area] && stats[area].total > 0) {
+
+          if (row.key === 'improvedAll' && row.calcDate && stats[area] && stats[area].total > 0) {
             const ratio = (val / stats[area].total * 100).toFixed(2);
             displayText = `${val}(${ratio}%)`;
-          } else if (row.key === 'improvedTunnel' && stats[area] && stats[area].tunnel > 0) {
+          } else if (row.key === 'improvedTunnel' && row.calcDate && stats[area] && stats[area].tunnel > 0) {
             const ratio = (val / stats[area].tunnel * 100).toFixed(2);
             displayText = `${val}(${ratio}%)`;
-          } else if (row.key === 'improvedOpen' && stats[area] && stats[area].open > 0) {
+          } else if (row.key === 'improvedOpen' && row.calcDate && stats[area] && stats[area].open > 0) {
             const ratio = (val / stats[area].open * 100).toFixed(2);
             displayText = `${val}(${ratio}%)`;
           }
@@ -2093,24 +2792,34 @@
         
         // 添加总计列
         let totalDisplayText = rowTotal;
-        // 如果是改善数，计算总体比例
-        if (row.key === 'improvedAll') {
-          const totalBase = areas.reduce((sum, area) => sum + (stats[area] ? stats[area].total : 0), 0);
+        if (!row.calcDate && (row.key === 'total' || row.key === 'open' || row.key === 'tunnel')) {
+          totalDisplayText = globalBaseStats[row.key] ?? rowTotal;
+        } else if (row.key === 'improvedAll' && row.calcDate) {
+          const totalBase = globalBaseStats.total;
+          const totalVal = globalImprovedByMonth.get(row.calcDate)?.improvedAll ?? rowTotal;
           if (totalBase > 0) {
-            const ratio = (rowTotal / totalBase * 100).toFixed(2);
-            totalDisplayText = `${rowTotal}(${ratio}%)`;
+            const ratio = (totalVal / totalBase * 100).toFixed(2);
+            totalDisplayText = `${totalVal}(${ratio}%)`;
+          } else {
+            totalDisplayText = totalVal;
           }
-        } else if (row.key === 'improvedTunnel') {
-          const totalBase = areas.reduce((sum, area) => sum + (stats[area] ? stats[area].tunnel : 0), 0);
+        } else if (row.key === 'improvedTunnel' && row.calcDate) {
+          const totalBase = globalBaseStats.tunnel;
+          const totalVal = globalImprovedByMonth.get(row.calcDate)?.improvedTunnel ?? rowTotal;
           if (totalBase > 0) {
-            const ratio = (rowTotal / totalBase * 100).toFixed(2);
-            totalDisplayText = `${rowTotal}(${ratio}%)`;
+            const ratio = (totalVal / totalBase * 100).toFixed(2);
+            totalDisplayText = `${totalVal}(${ratio}%)`;
+          } else {
+            totalDisplayText = totalVal;
           }
-        } else if (row.key === 'improvedOpen') {
-          const totalBase = areas.reduce((sum, area) => sum + (stats[area] ? stats[area].open : 0), 0);
+        } else if (row.key === 'improvedOpen' && row.calcDate) {
+          const totalBase = globalBaseStats.open;
+          const totalVal = globalImprovedByMonth.get(row.calcDate)?.improvedOpen ?? rowTotal;
           if (totalBase > 0) {
-            const ratio = (rowTotal / totalBase * 100).toFixed(2);
-            totalDisplayText = `${rowTotal}(${ratio}%)`;
+            const ratio = (totalVal / totalBase * 100).toFixed(2);
+            totalDisplayText = `${totalVal}(${ratio}%)`;
+          } else {
+            totalDisplayText = totalVal;
           }
         }
         html += `<td style="font-weight:800;background:rgba(43,124,255,0.08);">${totalDisplayText}</td>`;
@@ -2351,6 +3060,7 @@
           <div><b>twcounty:</b> ${escapeHtml(toClean(r.twcounty))}</div>
           <div><b>Marea:</b> ${escapeHtml(toClean(r.Marea))}</div>
           <div><b>Mcenter:</b> ${escapeHtml(toClean(r.Mcenter))}</div>
+          <div><b>Memo:</b> ${escapeHtml(toClean(r.Memo))}</div>
           <div><b>PA_Num:</b> ${escapeHtml(paArr.join('、'))}</div>
           <div><b>count:</b> ${escapeHtml(meta.count)}</div>
         </div>
@@ -2634,6 +3344,7 @@
         <div><b>lag_ms:</b> ${escapeHtml(toClean(r.lag_ms))}</div>
         <div><b>e2e_recover_ms:</b> ${escapeHtml(toClean(r.e2e_recover_ms))}</div>
         <div><b>gps_type:</b> ${escapeHtml(toClean(r.gps_type))}</div>
+        <div><b>Memo:</b> ${escapeHtml(toClean(r.Memo))}</div>
         <div><b>measurement:</b> ${escapeHtml(toClean(r.measurement_Type))} / ${escapeHtml(toClean(r.measurement_Path))} / ${escapeHtml(net)} / ${escapeHtml(script)}</div>
       `;
 
@@ -2641,7 +3352,7 @@
         return `
           <div class="h3-tip">
             ${common}
-            <div><b>lag_end_tw:</b> ${escapeHtml(toClean(r.lag_end_tw))}</div>
+            <div><b>lag_end_tw:</b> ${escapeHtml(ensureTimeWithSeconds(r.lag_end_tw))}</div>
             <div><b>Lat,Lon:</b> ${escapeHtml(toClean(r.start_lat))}, ${escapeHtml(toClean(r.start_lon))}</div>
             <div><b>KM+M:</b> ${escapeHtml(toClean(r["start_location_KM+M"]))}</div>
           </div>
@@ -2650,7 +3361,7 @@
       return `
         <div class="h3-tip">
           ${common}
-          <div><b>lag_start_tw:</b> ${escapeHtml(toClean(r.lag_start_tw))}</div>
+          <div><b>lag_start_tw:</b> ${escapeHtml(ensureTimeWithSeconds(r.lag_start_tw))}</div>
           <div><b>Lat,Lon:</b> ${escapeHtml(toClean(r.end_lat))}, ${escapeHtml(toClean(r.end_lon))}</div>
           <div><b>KM+M:</b> ${escapeHtml(toClean(r["end_location_KM+M"]))}</div>
         </div>
@@ -2749,8 +3460,9 @@
         logError(e);
       }
 
-      const rowsPA = parseCsvRobust(txtPA);
+      const rowsPA = normalizePARows(parseCsvRobust(txtPA));
       const rowsLoc = locOk ? parseCsvRobust(txtLoc) : [];
+      allLocationRowsRaw = rowsLoc;
 
       locMap.clear();
       for (const r of rowsLoc) {
@@ -2761,6 +3473,7 @@
       }
 
       allRowsRaw = rowsPA;
+      dataWarningsText = buildDataWarnings(rowsPA, rowsLoc);
 
       const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)));
       const optNet  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_NetWork)));
@@ -2781,6 +3494,7 @@
       rebuildH3FromRows(filteredRows);
       showOnlyRes('RES8');
       initStatsYearFilter();
+      updateStatsTypeFilterVisibility();
       renderPAStatistics();
 
       hideChartWindow();
