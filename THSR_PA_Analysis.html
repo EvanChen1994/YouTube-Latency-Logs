@@ -706,6 +706,24 @@
       text-align:center;
       font-size:11px;
     }
+    .script-stats-export-btn{
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.05);
+      color: var(--txt);
+      border-radius: 8px;
+      padding: 2px 6px;
+      cursor:pointer;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.4;
+      flex: 0 0 auto;
+      white-space:nowrap;
+    }
+    .script-stats-export-btn:hover{
+      background: rgba(43,124,255,0.12);
+      border-color: rgba(43,124,255,0.40);
+    }
+    .script-stats-ctrl:not(.expanded) .script-stats-export-btn{ display:none; }
     .hdr-icon{
       display:inline-flex;
       align-items:center;
@@ -1616,6 +1634,8 @@
     let scriptStatsBodyEl = null;
     let scriptStatsToggleEl = null;
     let scriptStatsMetaEl = null;
+    let scriptStatsExportBtnEl = null;
+    let lastScriptStatsRows = [];
 
     function getScriptStatsRows(rows) {
       const mapByLoc = new Map();
@@ -1623,28 +1643,56 @@
         const loc = toClean(r.start_location_name);
         if (!loc) continue;
         if (!mapByLoc.has(loc)) {
-          mapByLoc.set(loc, { loc, youtubeLive: 0, volteMos: 0, total: 0 });
+          mapByLoc.set(loc, {
+            loc,
+            youtubeLive: 0,
+            volteMos: 0,
+            total: 0,
+            km: toClean(r['start_location_KM+M']),
+            memoSet: new Set(),
+            county: toClean(r.twcounty),
+            area: toClean(r.Marea),
+            center: toClean(r.Mcenter),
+          });
         }
         const item = mapByLoc.get(loc);
         item.total += 1;
-
         const script = toClean(r.measurement_Script);
         if (script === 'YoutubeLive') item.youtubeLive += 1;
         if (script === 'VoLTEmos') item.volteMos += 1;
+        const memo = toClean(r.Memo);
+        if (memo) item.memoSet.add(memo);
       }
 
-      return Array.from(mapByLoc.values()).sort((a, b) => {
-        const aScore = a.youtubeLive + a.volteMos;
-        const bScore = b.youtubeLive + b.volteMos;
-        if (bScore !== aScore) return bScore - aScore;
-        return a.loc.localeCompare(b.loc, 'zh-Hant');
-      });
+      return Array.from(mapByLoc.values())
+        .map(item => ({ ...item, memo: Array.from(item.memoSet).join('、') }))
+        .sort((a, b) => {
+          const aScore = a.youtubeLive + a.volteMos;
+          const bScore = b.youtubeLive + b.volteMos;
+          if (bScore !== aScore) return bScore - aScore;
+          return a.loc.localeCompare(b.loc, 'zh-Hant');
+        });
+    }
+
+    function exportScriptStats() {
+      if (typeof XLSX === 'undefined') { alert('Excel 匯出套件尚未載入'); return; }
+      if (!lastScriptStatsRows.length) { alert('目前無資料可匯出'); return; }
+      const header = ['S_loc', 'YoutubeLive', 'VoLTEmos', 'S.KM+M', 'Memo', 'County', 'Area', 'Center'];
+      const body = lastScriptStatsRows.map(r => [
+        r.loc, r.youtubeLive, r.volteMos, r.km, r.memo, r.county, r.area, r.center
+      ]);
+      const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'S_loc_Stats');
+      const ts = new Date().toISOString().replace(/[:.]/g,'-').substring(0,19);
+      XLSX.writeFile(wb, `S_loc_Stats_${ts}.xlsx`);
     }
 
     function renderScriptStatsControl(rows) {
       if (!scriptStatsBodyEl || !scriptStatsMetaEl) return;
 
       const statsRows = getScriptStatsRows(rows);
+      lastScriptStatsRows = statsRows;
       scriptStatsMetaEl.textContent = `${statsRows.length} S_loc`;
 
       if (!statsRows.length) {
@@ -1733,8 +1781,11 @@
 
         div.innerHTML = `
           <div class="script-stats-head">
-            <div class="script-stats-title"><span class="script-stats-title-text">S_loc</span><span class="script-stats-meta"></span></div>
-            <button class="script-stats-toggle" title="展開/收起">▸</button>
+            <div class="script-stats-title"><span class="script-stats-title-text">路段</span><span class="script-stats-meta"></span></div>
+            <div style="display:flex;gap:4px;align-items:center;flex:0 0 auto;">
+              <button class="script-stats-export-btn" title="匯出 S_loc 統計 Excel">↓ 匯出</button>
+              <button class="script-stats-toggle" title="展開/收起">▸</button>
+            </div>
           </div>
           <div class="script-stats-body"></div>
         `;
@@ -1742,12 +1793,13 @@
         scriptStatsBodyEl = div.querySelector('.script-stats-body');
         scriptStatsToggleEl = div.querySelector('.script-stats-toggle');
         scriptStatsMetaEl = div.querySelector('.script-stats-meta');
+        scriptStatsExportBtnEl = div.querySelector('.script-stats-export-btn');
         const scriptStatsTitleTextEl = div.querySelector('.script-stats-title-text');
 
         const syncCollapsedUi = () => {
           div.classList.toggle('expanded', !scriptStatsCollapsed);
           scriptStatsToggleEl.textContent = scriptStatsCollapsed ? '▸' : '▾';
-          scriptStatsTitleTextEl.textContent = scriptStatsCollapsed ? 'S_loc' : 'S_loc Script 統計';
+          scriptStatsTitleTextEl.textContent = scriptStatsCollapsed ? '路段' : 'S_loc Script 統計';
         };
 
         L.DomEvent.disableClickPropagation(div);
@@ -1756,6 +1808,10 @@
           L.DomEvent.stop(e);
           scriptStatsCollapsed = !scriptStatsCollapsed;
           syncCollapsedUi();
+        });
+        L.DomEvent.on(scriptStatsExportBtnEl, 'click', (e) => {
+          L.DomEvent.stop(e);
+          exportScriptStats();
         });
 
         syncCollapsedUi();
