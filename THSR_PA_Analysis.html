@@ -1722,7 +1722,7 @@
       return s;
     }
     function buildCsvText(rows, cols){
-      const header = cols.map(c => csvEscapeCell(c.key)).join(',');
+      const header = cols.map(c => csvEscapeCell(c.exportLabel ?? c.key)).join(',');
       const lines = [header];
       for (const r of rows) {
         const line = cols.map(c => {
@@ -1769,7 +1769,7 @@
       { key: 'time_tw', label: 'Time', isTime: true },
       { key: 'lag_start_tw', label: 'LagStart', isTime: true },
       { key: 'resume_tw', label: 'Resume', isTime: true },
-      { key: 'lag_ms', label: 'Lag(ms)' },
+      { key: 'lag_ms', label: 'Lag(ms)/AQ MOS', exportLabel: 'Lag(ms)/AQ MOS' },
       { key: 'e2e_recover_ms', label: 'E2E(ms)' },
       { key: 'e2e_recover_time', label: 'E2E(Time)', isTime: true },
       { key: 'lag_end_tw', label: 'LagEnd', isTime: true },
