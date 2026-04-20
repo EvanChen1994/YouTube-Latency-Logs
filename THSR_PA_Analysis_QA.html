@@ -1452,6 +1452,18 @@
       return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
     }
 
+    function buildStartNameLabel(namesSet){
+      const names = Array.from(namesSet || []).map(toClean).filter(Boolean);
+      if (!names.length) return '';
+      const allNumeric = names.every(n => /^-?\d+(?:\.\d+)?$/.test(n));
+      if (allNumeric) {
+        names.sort((a, b) => Number(a) - Number(b));
+      } else {
+        names.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+      }
+      return names.join('/');
+    }
+
     function renderAggLabels() {
       aggLabelLayer.clearLayers();
 
@@ -3657,7 +3669,7 @@
           const center = h3.cellToLatLng(h3Index);
           const latlng = L.latLng(center[0], center[1]);
 
-          const nameText = Array.from(meta.startNames).filter(Boolean)[0] || '';
+          const nameText = buildStartNameLabel(meta.startNames);
           const bg = countBgFromScripts(meta);
           redLabelItems[resKey].push({ latlng, count: meta.count, nameText, bg });
 
