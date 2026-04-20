@@ -1023,6 +1023,10 @@
             <option value="open" selected>開放路段</option>
             <option value="tunnel">室內/隧道路段</option>
           </select>
+          <label for="cloneNetFilter">Net：</label>
+          <select id="cloneNetFilter">
+            <option value="ALL" selected>ALL</option>
+          </select>
         </div>
         <div id="statsCloneHint">已複製目前右下方 PA路段統計，供後續調整。</div>
         <div id="statsCloneRuleNote"></div>
@@ -1057,9 +1061,13 @@
        - Update: 套件收起寬度減半；收起時標題僅顯示 S_loc
        - Update: S_loc、數值欄均以內容為主自動調整欄寬
        - Update: 點選列底色改為紅色
+       ---------------------------
+       ver 9.3
+       - Update: 清除篩選後恢復 Filter 預設（Date=最新日；其餘=全選）
+       - Update: 上方固定顯示「資料筆數 / PA路段(start_location_name)唯一筆數」
        =========================== */
 
-    const APP_VERSION = "ver 9.1";
+    const APP_VERSION = "ver 9.3";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -1448,6 +1456,34 @@
       return `<div class="lblWrap" style="transform:translate(-50%, -44px);"><span class="name-label">${escapeHtml(text)}</span></div>`;
     }
 
+    function buildStartNameLabel(namesSet){
+      const names = Array.from(namesSet || []).map(toClean).filter(Boolean);
+      if (!names.length) return '';
+      const allNumeric = names.every(n => /^-?\d+(?:\.\d+)?$/.test(n));
+      if (allNumeric) {
+        names.sort((a, b) => Number(a) - Number(b));
+      } else {
+        names.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+      }
+      return names.join('/');
+    }
+
+    function buildCountLabel(meta){
+      const names = Array.from(meta?.startNames || []).map(toClean).filter(Boolean);
+      if (!names.length || names.length === 1) return String(meta?.count || 0);
+
+      const allNumeric = names.every(n => /^-?\d+(?:\.\d+)?$/.test(n));
+      if (allNumeric) names.sort((a, b) => Number(a) - Number(b));
+      else names.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+      const parts = [];
+      for (const n of names) {
+        const c = meta?.startNameCounts?.get(n) || 0;
+        parts.push(`${n}:${c}`);
+      }
+      return parts.join('/');
+    }
+
     function renderAggLabels() {
       aggLabelLayer.clearLayers();
 
@@ -1457,7 +1493,7 @@
       if (z >= 12) {
         const items = redLabelItems[currentResKey] || [];
         for (const it of items) {
-          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.count, it.bg), iconSize: null });
+          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.countText ?? it.count, it.bg), iconSize: null });
           L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
         }
         return;
@@ -2041,6 +2077,12 @@
       selectionTag.textContent = text || '';
       selectionTag.title = text || '';
     }
+    function buildTopSummaryText(rows) {
+      const src = Array.isArray(rows) ? rows : [];
+      const total = src.length;
+      const uniqStartLoc = new Set(src.map(r => toClean(r.start_location_name)).filter(Boolean)).size;
+      return `資料${total}筆、PA路段(Start_location_name)${uniqStartLoc}筆`;
+    }
 
     const chkHideTunnel = document.getElementById('chkHideTunnel');
     chkHideTunnel.addEventListener('change', () => {
@@ -2053,16 +2095,15 @@
     btnClear.addEventListener('click', () => {
       selectionLocationNames = [];
       selectionPrimaryName = '';
-      setSelectionTag('');
       hideChartWindow();
       clearChart();
       closeActiveMenu();
-
-      for (const k of Object.keys(filterState)) {
-        filterState[k].clear();
-        for (const v of filterAllOptions[k]) filterState[k].add(v);
-      }
-      for (const k of Object.keys(filterWidgets)) filterWidgets[k]?.updateButton?.();
+      const dateOpts = (filterAllOptions.Date || []).slice();
+      const latestDate = dateOpts.length ? dateOpts[dateOpts.length - 1] : null;
+      filterWidgets.Date.setOptions(dateOpts, latestDate ? [latestDate] : null);
+      filterWidgets.measurement_NetWork.setOptions((filterAllOptions.measurement_NetWork || []).slice());
+      filterWidgets.measurement_Script.setOptions((filterAllOptions.measurement_Script || []).slice());
+      filterWidgets.Marea.setOptions((filterAllOptions.Marea || []).slice());
       applyFilterAndRerender();
     });
 
@@ -2250,6 +2291,7 @@
     const cloneTabReward = document.getElementById('cloneTabReward');
     const cloneYearFilter = document.getElementById('cloneYearFilter');
     const cloneTypeFilter = document.getElementById('cloneTypeFilter');
+    const cloneNetFilter = document.getElementById('cloneNetFilter');
     const statsCloneHint = document.getElementById('statsCloneHint');
     const statsCloneRuleNote = document.getElementById('statsCloneRuleNote');
     const statsCloneWrap = document.getElementById('statsCloneWrap');
@@ -2259,6 +2301,7 @@
     let statsCloneActiveTab = 'stats';
     let statsCloneYear = '';
     let statsCloneType = 'open';
+    let statsCloneNet = 'ALL';
 
     function openStatsCloneModal() {
       statsCloneBackdrop.style.display = 'flex';
@@ -2300,6 +2343,11 @@
       return rows;
     }
 
+    function getPARowsByCloneNet(rows) {
+      if (statsCloneNet === 'ALL') return rows;
+      return rows.filter(r => toClean(r.measurement_NetWork) === statsCloneNet);
+    }
+
     function isDateInCloneStatsRange(dateText) {
       if (!statsCloneYear) return true;
       const info = parseYearMonth(dateText);
@@ -2325,10 +2373,19 @@
       }
       cloneYearFilter.innerHTML = html;
 
+      const netVals = [...new Set(allRowsRaw.map(r => toClean(r.measurement_NetWork)).filter(v => v))].sort();
+      let netHtml = '<option value="ALL">ALL</option>';
+      for (const net of netVals) {
+        netHtml += `<option value="${escapeHtml(net)}">${escapeHtml(net)}</option>`;
+      }
+      cloneNetFilter.innerHTML = netHtml;
+
       statsCloneYear = years.length ? years[years.length - 1] : '';
       cloneYearFilter.value = statsCloneYear;
       statsCloneType = 'open';
       cloneTypeFilter.value = statsCloneType;
+      statsCloneNet = 'ALL';
+      cloneNetFilter.value = statsCloneNet;
     }
 
     function getCloneScopedData() {
@@ -2336,6 +2393,7 @@
       const scopeFieldLoc = statsCloneViewMode === 'Mcenter' ? 'mcenter' : 'marea';
 
       let paRows = allRowsRaw.filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      paRows = getPARowsByCloneNet(paRows);
       let locRows = allLocationRowsRaw.slice();
 
       if (statsCloneViewMode === 'Mcenter' && statsCloneSelectedArea) {
@@ -2428,7 +2486,7 @@
         return [
           '統計規則（PA路段激勵統計）',
           '1. 統計區間為「所選年度2月到次年1月」（未選年份則用全部月份）。',
-          '2. 先依路段類型篩選（ALL/開放/室內隧道），再用該集合計算。',
+          '2. 先依路段類型與 Net 篩選，再用該集合計算。',
           '3. 單一路段規則：曾出現後，連續缺席第3個月開始每月 +1 分；一旦當月再出現即歸零重算。',
           '4. 欄位內百分比為同月份橫向占比；總計欄固定為該月整體值（100.00%）。'
         ].join('\n');
@@ -2440,7 +2498,7 @@
       return [
         '統計規則（PA路段統計）',
         '1. 統計區間為「所選年度2月到次年1月」（未選年份則用全部月份）。',
-        '2. 路段總數分母取自路段主檔（Location），並依欄位區域與路段類型切分。',
+        '2. 路段總數分母取自路段主檔（Location），並依欄位區域與路段類型切分；PA 資料會套用 Net 篩選。',
         '3. 鎖頭頁改善邏輯：路段預設為改善；首次出現立即退出改善；退出後連續缺席達門檻重回改善。',
         '4. 改善狀態下若連續出現3個月，則退出改善。',
         `5. ${settleText}`
@@ -2450,6 +2508,7 @@
     function buildRewardCloneView() {
       const { columns, columnField } = getCloneColumnsFromData();
       let filteredPAData = allRowsRaw.filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      filteredPAData = getPARowsByCloneNet(filteredPAData);
       filteredPAData = getPARowsByStatsType(filteredPAData);
       const ymList = getContinuousYmList(filteredPAData);
 
@@ -2685,6 +2744,13 @@
       buildStatsCloneView();
     });
 
+    cloneNetFilter.addEventListener('change', (e) => {
+      statsCloneNet = e.target.value || 'ALL';
+      statsCloneViewMode = 'Marea';
+      statsCloneSelectedArea = null;
+      buildStatsCloneView();
+    });
+
     cloneTabStats.addEventListener('click', () => {
       statsCloneActiveTab = 'stats';
       buildStatsCloneView();
@@ -2769,9 +2835,10 @@
       const typeLabel = selectedStatsType === 'ALL' ? 'ALL' : selectedStatsType === 'open' ? 'Open' : 'Tunnel';
       const cloneYearLabel = statsCloneYear || 'ALL';
       const cloneTypeLabel = statsCloneType === 'ALL' ? 'ALL' : statsCloneType === 'open' ? 'Open' : 'Tunnel';
+      const cloneNetLabel = statsCloneNet || 'ALL';
       const viewLabel = statsCloneViewMode === 'Mcenter' ? `Mcenter_${statsCloneSelectedArea || 'NA'}` : 'Marea';
       const tabLabel = statsCloneActiveTab === 'reward' ? 'Incentive' : 'Stats';
-      XLSX.writeFile(wb, `PA_${tabLabel}_${yearLabel}_${typeLabel}_${cloneYearLabel}_${cloneTypeLabel}_${viewLabel}_${timestamp}.xlsx`);
+      XLSX.writeFile(wb, `PA_${tabLabel}_${yearLabel}_${typeLabel}_${cloneYearLabel}_${cloneTypeLabel}_${cloneNetLabel}_${viewLabel}_${timestamp}.xlsx`);
     });
 
     btnStatsCloneBack.addEventListener('click', () => {
@@ -2928,7 +2995,10 @@
 
       const areas = columns;
       
-      const filteredPAData = allRowsRaw.filter(r => isDateInStatsRange(toClean(r.Date)));
+      let filteredPAData = allRowsRaw.filter(r => isDateInStatsRange(toClean(r.Date)));
+      if (useCloneImprovedRule && statsCloneNet !== 'ALL') {
+        filteredPAData = filteredPAData.filter(r => toClean(r.measurement_NetWork) === statsCloneNet);
+      }
       const monthlyDatesInRange = getMonthlyLastDates(filteredPAData);
 
       function getUniqueLocations(rows, tunnelOnly = null, fieldName = 'start_location_name') {
@@ -2946,6 +3016,14 @@
       function getLocationSetAtDate(rows, targetDate, tunnelOnly = null, fieldName = 'start_location_name') {
         const dateRows = rows.filter(r => toClean(r.Date) === targetDate);
         return getUniqueLocations(dateRows, tunnelOnly, fieldName);
+      }
+
+      function getNeverAppearedCount(baseSet, appearedSet) {
+        let missing = 0;
+        for (const loc of baseSet) {
+          if (!appearedSet.has(loc)) missing++;
+        }
+        return missing;
       }
 
       function buildImprovedSeriesWithRecovery(rows, dateList, baseSet, tunnelOnly = null, fieldName = 'start_location_name') {
@@ -3070,6 +3148,12 @@
         open: getUniqueLocations(allLocationRowsRaw, false, 'location_name').size,
         tunnel: getUniqueLocations(allLocationRowsRaw, true, 'location_name').size
       };
+      const globalOpenBaseSet = getUniqueLocations(allLocationRowsRaw, false, 'location_name');
+      const globalTunnelBaseSet = getUniqueLocations(allLocationRowsRaw, true, 'location_name');
+      const globalAppearedOpenSet = getUniqueLocations(filteredPAData, false, 'start_location_name');
+      const globalAppearedTunnelSet = getUniqueLocations(filteredPAData, true, 'start_location_name');
+      globalBaseStats.neverOpen = getNeverAppearedCount(globalOpenBaseSet, globalAppearedOpenSet);
+      globalBaseStats.neverTunnel = getNeverAppearedCount(globalTunnelBaseSet, globalAppearedTunnelSet);
 
       const globalImprovedByMonth = new Map();
       const validCalcDates = monthlyDatesInRange.slice(2);
@@ -3093,6 +3177,8 @@
         const tunnelLocSet = getUniqueLocations(locationRows, true, 'location_name');
 
         const areaPARows = filteredPAData.filter(r => toClean(r[columnField]) === area);
+        const appearedOpenSet = getUniqueLocations(areaPARows, false, 'start_location_name');
+        const appearedTunnelSet = getUniqueLocations(areaPARows, true, 'start_location_name');
         const seriesAll = buildImprovedSeriesWithRecovery(areaPARows, monthlyDatesInRange, totalLocSet, null, 'start_location_name');
         const seriesOpen = buildImprovedSeriesWithRecovery(areaPARows, monthlyDatesInRange, openLocSet, false, 'start_location_name');
         const seriesTunnel = buildImprovedSeriesWithRecovery(areaPARows, monthlyDatesInRange, tunnelLocSet, true, 'start_location_name');
@@ -3115,16 +3201,26 @@
           total: totalLocSet.size,
           open: openLocSet.size,
           tunnel: tunnelLocSet.size,
+          neverOpen: getNeverAppearedCount(openLocSet, appearedOpenSet),
+          neverTunnel: getNeverAppearedCount(tunnelLocSet, appearedTunnelSet),
           improvedByMonth
         };
       }
 
-      // 根据路段类型筛选显示的行
       let rows = [
         { label: '路段總數', key: 'total' },
         { label: '開放路段', key: 'open' },
         { label: '室內/隧道路段', key: 'tunnel' }
       ];
+
+      if (useCloneImprovedRule) {
+        if (selectedStatsType === 'ALL' || selectedStatsType === 'open') {
+          rows.push({ label: '開放路段(從未出現)', key: 'neverOpen' });
+        }
+        if (selectedStatsType === 'ALL' || selectedStatsType === 'tunnel') {
+          rows.push({ label: '室內/隧道路段(從未出現)', key: 'neverTunnel' });
+        }
+      }
 
       if (selectedStatsType === 'ALL') {
         for (const calcDate of validCalcDates) {
@@ -3177,7 +3273,7 @@
         
         // 添加总计列
         let totalDisplayText = rowTotal;
-        if (!row.calcDate && (row.key === 'total' || row.key === 'open' || row.key === 'tunnel')) {
+        if (!row.calcDate && (row.key === 'total' || row.key === 'open' || row.key === 'tunnel' || row.key === 'neverOpen' || row.key === 'neverTunnel')) {
           totalDisplayText = globalBaseStats[row.key] ?? rowTotal;
         } else if (row.key === 'improvedAll' && row.calcDate) {
           const totalBase = globalBaseStats.total;
@@ -3423,6 +3519,7 @@
         count: 0,
         paNums: new Set(),
         startNames: new Set(),
+        startNameCounts: new Map(),
         endNames: new Set(),
         sample:null,
         scriptCounts: new Map()
@@ -3545,7 +3642,10 @@
 
         const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
         const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
-        if (sn) meta.startNames.add(sn);
+        if (sn) {
+          meta.startNames.add(sn);
+          meta.startNameCounts.set(sn, (meta.startNameCounts.get(sn) || 0) + 1);
+        }
         if (en) meta.endNames.add(en);
 
         const sc = toClean(row.measurement_Script) || '(blank)';
@@ -3598,9 +3698,10 @@
           const center = h3.cellToLatLng(h3Index);
           const latlng = L.latLng(center[0], center[1]);
 
-          const nameText = Array.from(meta.startNames).filter(Boolean)[0] || '';
+          const nameText = buildStartNameLabel(meta.startNames);
+          const countText = buildCountLabel(meta);
           const bg = countBgFromScripts(meta);
-          redLabelItems[resKey].push({ latlng, count: meta.count, nameText, bg });
+          redLabelItems[resKey].push({ latlng, count: meta.count, countText, nameText, bg });
 
           // zoom<=11 unique names source（紅格）
           const names = Array.from(meta.startNames).filter(Boolean);
@@ -3789,14 +3890,15 @@
     function applyFilterAndRerender(){
       filteredRows = applyFiltersToRows(allRowsRaw);
       renderScriptStatsControl(filteredRows);
+      const summaryText = buildTopSummaryText(filteredRows);
 
       if (selectionLocationNames.length) {
         const selectedTable = filteredRows.filter(r => selectionLocationNames.includes(toClean(r.start_location_name)));
         renderTableRows(selectedTable);
-        setSelectionTag(`已篩選 start_location_name：${selectionLocationNames.join('、')}（${selectedTable.length} 筆）`);
+        setSelectionTag(`${summaryText}｜已篩選 start_location_name：${selectionLocationNames.join('、')}（${selectedTable.length} 筆）`);
       } else {
         renderTableRows(filteredRows);
-        setSelectionTag(`Filter 生效：${filteredRows.length} 筆`);
+        setSelectionTag(summaryText);
       }
 
       rebuildPointLayers(filteredRows);
@@ -3879,6 +3981,7 @@
       renderScriptStatsControl(filteredRows);
 
       renderTableRows(filteredRows);
+      setSelectionTag(buildTopSummaryText(filteredRows));
       rebuildPointLayers(filteredRows);
       rebuildH3FromRows(filteredRows);
       showOnlyRes('RES8');
