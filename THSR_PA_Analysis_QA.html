@@ -1061,9 +1061,13 @@
        - Update: 套件收起寬度減半；收起時標題僅顯示 S_loc
        - Update: S_loc、數值欄均以內容為主自動調整欄寬
        - Update: 點選列底色改為紅色
+       ---------------------------
+       ver 9.3
+       - Update: 清除篩選後恢復 Filter 預設（Date=最新日；其餘=全選）
+       - Update: 上方固定顯示「資料筆數 / PA路段(start_location_name)唯一筆數」
        =========================== */
 
-    const APP_VERSION = "ver 9.1";
+    const APP_VERSION = "ver 9.3";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -1464,6 +1468,22 @@
       return names.join('/');
     }
 
+    function buildCountLabel(meta){
+      const names = Array.from(meta?.startNames || []).map(toClean).filter(Boolean);
+      if (!names.length || names.length === 1) return String(meta?.count || 0);
+
+      const allNumeric = names.every(n => /^-?\d+(?:\.\d+)?$/.test(n));
+      if (allNumeric) names.sort((a, b) => Number(a) - Number(b));
+      else names.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+      const parts = [];
+      for (const n of names) {
+        const c = meta?.startNameCounts?.get(n) || 0;
+        parts.push(`${n}:${c}`);
+      }
+      return parts.join('/');
+    }
+
     function renderAggLabels() {
       aggLabelLayer.clearLayers();
 
@@ -1473,7 +1493,7 @@
       if (z >= 12) {
         const items = redLabelItems[currentResKey] || [];
         for (const it of items) {
-          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.count, it.bg), iconSize: null });
+          const icon = L.divIcon({ className: '', html: makeCountIconHtml(it.countText ?? it.count, it.bg), iconSize: null });
           L.marker(it.latlng, { icon, interactive:false, zIndexOffset: 9999 }).addTo(aggLabelLayer);
         }
         return;
@@ -2057,6 +2077,12 @@
       selectionTag.textContent = text || '';
       selectionTag.title = text || '';
     }
+    function buildTopSummaryText(rows) {
+      const src = Array.isArray(rows) ? rows : [];
+      const total = src.length;
+      const uniqStartLoc = new Set(src.map(r => toClean(r.start_location_name)).filter(Boolean)).size;
+      return `資料${total}筆、PA路段(Start_location_name)${uniqStartLoc}筆`;
+    }
 
     const chkHideTunnel = document.getElementById('chkHideTunnel');
     chkHideTunnel.addEventListener('change', () => {
@@ -2069,16 +2095,15 @@
     btnClear.addEventListener('click', () => {
       selectionLocationNames = [];
       selectionPrimaryName = '';
-      setSelectionTag('');
       hideChartWindow();
       clearChart();
       closeActiveMenu();
-
-      for (const k of Object.keys(filterState)) {
-        filterState[k].clear();
-        for (const v of filterAllOptions[k]) filterState[k].add(v);
-      }
-      for (const k of Object.keys(filterWidgets)) filterWidgets[k]?.updateButton?.();
+      const dateOpts = (filterAllOptions.Date || []).slice();
+      const latestDate = dateOpts.length ? dateOpts[dateOpts.length - 1] : null;
+      filterWidgets.Date.setOptions(dateOpts, latestDate ? [latestDate] : null);
+      filterWidgets.measurement_NetWork.setOptions((filterAllOptions.measurement_NetWork || []).slice());
+      filterWidgets.measurement_Script.setOptions((filterAllOptions.measurement_Script || []).slice());
+      filterWidgets.Marea.setOptions((filterAllOptions.Marea || []).slice());
       applyFilterAndRerender();
     });
 
@@ -3494,6 +3519,7 @@
         count: 0,
         paNums: new Set(),
         startNames: new Set(),
+        startNameCounts: new Map(),
         endNames: new Set(),
         sample:null,
         scriptCounts: new Map()
@@ -3616,7 +3642,10 @@
 
         const paNum = toClean(row.PA_Num); if (paNum) meta.paNums.add(paNum);
         const sn = toClean(row.start_location_name); const en = toClean(row.end_location_name);
-        if (sn) meta.startNames.add(sn);
+        if (sn) {
+          meta.startNames.add(sn);
+          meta.startNameCounts.set(sn, (meta.startNameCounts.get(sn) || 0) + 1);
+        }
         if (en) meta.endNames.add(en);
 
         const sc = toClean(row.measurement_Script) || '(blank)';
@@ -3670,8 +3699,9 @@
           const latlng = L.latLng(center[0], center[1]);
 
           const nameText = buildStartNameLabel(meta.startNames);
+          const countText = buildCountLabel(meta);
           const bg = countBgFromScripts(meta);
-          redLabelItems[resKey].push({ latlng, count: meta.count, nameText, bg });
+          redLabelItems[resKey].push({ latlng, count: meta.count, countText, nameText, bg });
 
           // zoom<=11 unique names source（紅格）
           const names = Array.from(meta.startNames).filter(Boolean);
@@ -3860,14 +3890,15 @@
     function applyFilterAndRerender(){
       filteredRows = applyFiltersToRows(allRowsRaw);
       renderScriptStatsControl(filteredRows);
+      const summaryText = buildTopSummaryText(filteredRows);
 
       if (selectionLocationNames.length) {
         const selectedTable = filteredRows.filter(r => selectionLocationNames.includes(toClean(r.start_location_name)));
         renderTableRows(selectedTable);
-        setSelectionTag(`已篩選 start_location_name：${selectionLocationNames.join('、')}（${selectedTable.length} 筆）`);
+        setSelectionTag(`${summaryText}｜已篩選 start_location_name：${selectionLocationNames.join('、')}（${selectedTable.length} 筆）`);
       } else {
         renderTableRows(filteredRows);
-        setSelectionTag(`Filter 生效：${filteredRows.length} 筆`);
+        setSelectionTag(summaryText);
       }
 
       rebuildPointLayers(filteredRows);
@@ -3950,6 +3981,7 @@
       renderScriptStatsControl(filteredRows);
 
       renderTableRows(filteredRows);
+      setSelectionTag(buildTopSummaryText(filteredRows));
       rebuildPointLayers(filteredRows);
       rebuildH3FromRows(filteredRows);
       showOnlyRes('RES8');
