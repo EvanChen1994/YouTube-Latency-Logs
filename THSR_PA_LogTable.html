@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v1.7</title>
+  <title>THSR PA Log Table  v1.9</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -562,7 +562,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v1.7</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v1.9</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -581,6 +581,7 @@
     <div class="btn" id="btnClear">清除篩選</div>
     <div class="bar-sep"></div>
     <div class="gh-badge" id="ghBadge" title="GitHub 同步設定">☁️ 未設定</div>
+    <button class="btn" id="btnSync" title="手動重新同步 notes">🔄 同步</button>
     <button class="btn" id="btnExport" title="匯出目前篩選結果為 Excel">📥 匯出 Excel</button>
     <div class="status-tag" id="statusTag"></div>
   </div>
@@ -597,7 +598,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
-   THSR PA Log Table  ver 1.7
+   THSR PA Log Table  ver 1.9
    - Top filter bar: Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
@@ -1272,11 +1273,17 @@ function ghHeaders(withAuth) {
 }
 
 async function ghFetchNotes() {
-  // 用 raw URL 讀取（公開 repo 不需 auth）
-  const res = await fetch(ghRawUrl());
+  // 改用 Contents API 取得資料，避免 raw.githubusercontent.com CDN 快取問題
+  // 有 PAT 時順便帶上 auth，可提高 API rate limit（60→5000 req/hr）
+  const res = await fetch(ghApiUrl(), { headers: ghHeaders(true) });
   if (res.status === 404) return {}; // 檔案尚未建立
   if (!res.ok) throw new Error('GitHub 讀取失敗 ' + res.status);
-  return await res.json();
+  const meta = await res.json();
+  // Contents API 回傳 base64 編碼內容，需正確解碼 UTF-8
+  const text = new TextDecoder().decode(
+    Uint8Array.from(atob(meta.content.replace(/\n/g, '')), c => c.charCodeAt(0))
+  );
+  return JSON.parse(text);
 }
 
 async function ghPushNotes(data) {
@@ -1436,6 +1443,8 @@ function openNoteModal(cellKey, label) {
 
 function closeNoteModal() {
   noteBackdrop.classList.remove('open');
+  // 關閉時自動從 GitHub 拉取最新資料，讓表格圖示修新
+  if (ghConfigured()) initGhSync();
 }
 
 btnNoteClose.addEventListener('click', closeNoteModal);
@@ -1463,7 +1472,30 @@ btnNoteAdd.addEventListener('click', () => {
   if (!content) { noteInputContent.focus(); return; }
   if (!noteStore[activeCellKey]) noteStore[activeCellKey] = [];
   noteStore[activeCellKey].push({ id: Date.now(), date, author, content });
-  saveNotes();
+  // 先 push，完成後再拉取從遠端（避免並發編輯袊漏）
+  if (ghConfigured()) {
+    updateGhBadge('syncing');
+    withRetry(() => ghPushNotes(noteStore))
+      .then(() => withRetry(() => ghFetchNotes()))
+      .then(remote => {
+        if (remote && typeof remote === 'object') {
+          const normalized = migrateNoteKeys(remote);
+          const merged = { ...noteStore };
+          for (const [k, v] of Object.entries(normalized)) merged[k] = v;
+          noteStore = merged;
+          localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
+        }
+        updateGhBadge('ok');
+        renderNoteList();
+        applyAndRender();
+      })
+      .catch(e => {
+        updateGhBadge('err');
+        console.warn('sync after add failed:', e);
+      });
+  } else {
+    saveNotes();
+  }
   noteInputContent.value = '';
   renderNoteList();
   applyAndRender();
@@ -1752,6 +1784,11 @@ async function exportExcel() {
 
 // 初始化 GitHub badge 狀態
 updateGhBadge(ghConfigured() ? 'ok' : '');
+
+// 手動同步按鈕
+document.getElementById('btnSync').addEventListener('click', async () => {
+  await initGhSync();
+});
 </script>
 </body>
 </html>
