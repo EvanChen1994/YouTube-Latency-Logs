@@ -1526,14 +1526,38 @@ document.getElementById('btnGhTest').addEventListener('click', async () => {
   ghStatus.style.color = '#ffd090';
   ghStatus.textContent = '測試中…';
   try {
-    const url = `https://raw.githubusercontent.com/${ghCfg.repo}/${ghCfg.branch}/${ghCfg.path}?v=${Date.now()}`;
-    const res = await fetch(url, pat ? { headers:{ Authorization:'Bearer '+pat } } : {});
-    if (res.status === 200 || res.status === 404) {
-      ghStatus.style.color = '#4dffaa';
-      ghStatus.textContent = '✅ 連線成功！' + (res.status===404 ? '（notes.json 尚未建立，首次儲存自動建立）' : '');
-    } else {
+    // ① 讀取測試：raw URL 不帶 auth（public repo 不需要，且 raw.githubusercontent.com
+    //    不支援帶 Authorization header 的 CORS preflight，帶了反而失敗）
+    const rawUrl = `https://raw.githubusercontent.com/${ghCfg.repo}/${ghCfg.branch}/${ghCfg.path}?v=${Date.now()}`;
+    const rawRes = await fetch(rawUrl);
+    if (rawRes.status !== 200 && rawRes.status !== 404) {
       ghStatus.style.color = '#ff8080';
-      ghStatus.textContent = `⚠️ HTTP ${res.status}`;
+      ghStatus.textContent = `⚠️ 讀取失敗 HTTP ${rawRes.status}`;
+      return;
+    }
+    const readOk = '✅ 讀取 OK' + (rawRes.status === 404 ? '（notes.json 尚未建立，首次儲存自動建立）' : '');
+
+    // ② PAT 驗證：走 GitHub Contents API（正確支援帶 Authorization 的 CORS）
+    if (pat) {
+      const apiRes = await fetch(ghApiUrl(), {
+        headers: { ...ghHeaders(true), Authorization: 'Bearer ' + pat },
+      });
+      if (apiRes.status === 401) {
+        ghStatus.style.color = '#ff8080';
+        ghStatus.textContent = '❌ PAT 無效（401 Unauthorized）';
+        return;
+      }
+      if (apiRes.status === 403) {
+        ghStatus.style.color = '#ff8080';
+        ghStatus.textContent = '❌ PAT 無此 repo 權限（403 Forbidden）';
+        return;
+      }
+      // 200 或 404（檔案不存在）都代表 PAT 有效且有讀取權限
+      ghStatus.style.color = '#4dffaa';
+      ghStatus.textContent = readOk + '　✅ PAT 驗證成功';
+    } else {
+      ghStatus.style.color = '#4dffaa';
+      ghStatus.textContent = readOk + '　（未填 PAT，僅驗證讀取）';
     }
   } catch (e) {
     ghStatus.style.color = '#ff8080';
