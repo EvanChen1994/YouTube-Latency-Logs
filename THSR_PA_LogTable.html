@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table</title>
+  <title>THSR PA Log Table  v1.7</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -562,7 +562,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table</div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v1.7</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -597,7 +597,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
-   THSR PA Log Table  ver 1.0
+   THSR PA Log Table  ver 1.7
    - Top filter bar: Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
@@ -1138,7 +1138,7 @@ function renderPivot(locRows, paRows) {
     for (const d of dates) {
       const td = document.createElement('td');
       td.style.textAlign = 'center';
-      const cellKey = (row.location_name || '') + '\x00' + d;
+      const cellKey = (row.location_name || '') + '\t' + d;
       const detail = paMap.get((row.location_name || '') + '|' + d) || [];
       if (detail.length > 0) {
         const wrap = document.createElement('span');
@@ -1310,8 +1310,17 @@ async function ghPushNotes(data) {
 const NOTE_STORE_KEY = 'thsr_pa_logtable_notes';
 let noteStore = {};
 
+// 舊版本以 \x00 或 \uFFFD 作分隔符（\x00 在 HTML attribute 中會被部分瀏覽器換成 \uFFFD）
+// 統一遷移到 \t（tab，在 attribute value 中完全合法且不會出現在地名/日期中）
+function migrateNoteKeys(store) {
+  const out = {};
+  for (const [k, v] of Object.entries(store)) {
+    out[k.replace(/[\x00\uFFFD]/, '\t')] = v;
+  }
+  return out;
+}
 function loadNotes() {
-  try { noteStore = JSON.parse(localStorage.getItem(NOTE_STORE_KEY) || '{}'); }
+  try { noteStore = migrateNoteKeys(JSON.parse(localStorage.getItem(NOTE_STORE_KEY) || '{}')); }
   catch { noteStore = {}; }
 }
 // 通用重試工具：fn 為 async function，最多重試 maxRetries 次，每次等 delayMs ms
@@ -1355,8 +1364,10 @@ async function initGhSync() {
     if (remote && typeof remote === 'object') {
       // 合併策略：remote 為主，但本機獨有的 key 也保留
       // 同一個 key 以 remote 為準（確保多人同步一致）
+      // 同步時一併遷移舊分隔符（\x00 / \uFFFD → \t）
+      const normalized = migrateNoteKeys(remote);
       const merged = { ...noteStore };
-      for (const [k, v] of Object.entries(remote)) {
+      for (const [k, v] of Object.entries(normalized)) {
         merged[k] = v;
       }
       noteStore = merged;
@@ -1369,7 +1380,6 @@ async function initGhSync() {
     console.warn('GitHub fetch failed after 3 retries:', e);
   }
 }
-init();
 // initGhSync() 已移至 init() 內部呼叫，不再單獨呼叫
 
 // ── Note modal ──────────────────────────────────────────────────
@@ -1670,7 +1680,7 @@ async function exportExcel() {
     let noteNum = 1;
     const noteLines = [];
     dates.forEach(d => {
-      const ck = (row.location_name || '') + '\x00' + d;
+      const ck = (row.location_name || '') + '\t' + d;
       (noteStore[ck] || []).forEach(n => {
         const meta = [n.date, n.author].filter(Boolean).join(' ');
         noteLines.push(`${noteNum++}. ${meta ? '[' + meta + '] ' : ''}${n.content}`);
