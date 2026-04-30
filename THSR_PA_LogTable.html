@@ -287,6 +287,25 @@
       background:rgba(43,124,255,0.45);
       border-color:rgba(43,124,255,0.70);
     }
+    /* VoLTE = 藍, YouTube = 橘, 兩者都有 = 紅 */
+    .cell-val.cv-volte {
+      background:rgba(0,112,192,0.28);
+      border-color:rgba(0,112,192,0.55);
+      color:#66b8ff;
+    }
+    .cell-val.cv-volte:hover { background:rgba(0,112,192,0.50); }
+    .cell-val.cv-yt {
+      background:rgba(237,125,49,0.28);
+      border-color:rgba(237,125,49,0.55);
+      color:#ffb37a;
+    }
+    .cell-val.cv-yt:hover { background:rgba(237,125,49,0.50); }
+    .cell-val.cv-both {
+      background:rgba(220,30,30,0.28);
+      border-color:rgba(220,30,30,0.55);
+      color:#ff8080;
+    }
+    .cell-val.cv-both:hover { background:rgba(220,30,30,0.50); }
 
     /* Note icon inside cell */
     .cell-note-ico {
@@ -511,6 +530,8 @@
     </div>
   </div>
 </div>
+
+<div id="loadOverlay">
   <div>載入中…</div>
   <div class="sub" id="loadSub">讀取 CSV…</div>
 </div>
@@ -560,6 +581,7 @@
     <div class="btn" id="btnClear">清除篩選</div>
     <div class="bar-sep"></div>
     <div class="gh-badge" id="ghBadge" title="GitHub 同步設定">☁️ 未設定</div>
+    <button class="btn" id="btnExport" title="匯出目前篩選結果為 Excel">📥 匯出 Excel</button>
     <div class="status-tag" id="statusTag"></div>
   </div>
 
@@ -571,6 +593,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
@@ -1123,6 +1146,12 @@ function renderPivot(locRows, paRows) {
 
         const sp = document.createElement('span');
         sp.className = 'cell-val';
+        // 依 Script 類型著色
+        const hasVolte = detail.some(r => /volte/i.test(r.measurement_Script || ''));
+        const hasYt    = detail.some(r => /yt|youtube/i.test(r.measurement_Script || ''));
+        if      (hasVolte && hasYt) sp.classList.add('cv-both');
+        else if (hasVolte)          sp.classList.add('cv-volte');
+        else if (hasYt)             sp.classList.add('cv-yt');
         sp.textContent = String(detail.length);
         sp.dataset.tipData = JSON.stringify(detail.map(r => ({
           Net:    r.measurement_NetWork || '',
@@ -1469,6 +1498,181 @@ document.getElementById('btnGhTest').addEventListener('click', async () => {
     ghStatus.textContent = '⚠️ 連線失敗：' + e.message;
   }
 });
+
+// ── Excel Export ─────────────────────────────────────────────────
+document.getElementById('btnExport').addEventListener('click', exportExcel);
+
+async function exportExcel() {
+  if (typeof ExcelJS === 'undefined') {
+    alert('Excel 匯出模組尚未載入，請稍後再試。');
+    return;
+  }
+
+  // 重建目前篩選後的資料（與 renderPivot 相同邏輯）
+  const pa = allPaRows.filter(r =>
+    filterState.measurement_NetWork.has(r.measurement_NetWork) &&
+    filterState.measurement_Script.has(r.measurement_Script) &&
+    filterState.Marea.has(r.Marea)
+  );
+  let locF = allLocRows.filter(r => filterState.Marea.has(r.marea));
+  if (hideTunnel) locF = locF.filter(r => !String(r.location_name || '').includes('**'));
+
+  const datesSet = new Set(pa.map(r => r.Date).filter(Boolean));
+  const dates = Array.from(datesSet).sort((a, b) => parseDateStr(a) - parseDateStr(b));
+
+  const paMap = new Map();
+  for (const r of pa) {
+    const loc = r.start_location_name || '', date = r.Date || '';
+    if (!loc || !date) continue;
+    const k = loc + '|' + date;
+    if (!paMap.has(k)) paMap.set(k, []);
+    paMap.get(k).push(r);
+  }
+
+  const rawSorted = locF.slice().sort((a, b) => {
+    const ka = Number(a.KM), kb = Number(b.KM);
+    if (ka !== kb) return ka - kb;
+    return parseKmM(a['KM+M']) - parseKmM(b['KM+M']);
+  });
+
+  const locWithEvents = new Set(pa.map(r => r.start_location_name).filter(Boolean));
+  const groupMap = new Map();
+  for (const r of rawSorted) {
+    const name = r.location_name || '';
+    if (!groupMap.has(name)) groupMap.set(name, []);
+    groupMap.get(name).push(r);
+  }
+
+  function mf(rows, field) {
+    return [...new Set(rows.map(r => (r[field] ?? '').trim()).filter(Boolean))].join('/');
+  }
+
+  let merged = [];
+  for (const [name, rows] of groupMap) {
+    const first = rows[0]['KM+M'] ?? '', last = rows[rows.length - 1]['KM+M'] ?? '';
+    merged.push({
+      location_name: name,
+      kmRange: first === last ? first : first + '~' + last,
+      marea: mf(rows, 'marea'), mcenter: mf(rows, 'mcenter'), memo: mf(rows, 'memo'),
+      hasEvents: locWithEvents.has(name),
+    });
+  }
+
+  if (improvementFilter === 'bad')  merged = merged.filter(r => r.hasEvents);
+  if (improvementFilter === 'good') merged = merged.filter(r => !r.hasEvents);
+
+  if (sortKey) {
+    const sd = sortDir;
+    merged.sort((a, b) => {
+      let va, vb;
+      if (sortKey === '__impr__') { va = a.hasEvents ? 1 : 0; vb = b.hasEvents ? 1 : 0; return (va - vb) * sd; }
+      if (sortKey === '__km__') { return (parseKmM(a.kmRange.split('~')[0]) - parseKmM(b.kmRange.split('~')[0])) * sd; }
+      if (dates.includes(sortKey)) {
+        va = (paMap.get((a.location_name || '') + '|' + sortKey) || []).length;
+        vb = (paMap.get((b.location_name || '') + '|' + sortKey) || []).length;
+        return (va - vb) * sd;
+      }
+      va = String(a[sortKey] ?? '').toLowerCase();
+      vb = String(b[sortKey] ?? '').toLowerCase();
+      return va < vb ? -sd : va > vb ? sd : 0;
+    });
+  }
+
+  // ── 建立 Excel 工作簿 ──
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('PA Log');
+  const FIX = 6; // 固定欄數
+
+  // 標題列
+  const hdrRow = ws.addRow([
+    'KM+M', 'location_name', 'marea', 'mcenter', 'memo', '改善狀態',
+    ...dates, '註記',
+  ]);
+  hdrRow.height = 20;
+  hdrRow.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FF00D6FF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1328' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = { bottom: { style: 'medium', color: { argb: 'FF2B7CFF' } } };
+  });
+
+  // 資料列
+  for (const row of merged) {
+    const dateDetails = dates.map(d => paMap.get((row.location_name || '') + '|' + d) || []);
+
+    // 收集此地點所有日期的注記並依序編號
+    let noteNum = 1;
+    const noteLines = [];
+    dates.forEach(d => {
+      const ck = (row.location_name || '') + '\x00' + d;
+      (noteStore[ck] || []).forEach(n => {
+        const meta = [n.date, n.author].filter(Boolean).join(' ');
+        noteLines.push(`${noteNum++}. ${meta ? '[' + meta + '] ' : ''}${n.content}`);
+      });
+    });
+
+    const rowVals = [
+      row.kmRange, row.location_name, row.marea, row.mcenter, row.memo,
+      row.hasEvents ? '未改善' : '已改善',
+      ...dateDetails.map(d => d.length > 0 ? d.length : ''),
+      noteLines.join('\n'),
+    ];
+
+    const exRow = ws.addRow(rowVals);
+
+    // 改善狀態著色
+    exRow.getCell(6).font = { color: { argb: row.hasEvents ? 'FFFF4444' : 'FF4DFFAA' }, bold: true };
+
+    // 日期欄位著色：VoLTE=藍、YouTube=橘、兩者都有=紅
+    dateDetails.forEach((detail, di) => {
+      if (!detail.length) return;
+      const cell = exRow.getCell(FIX + di + 1);
+      const hasVolte = detail.some(r => /volte/i.test(r.measurement_Script || ''));
+      const hasYt    = detail.some(r => /yt|youtube/i.test(r.measurement_Script || ''));
+      let argb;
+      if      (hasVolte && hasYt) argb = 'FFFF0000'; // 紅
+      else if (hasVolte)          argb = 'FF0070C0'; // 藍
+      else if (hasYt)             argb = 'FFED7D31'; // 橘
+      if (argb) {
+        cell.font = { color: { argb }, bold: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+    });
+
+    // 注記欄換行
+    if (noteLines.length) {
+      exRow.getCell(FIX + dates.length + 1).alignment = { wrapText: true, vertical: 'top' };
+    }
+  }
+
+  // 欄寬設定
+  ws.getColumn(1).width = 18;  // KM+M
+  ws.getColumn(2).width = 26;  // location_name
+  ws.getColumn(3).width = 10;  // marea
+  ws.getColumn(4).width = 10;  // mcenter
+  ws.getColumn(5).width = 16;  // memo
+  ws.getColumn(6).width = 10;  // 改善狀態
+  dates.forEach((_, i) => { ws.getColumn(FIX + i + 1).width = 13; });
+  ws.getColumn(FIX + dates.length + 1).width = 45; // 註記
+
+  // 凍結第一列
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+  // 觸發下載
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date();
+  a.download = `THSR_PA_${today.getFullYear()}${pad2(today.getMonth()+1)}${pad2(today.getDate())}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // 初始化 GitHub badge 狀態
 updateGhBadge(ghConfigured() ? 'ok' : '');
