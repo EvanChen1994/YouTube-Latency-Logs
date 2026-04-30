@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v1.9</title>
+  <title>THSR PA Log Table  v2.0</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -1369,15 +1369,9 @@ async function initGhSync() {
   try {
     const remote = await withRetry(() => ghFetchNotes());
     if (remote && typeof remote === 'object') {
-      // 合併策略：remote 為主，但本機獨有的 key 也保留
-      // 同一個 key 以 remote 為準（確保多人同步一致）
-      // 同步時一併遷移舊分隔符（\x00 / \uFFFD → \t）
-      const normalized = migrateNoteKeys(remote);
-      const merged = { ...noteStore };
-      for (const [k, v] of Object.entries(normalized)) {
-        merged[k] = v;
-      }
-      noteStore = merged;
+      // 同步策略：以 remote 為唯一真實來源，完整取代 local
+      // 如此刪除操作才能正確同步給其他人（若僅合併則遠端刪除永遠無法傳播）
+      noteStore = migrateNoteKeys(remote);
       localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
       applyAndRender();
     }
@@ -1479,10 +1473,8 @@ btnNoteAdd.addEventListener('click', () => {
       .then(() => withRetry(() => ghFetchNotes()))
       .then(remote => {
         if (remote && typeof remote === 'object') {
-          const normalized = migrateNoteKeys(remote);
-          const merged = { ...noteStore };
-          for (const [k, v] of Object.entries(normalized)) merged[k] = v;
-          noteStore = merged;
+          // 同步策略：以 remote 為唯一真實來源（push 已完成，remote 必有我們的新資料）
+          noteStore = migrateNoteKeys(remote);
           localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
         }
         updateGhBadge('ok');
