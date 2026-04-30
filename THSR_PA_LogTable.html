@@ -487,12 +487,12 @@
       <button class="gh-modal-close" id="btnGhClose">關閉</button>
     </div>
     <div class="gh-row">
-      <label>Repository（owner/repo）</label>
-      <input class="note-field" id="ghInputRepo" type="text" placeholder="e.g. yourname/thsr-pa" autocomplete="off">
+      <label>Repository</label>
+      <input class="note-field" id="ghInputRepo" type="text" value="EvanChen1994/YouTube-Latency-Logs" readonly style="opacity:.5;cursor:default;">
     </div>
     <div class="gh-row">
-      <label>Branch（預設 main）</label>
-      <input class="note-field" id="ghInputBranch" type="text" placeholder="main" autocomplete="off">
+      <label>Branch</label>
+      <input class="note-field" id="ghInputBranch" type="text" value="main" readonly style="opacity:.5;cursor:default;">
     </div>
     <div class="gh-row">
       <label>Personal Access Token（PAT）—寫入者才需要</label>
@@ -500,9 +500,8 @@
       <div class="gh-hint">只需 <b>repo &gt; Contents (read &amp; write)</b> 權限。PAT 僅儲存於本機 localStorage，不會傳給他人。</div>
     </div>
     <div class="gh-row">
-      <label>notes.json 路徑（預設 notes.json）</label>
-      <input class="note-field" id="ghInputPath" type="text" placeholder="notes.json" autocomplete="off">
-      <div class="gh-hint">必須與 HTML 檔案在同一目錄，或填寫相對路徑，如 <b>data/notes.json</b>。</div>
+      <label>notes.json 路徑</label>
+      <input class="note-field" id="ghInputPath" type="text" value="notes.json" readonly style="opacity:.5;cursor:default;">
     </div>
     <div id="ghStatus" class="gh-status" style="color:var(--muted);"></div>
     <div class="gh-actions">
@@ -919,7 +918,31 @@ function hideTip() {
   tipVisible = false;
 }
 
+function showNoteTip(e, noteKey) {
+  const notes = noteStore[noteKey];
+  if (!notes || !notes.length) return;
+  let html = `<div class="tip-title">📝 註記 × ${notes.length} 則</div>`;
+  notes.forEach(n => {
+    html += `<div style="margin:4px 0;padding:5px 8px;background:rgba(255,255,255,0.07);border-radius:6px;font-size:12px;">`
+          + (n.date   ? `<span style="color:#aad4ff;margin-right:6px;">${n.date}</span>` : '')
+          + (n.author ? `<span style="color:#ffd090;margin-right:8px;">${n.author}</span>` : '')
+          + `<span style="color:#e8e8e8;white-space:pre-wrap;">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`
+          + `</div>`;
+  });
+  paTooltip.innerHTML = html;
+  paTooltip.style.display = 'block';
+  tipVisible = true;
+  posTip(e);
+}
+
 document.getElementById('tBody').addEventListener('mouseover', e => {
+  // 齒輪圖示 hover → 顯示注記預覽
+  const ico = e.target.closest('.cell-note-ico[data-note-key]');
+  if (ico) {
+    showNoteTip(e, ico.dataset.noteKey);
+    return;
+  }
+  // 數值 hover → 顯示 PA 事件統計
   const sp = e.target.closest('.cell-val[data-tip-data]');
   if (!sp) return;
   try {
@@ -931,7 +954,7 @@ document.getElementById('tBody').addEventListener('mousemove', e => {
   if (tipVisible) posTip(e);
 });
 document.getElementById('tBody').addEventListener('mouseout', e => {
-  if (!e.target.closest('.cell-val')) hideTip();
+  if (!e.target.closest('.cell-val') && !e.target.closest('.cell-note-ico')) hideTip();
 });
 
 function renderPivot(locRows, paRows) {
@@ -1170,11 +1193,21 @@ init();
 
 // ── GitHub sync config ────────────────────────────────────────────
 const GH_CONFIG_KEY = 'thsr_pa_gh_config';
-let ghCfg = { repo:'', branch:'main', pat:'', path:'notes.json' };
+// ── 預設值：固定指向此 repo，任何人開啟都自動讀取 notes.json ──
+let ghCfg = {
+  repo:   'EvanChen1994/YouTube-Latency-Logs',
+  branch: 'main',
+  pat:    '',          // 只有要寫入注記的人需要填
+  path:   'notes.json',
+};
 
 function loadGhConfig() {
-  try { ghCfg = { ...ghCfg, ...JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}') }; }
-  catch {}
+  // 從 localStorage 讀取，但 repo/branch/path 若使用者沒改過就維持預設
+  try {
+    const saved = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
+    // 只覆蓋 pat（其他欄位維持固定預設，避免誤改）
+    if (saved.pat) ghCfg.pat = saved.pat;
+  } catch {}
 }
 function saveGhConfig() {
   localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghCfg));
@@ -1389,10 +1422,7 @@ const ghInputPath  = document.getElementById('ghInputPath');
 const ghStatus     = document.getElementById('ghStatus');
 
 function openGhModal() {
-  ghInputRepo.value   = ghCfg.repo;
-  ghInputBranch.value = ghCfg.branch || 'main';
   ghInputPat.value    = ghCfg.pat;
-  ghInputPath.value   = ghCfg.path || 'notes.json';
   ghStatus.textContent = '';
   ghBackdrop.classList.add('open');
 }
@@ -1403,42 +1433,36 @@ document.getElementById('btnGhClose').addEventListener('click', closeGhModal);
 ghBackdrop.addEventListener('click', e => { if (e.target === ghBackdrop) closeGhModal(); });
 
 document.getElementById('btnGhSave').addEventListener('click', () => {
-  ghCfg.repo   = ghInputRepo.value.trim();
-  ghCfg.branch = ghInputBranch.value.trim() || 'main';
-  ghCfg.pat    = ghInputPat.value.trim();
-  ghCfg.path   = ghInputPath.value.trim() || 'notes.json';
+  ghCfg.pat = ghInputPat.value.trim();
   saveGhConfig();
   ghStatus.style.color = '#4dffaa';
-  ghStatus.textContent = '✅ 設定已儲存，重新載入頁面即生效';
-  updateGhBadge(ghConfigured() ? 'ok' : '');
+  ghStatus.textContent = '✅ PAT 已儲存';
+  updateGhBadge(ghCfg.pat ? 'ok' : '');
 });
 
 document.getElementById('btnGhClear').addEventListener('click', () => {
-  if (!confirm('確定清除 GitHub 設定？')) return;
-  ghCfg = { repo:'', branch:'main', pat:'', path:'notes.json' };
+  if (!confirm('確定清除 PAT？')) return;
+  ghCfg.pat = '';
   saveGhConfig();
-  ghInputRepo.value=''; ghInputBranch.value='main'; ghInputPat.value=''; ghInputPath.value='notes.json';
+  ghInputPat.value = '';
   ghStatus.style.color = 'var(--muted)';
   ghStatus.textContent = '已清除。';
   updateGhBadge('');
 });
 
 document.getElementById('btnGhTest').addEventListener('click', async () => {
-  const repo   = ghInputRepo.value.trim();
-  const branch = ghInputBranch.value.trim() || 'main';
-  const path   = ghInputPath.value.trim() || 'notes.json';
-  const pat    = ghInputPat.value.trim();
+  const pat = ghInputPat.value.trim();
   ghStatus.style.color = '#ffd090';
   ghStatus.textContent = '測試中…';
   try {
-    const url = `https://raw.githubusercontent.com/${repo}/${branch}/${path}?v=${Date.now()}`;
+    const url = `https://raw.githubusercontent.com/${ghCfg.repo}/${ghCfg.branch}/${ghCfg.path}?v=${Date.now()}`;
     const res = await fetch(url, pat ? { headers:{ Authorization:'Bearer '+pat } } : {});
     if (res.status === 200 || res.status === 404) {
       ghStatus.style.color = '#4dffaa';
       ghStatus.textContent = '✅ 連線成功！' + (res.status===404 ? '（notes.json 尚未建立，首次儲存自動建立）' : '');
     } else {
       ghStatus.style.color = '#ff8080';
-      ghStatus.textContent = `⚠️ HTTP ${res.status}，請檢查 owner/repo 是否正確`;
+      ghStatus.textContent = `⚠️ HTTP ${res.status}`;
     }
   } catch (e) {
     ghStatus.style.color = '#ff8080';
