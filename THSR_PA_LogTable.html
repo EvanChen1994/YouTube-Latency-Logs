@@ -1,0 +1,1453 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>THSR PA Log Table</title>
+  <style>
+    :root {
+      --bg0:#070b16;
+      --bg1:#0b1020;
+      --panel:#0a1328;
+      --line:rgba(255,255,255,0.10);
+      --line2:rgba(255,255,255,0.16);
+      --txt:#e7eefc;
+      --muted:#9ab0d8;
+      --accent:#2b7cff;
+      --accent2:#00d6ff;
+      --danger:#ff2b2b;
+      --orange:#ff9a3c;
+      --purple:#b300ff;
+    }
+    html, body {
+      height:100%; margin:0;
+      background:var(--bg1);
+      color:var(--txt);
+      font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    }
+
+    /* ===== App layout ===== */
+    .app { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+    /* ===== Top filter bar ===== */
+    .top-bar {
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      padding:8px 14px;
+      background:rgba(10,19,40,0.97);
+      border-bottom:1px solid var(--line2);
+      backdrop-filter:blur(6px);
+      box-shadow:0 4px 16px rgba(0,0,0,0.35);
+      z-index:200;
+    }
+    .bar-title {
+      font-size:14px;
+      font-weight:1000;
+      color:var(--accent2);
+      white-space:nowrap;
+      letter-spacing:.3px;
+      text-shadow:0 0 12px rgba(0,214,255,0.30);
+    }
+    .bar-sep { width:1px; height:20px; background:var(--line2); margin:0 2px; flex:0 0 auto; }
+
+    /* ===== Multiselect ===== */
+    .msel { position:relative; display:flex; align-items:center; gap:6px; }
+    .msel .lbl {
+      font-size:11px; font-weight:1000;
+      color:rgba(231,238,252,0.86); white-space:nowrap;
+    }
+    .msel-btn {
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.05);
+      color:var(--txt);
+      border-radius:10px;
+      padding:5px 7px;
+      cursor:pointer;
+      font-weight:1000;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:8px; user-select:none; font-size:11px;
+    }
+    .msel-btn:hover { background:rgba(255,154,60,0.10); border-color:rgba(255,154,60,0.30); }
+    .msel-btn .sum {
+      flex:1; text-align:left; font-size:10px;
+      color:rgba(154,176,216,0.95);
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis; max-width:110px;
+    }
+    .msel-menu {
+      position:fixed; left:0; top:0;
+      box-sizing:border-box; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(6,18,40,0.98);
+      box-shadow:0 18px 40px rgba(0,0,0,0.55);
+      display:none; z-index:100000; padding:8px;
+      overflow:hidden; max-width:min(92vw,360px);
+      overscroll-behavior:contain;
+    }
+    .msel-tools {
+      display:flex; gap:8px; margin-bottom:8px;
+      position:sticky; top:0; background:rgba(6,18,40,0.98);
+      padding-bottom:8px; z-index:1;
+    }
+    .tbtn {
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.05);
+      color:var(--txt); border-radius:10px;
+      padding:5px 8px; font-weight:1000;
+      cursor:pointer; font-size:11px; user-select:none; white-space:nowrap;
+    }
+    .tbtn:hover { background:rgba(43,124,255,0.10); border-color:rgba(43,124,255,0.30); }
+    .msel-menu .list-scroll {
+      max-height:200px; overflow-y:auto; overflow-x:hidden; padding-right:2px;
+    }
+    .msel-menu .item {
+      display:flex; align-items:center; gap:8px;
+      padding:6px 6px; border-radius:8px; cursor:pointer; user-select:none;
+      color:rgba(231,238,252,0.92); border:1px solid transparent;
+      width:100%; box-sizing:border-box; white-space:nowrap;
+    }
+    .msel-menu .item:hover { background:rgba(43,124,255,0.12); border-color:rgba(43,124,255,0.20); }
+    .msel-menu input { cursor:pointer; }
+
+    /* ===== Buttons ===== */
+    .btn {
+      border:1px solid var(--line2);
+      background:rgba(255,255,255,0.04);
+      border-radius:10px; padding:6px 10px;
+      cursor:pointer; font-weight:800; user-select:none;
+      display:flex; align-items:center; gap:6px;
+      white-space:nowrap; color:var(--txt);
+      transition:.15s ease; font-size:12px;
+    }
+    .btn:hover {
+      background:rgba(43,124,255,0.10);
+      border-color:rgba(43,124,255,0.40);
+      box-shadow:0 0 18px rgba(43,124,255,0.12);
+    }
+    .status-tag { font-size:11px; color:var(--muted); white-space:nowrap; }
+
+    /* ===== Main scroll area ===== */
+    .main-area { flex:1; overflow:auto; position:relative; }
+
+    /* ===== Pivot table ===== */
+    #pivotTable {
+      border-collapse:collapse;
+      font-size:11px;
+      white-space:nowrap;
+      table-layout:auto;
+      width:max-content;
+    }
+    #pivotTable th,
+    #pivotTable td {
+      border-right:1px solid rgba(255,255,255,0.07);
+      border-bottom:1px solid rgba(255,255,255,0.07);
+      padding:3px 6px;
+      vertical-align:middle;
+    }
+
+    /* Sticky header row */
+    #pivotTable thead th {
+      position:sticky;
+      top:0;
+      z-index:40;
+      background:rgba(10,19,40,0.99);
+      font-weight:1000;
+      text-align:center;
+      color:var(--accent2);
+      border-bottom:2px solid rgba(43,124,255,0.35);
+    }
+
+    /* Sticky left fixed columns */
+    #pivotTable td.fc,
+    #pivotTable th.fc {
+      position:sticky;
+      background:rgba(10,19,40,0.99);
+      z-index:30;
+    }
+    #pivotTable thead th.fc { z-index:50; }
+    #pivotTable tbody tr:hover td { background:rgba(43,124,255,0.07); }
+    #pivotTable tbody tr:hover td.fc { background:rgba(8,22,56,0.99); }
+
+    /* Last frozen column: right shadow to separate from scrollable area */
+    #pivotTable th.fc-impr,
+    #pivotTable td.fc-impr {
+      border-right:2px solid rgba(43,124,255,0.35) !important;
+      box-shadow:4px 0 10px rgba(0,0,0,0.45);
+    }
+
+    /* Sortable header */
+    #pivotTable th.sortable {
+      cursor:pointer;
+      user-select:none;
+    }
+    #pivotTable th.sortable:hover {
+      background:rgba(20,50,110,0.99);
+      color:#fff;
+    }
+    .sort-ind {
+      display:inline-block;
+      margin-left:4px;
+      font-size:9px;
+      opacity:0.5;
+      vertical-align:middle;
+    }
+    #pivotTable th.sort-asc  .sort-ind,
+    #pivotTable th.sort-desc .sort-ind { opacity:1; color:var(--accent2); }
+
+    /* Fixed columns: auto-width; left offsets computed in JS */
+    .fc-km, .fc-loc, .fc-mare, .fc-mcen, .fc-memo, .fc-impr { white-space:nowrap; }
+
+    /* 改善狀態 badge */
+    .badge-impr { display:inline-block; border-radius:5px; padding:1px 6px; font-size:10px; font-weight:800; }
+    .badge-impr.bad  { background:rgba(255,43,43,0.22);  border:1px solid rgba(255,43,43,0.45);  color:#ff8080; }
+    .badge-impr.good { background:rgba(0,200,100,0.18);  border:1px solid rgba(0,200,100,0.40);  color:#4dffaa; }
+
+    /* improvement filter button group */
+    .impr-group { display:flex; align-items:center; gap:4px; }
+    .impr-group .lbl { font-size:11px; font-weight:1000; color:rgba(231,238,252,0.86); white-space:nowrap; margin-right:2px; }
+    .impr-btn {
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.05);
+      color:var(--txt); border-radius:8px;
+      padding:4px 8px; cursor:pointer; user-select:none;
+      font-size:11px; font-weight:800; white-space:nowrap;
+      transition:.12s ease;
+    }
+    .impr-btn:hover  { background:rgba(43,124,255,0.12); border-color:rgba(43,124,255,0.35); }
+    .impr-btn.active { background:rgba(43,124,255,0.22); border-color:rgba(43,124,255,0.55); color:var(--accent2); }
+
+    /* tunnel toggle */
+    .toggle-label {
+      display:flex; align-items:center; gap:6px;
+      border:1px solid var(--line2);
+      background:rgba(255,255,255,0.04);
+      border-radius:10px; padding:5px 9px;
+      cursor:pointer; font-weight:800; font-size:11px;
+      color:var(--txt); user-select:none; white-space:nowrap;
+      transition:.15s ease;
+    }
+    .toggle-label:hover { background:rgba(43,124,255,0.10); border-color:rgba(43,124,255,0.40); }
+    .toggle-label input[type="checkbox"] { width:13px; height:13px; cursor:pointer; margin:0; }
+
+    /* Date column header — horizontal */
+    th.date-th { padding:4px 8px; text-align:center; white-space:nowrap; font-size:11px; font-weight:800; }
+
+    /* PA detail tooltip card */
+    #paTooltip {
+      position:fixed;
+      z-index:200000;
+      pointer-events:none;
+      display:none;
+      background:rgba(6,18,40,0.97);
+      border:1px solid rgba(43,124,255,0.40);
+      border-radius:12px;
+      box-shadow:0 14px 36px rgba(0,0,0,0.60);
+      padding:10px 12px;
+      min-width:200px;
+      max-width:420px;
+      backdrop-filter:blur(8px);
+    }
+    #paTooltip .tip-title {
+      font-size:11px; font-weight:1000; color:var(--accent2);
+      margin-bottom:8px; letter-spacing:.2px;
+    }
+    #paTooltip .tip-combo-row {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      font-size:11px; margin-bottom:4px;
+      padding:3px 7px;
+      border-radius:6px;
+      border-left:3px solid;
+    }
+    #paTooltip .tip-combo-row:last-child { margin-bottom:0; }
+    #paTooltip .tip-combo-label {
+      font-weight:800; white-space:nowrap; letter-spacing:.1px;
+    }
+    #paTooltip .tip-combo-cnt {
+      font-weight:1000; white-space:nowrap; font-size:12px;
+    }
+
+    /* Data cell content */
+    .cell-val {
+      display:inline-flex;
+      align-items:center; justify-content:center;
+      min-width:18px; height:16px;
+      background:rgba(43,124,255,0.22);
+      border:1px solid rgba(43,124,255,0.35);
+      border-radius:4px;
+      padding:0 3px;
+      color:#fff;
+      font-weight:800;
+      font-size:10px;
+      cursor:pointer;
+      transition:.12s ease;
+    }
+    .cell-val:hover {
+      background:rgba(43,124,255,0.45);
+      border-color:rgba(43,124,255,0.70);
+    }
+
+    /* Note icon inside cell */
+    .cell-note-ico {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:14px; height:14px;
+      background:rgba(255,154,60,0.25);
+      border:1px solid rgba(255,154,60,0.55);
+      border-radius:3px;
+      font-size:9px;
+      color:#ffd090;
+      cursor:pointer;
+      margin-left:2px;
+      vertical-align:middle;
+      flex-shrink:0;
+      transition:.12s ease;
+    }
+    .cell-note-ico:hover { background:rgba(255,154,60,0.50); }
+
+    /* Note modal */
+    #noteBackdrop {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.55);
+      z-index:50000;
+      display:none;
+      align-items:center; justify-content:center;
+    }
+    #noteBackdrop.open { display:flex; }
+    #noteModal {
+      background:rgba(8,18,42,0.99);
+      border:1px solid rgba(43,124,255,0.45);
+      border-radius:16px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.70);
+      padding:20px 22px;
+      width:min(640px,95vw);
+      max-height:85vh;
+      display:flex; flex-direction:column; gap:14px;
+      backdrop-filter:blur(10px);
+    }
+    .note-modal-head {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+    }
+    .note-modal-title {
+      font-size:13px; font-weight:1000; color:var(--accent2);
+      letter-spacing:.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .note-modal-close {
+      border:1px solid var(--line2); background:rgba(255,255,255,0.04);
+      color:var(--txt); border-radius:8px; padding:4px 10px;
+      cursor:pointer; font-weight:800; font-size:12px; flex-shrink:0;
+      transition:.12s ease;
+    }
+    .note-modal-close:hover { background:rgba(255,43,43,0.18); border-color:rgba(255,43,43,0.45); }
+
+    /* Existing notes list */
+    .note-list {
+      overflow-y:auto; max-height:260px;
+      display:flex; flex-direction:column; gap:8px;
+      padding-right:4px;
+    }
+    .note-item {
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:10px;
+      padding:8px 10px;
+      position:relative;
+    }
+    .note-item-meta {
+      display:flex; gap:10px; align-items:baseline;
+      font-size:10px; color:var(--muted); margin-bottom:4px;
+    }
+    .note-item-date { font-weight:900; color:#80aaff; }
+    .note-item-author { font-weight:800; }
+    .note-item-body { font-size:12px; color:var(--txt); line-height:1.5; white-space:pre-wrap; }
+    .note-item-del {
+      position:absolute; top:6px; right:8px;
+      border:none; background:transparent; color:rgba(255,255,255,0.25);
+      cursor:pointer; font-size:13px; line-height:1; padding:2px 4px;
+      border-radius:5px; transition:.12s ease;
+    }
+    .note-item-del:hover { color:#ff6060; background:rgba(255,43,43,0.15); }
+    .note-empty { font-size:12px; color:var(--muted); text-align:center; padding:12px 0; }
+
+    /* Add note form */
+    .note-form {
+      border-top:1px solid rgba(255,255,255,0.10);
+      padding-top:12px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .note-form-title { font-size:11px; font-weight:1000; color:var(--accent2); margin-bottom:2px; }
+    .note-form-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .note-form-row label {
+      font-size:11px; font-weight:800; color:var(--muted); white-space:nowrap;
+    }
+    .note-field {
+      flex:1; min-width:80px;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:8px; padding:5px 8px;
+      color:var(--txt); font-size:12px;
+      outline:none; transition:.12s ease;
+    }
+    .note-field:focus { border-color:rgba(43,124,255,0.60); background:rgba(43,124,255,0.08); }
+    .note-textarea {
+      width:100%; box-sizing:border-box;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:8px; padding:7px 10px;
+      color:var(--txt); font-size:12px; font-family:inherit;
+      resize:vertical; min-height:72px;
+      outline:none; transition:.12s ease;
+    }
+    .note-textarea:focus { border-color:rgba(43,124,255,0.60); background:rgba(43,124,255,0.08); }
+    .note-add-btn {
+      align-self:flex-end;
+      border:1px solid rgba(43,124,255,0.50);
+      background:rgba(43,124,255,0.18);
+      color:var(--txt); border-radius:10px; padding:6px 14px;
+      cursor:pointer; font-weight:800; font-size:12px;
+      transition:.12s ease;
+    }
+    .note-add-btn:hover { background:rgba(43,124,255,0.35); }
+
+    /* GitHub sync badge */
+    .gh-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.04);
+      border-radius:10px; padding:5px 9px;
+      font-size:11px; font-weight:800; white-space:nowrap; cursor:pointer;
+      color:var(--muted); transition:.15s ease;
+    }
+    .gh-badge:hover { background:rgba(43,124,255,0.10); border-color:rgba(43,124,255,0.40); }
+    .gh-badge.ok     { color:#4dffaa; border-color:rgba(0,200,100,0.40); background:rgba(0,200,100,0.08); }
+    .gh-badge.err    { color:#ff8080; border-color:rgba(255,43,43,0.40);  background:rgba(255,43,43,0.08); }
+    .gh-badge.syncing{ color:#ffd090; border-color:rgba(255,154,60,0.40); background:rgba(255,154,60,0.08); }
+
+    /* GitHub settings modal */
+    #ghBackdrop {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.55);
+      z-index:60000;
+      display:none; align-items:center; justify-content:center;
+    }
+    #ghBackdrop.open { display:flex; }
+    #ghModal {
+      background:rgba(8,18,42,0.99);
+      border:1px solid rgba(43,124,255,0.45);
+      border-radius:16px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.70);
+      padding:22px 24px;
+      width:min(500px,95vw);
+      display:flex; flex-direction:column; gap:14px;
+      backdrop-filter:blur(10px);
+    }
+    .gh-modal-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .gh-modal-title { font-size:13px; font-weight:1000; color:var(--accent2); }
+    .gh-modal-close {
+      border:1px solid var(--line2); background:rgba(255,255,255,0.04);
+      color:var(--txt); border-radius:8px; padding:4px 10px;
+      cursor:pointer; font-weight:800; font-size:12px; transition:.12s ease;
+    }
+    .gh-modal-close:hover { background:rgba(255,43,43,0.18); border-color:rgba(255,43,43,0.45); }
+    .gh-row { display:flex; flex-direction:column; gap:4px; }
+    .gh-row label { font-size:11px; font-weight:800; color:var(--muted); }
+    .gh-row .note-field { width:100%; box-sizing:border-box; }
+    .gh-hint { font-size:10px; color:rgba(154,176,216,0.65); line-height:1.5; }
+    .gh-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+    .gh-btn {
+      border:1px solid rgba(43,124,255,0.50);
+      background:rgba(43,124,255,0.18);
+      color:var(--txt); border-radius:10px; padding:6px 14px;
+      cursor:pointer; font-weight:800; font-size:12px; transition:.12s ease;
+    }
+    .gh-btn:hover { background:rgba(43,124,255,0.35); }
+    .gh-btn.danger { border-color:rgba(255,43,43,0.50); background:rgba(255,43,43,0.14); }
+    .gh-btn.danger:hover { background:rgba(255,43,43,0.30); }
+    .gh-status { font-size:11px; min-height:16px; font-weight:700; }
+
+    /* Loading overlay */
+    #loadOverlay {
+      position:fixed; inset:0;
+      background:rgba(7,11,22,0.90);
+      z-index:9999;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column; gap:10px;
+      font-size:15px; font-weight:1000; color:var(--accent2);
+    }
+    #loadOverlay .sub { font-size:12px; color:var(--muted); font-weight:700; }
+  </style>
+</head>
+<body>
+
+<!-- GitHub Settings Modal -->
+<div id="ghBackdrop">
+  <div id="ghModal">
+    <div class="gh-modal-head">
+      <div class="gh-modal-title">⚙️ GitHub 同步設定</div>
+      <button class="gh-modal-close" id="btnGhClose">關閉</button>
+    </div>
+    <div class="gh-row">
+      <label>Repository（owner/repo）</label>
+      <input class="note-field" id="ghInputRepo" type="text" placeholder="e.g. yourname/thsr-pa" autocomplete="off">
+    </div>
+    <div class="gh-row">
+      <label>Branch（預設 main）</label>
+      <input class="note-field" id="ghInputBranch" type="text" placeholder="main" autocomplete="off">
+    </div>
+    <div class="gh-row">
+      <label>Personal Access Token（PAT）—寫入者才需要</label>
+      <input class="note-field" id="ghInputPat" type="password" placeholder="ghp_xxxx…" autocomplete="off">
+      <div class="gh-hint">只需 <b>repo &gt; Contents (read &amp; write)</b> 權限。PAT 僅儲存於本機 localStorage，不會傳給他人。</div>
+    </div>
+    <div class="gh-row">
+      <label>notes.json 路徑（預設 notes.json）</label>
+      <input class="note-field" id="ghInputPath" type="text" placeholder="notes.json" autocomplete="off">
+      <div class="gh-hint">必須與 HTML 檔案在同一目錄，或填寫相對路徑，如 <b>data/notes.json</b>。</div>
+    </div>
+    <div id="ghStatus" class="gh-status" style="color:var(--muted);"></div>
+    <div class="gh-actions">
+      <button class="gh-btn danger" id="btnGhClear">清除設定</button>
+      <button class="gh-btn" id="btnGhTest">測試連線</button>
+      <button class="gh-btn" id="btnGhSave">儲存設定</button>
+    </div>
+  </div>
+</div>
+  <div>載入中…</div>
+  <div class="sub" id="loadSub">讀取 CSV…</div>
+</div>
+
+<div id="paTooltip"></div>
+
+<!-- Note Modal -->
+<div id="noteBackdrop">
+  <div id="noteModal">
+    <div class="note-modal-head">
+      <div class="note-modal-title" id="noteModalTitle">註記</div>
+      <button class="note-modal-close" id="btnNoteClose">關閉</button>
+    </div>
+    <div class="note-list" id="noteList"></div>
+    <div class="note-form">
+      <div class="note-form-title">新增註記</div>
+      <div class="note-form-row">
+        <label>日期</label>
+        <input class="note-field" id="noteInputDate" type="text" placeholder="YYYY/MM/DD" style="max-width:110px;">
+        <label>填寫人</label>
+        <input class="note-field" id="noteInputAuthor" type="text" placeholder="填寫人" style="max-width:120px;">
+      </div>
+      <textarea class="note-textarea" id="noteInputContent" placeholder="內容…"></textarea>
+      <button class="note-add-btn" id="btnNoteAdd">新增</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="top-bar">
+    <div class="bar-title">THSR PA Log Table</div>
+    <div class="bar-sep"></div>
+    <!-- 改善狀態 filter (放最前面) -->
+    <div class="impr-group">
+      <div class="lbl">改善狀態</div>
+      <button class="impr-btn active" data-impr="all">全選</button>
+      <button class="impr-btn" data-impr="bad">未改善</button>
+      <button class="impr-btn" data-impr="good">已改善</button>
+    </div>
+    <div class="bar-sep"></div>
+    <div id="filterMount" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"></div>
+    <div class="bar-sep"></div>
+    <label class="toggle-label" title="勾選=隱藏含有**的隧道路段">
+      <input type="checkbox" id="chkHideTunnel" checked>
+      <span>隱藏隧道</span>
+    </label>
+    <div class="btn" id="btnClear">清除篩選</div>
+    <div class="bar-sep"></div>
+    <div class="gh-badge" id="ghBadge" title="GitHub 同步設定">☁️ 未設定</div>
+    <div class="status-tag" id="statusTag"></div>
+  </div>
+
+  <div class="main-area">
+    <table id="pivotTable">
+      <thead><tr id="tHead"></tr></thead>
+      <tbody id="tBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ============================================================
+   THSR PA Log Table  ver 1.0
+   - Top filter bar: Net / Script / Marea
+   - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
+   ============================================================ */
+
+// ── CSV parser ──────────────────────────────────────────────
+function parseCsv(text) {
+  const rows = [];
+  let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], nx = text[i + 1];
+    if (inQ) {
+      if (ch === '"' && nx === '"') { cur += '"'; i++; }
+      else if (ch === '"') inQ = false;
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+      else if (ch !== '\r') cur += ch;
+    }
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  while (rows.length && rows[rows.length - 1].every(v => !v.trim())) rows.pop();
+  if (rows.length < 2) return [];
+  let hdr = rows[0].map(h => h.trim());
+  if (hdr[0]?.charCodeAt(0) === 0xFEFF) hdr[0] = hdr[0].slice(1);
+  return rows.slice(1)
+    .filter(r => r.some(v => v.trim()))
+    .map(r => {
+      const o = {};
+      hdr.forEach((h, i) => o[h] = (r[i] ?? '').trim());
+      return o;
+    });
+}
+
+async function fetchNoStore(url) {
+  const res = await fetch(url + '?v=' + Date.now(), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status} (${url})`);
+  return res.text();
+}
+
+// ── Filter state ─────────────────────────────────────────────
+const filterState = {
+  measurement_NetWork: new Set(),
+  measurement_Script:  new Set(),
+  Marea:               new Set(),
+};
+const filterAllOptions = {
+  measurement_NetWork: [],
+  measurement_Script:  [],
+  Marea:               [],
+};
+
+let allPaRows  = [];
+let allLocRows = [];
+let hideTunnel = true;
+let improvementFilter = 'all'; // 'all' | 'bad' | 'good'
+let sortKey = null;  // null | fc key string | date string
+let sortDir = 1;     // 1=asc, -1=desc
+
+// ── Multiselect helper ────────────────────────────────────────
+let activeMenu = null;
+function closeActiveMenu() {
+  if (activeMenu) { activeMenu.style.display = 'none'; activeMenu = null; }
+}
+
+function summaryText(key) {
+  const all = filterAllOptions[key] || [];
+  const set = filterState[key];
+  if (set.size === 0) return 'none';
+  if (set.size === all.length) return 'all';
+  const arr = Array.from(set);
+  if (arr.length <= 2) return arr.join('、');
+  return `${arr.slice(0, 2).join('、')} +${arr.length - 2}`;
+}
+
+function createMultiSelect({ title, key, width = 120 }) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msel';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'lbl';
+  lbl.textContent = title;
+
+  const btn = document.createElement('div');
+  btn.className = 'msel-btn';
+  btn.style.width = width + 'px';
+  btn.innerHTML = `<span class="sum"></span><span>▾</span>`;
+
+  const menu = document.createElement('div');
+  menu.className = 'msel-menu';
+  document.body.appendChild(menu);
+
+  const tools = document.createElement('div');
+  tools.className = 'msel-tools';
+  tools.innerHTML = `
+    <div class="tbtn" data-act="all">全選</div>
+    <div class="tbtn" data-act="none">全不選</div>
+    <div class="tbtn" data-act="close">關閉</div>
+  `;
+  menu.appendChild(tools);
+
+  const list = document.createElement('div');
+  list.className = 'list-scroll';
+  menu.appendChild(list);
+
+  function updateBtn() {
+    const s = btn.querySelector('.sum');
+    s.textContent = summaryText(key);
+    s.title = Array.from(filterState[key]).join('、') || '(none)';
+  }
+
+  function posMenu() {
+    const r = btn.getBoundingClientRect();
+    menu.style.width = r.width + 'px';
+    let left = r.left, top = r.bottom + 6;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const mw = Math.min(menu.offsetWidth || r.width, vw - 12);
+    if (left + mw > vw - 6) left = Math.max(6, vw - mw - 6);
+    if (left < 6) left = 6;
+    const mh = menu.offsetHeight || 260;
+    if (top + mh > vh - 6) { top = r.top - mh - 6; if (top < 6) top = 6; }
+    menu.style.left = left + 'px';
+    menu.style.top  = top  + 'px';
+  }
+
+  function openMenu()  { closeActiveMenu(); menu.style.display = 'block'; activeMenu = menu; list.scrollTop = 0; posMenu(); }
+  function closeMenu() { menu.style.display = 'none'; if (activeMenu === menu) activeMenu = null; }
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.style.display === 'block' ? closeMenu() : openMenu();
+  });
+
+  tools.addEventListener('click', e => {
+    e.stopPropagation();
+    const act = e.target?.dataset?.act;
+    if (!act) return;
+    if (act === 'close') { closeMenu(); return; }
+    if (act === 'none') filterState[key].clear();
+    if (act === 'all') {
+      filterState[key].clear();
+      for (const v of filterAllOptions[key]) filterState[key].add(v);
+    }
+    updateBtn();
+    applyAndRender();
+    list.querySelectorAll('input').forEach(cb => cb.checked = filterState[key].has(cb.dataset.v));
+  });
+
+  document.addEventListener('click', e => {
+    if (!wrap.contains(e.target) && !menu.contains(e.target)) closeMenu();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+  window.addEventListener('resize', () => { if (menu.style.display === 'block') posMenu(); });
+  window.addEventListener('scroll', () => { if (menu.style.display === 'block') posMenu(); }, true);
+
+  wrap.appendChild(lbl);
+  wrap.appendChild(btn);
+
+  return {
+    el: wrap,
+    setOptions(options, defaultSelected = null) {
+      list.innerHTML = '';
+      filterAllOptions[key] = options.slice();
+      filterState[key].clear();
+      const sel = defaultSelected ? new Set(defaultSelected) : new Set(options);
+      for (const v of sel) if (options.includes(v)) filterState[key].add(v);
+      for (const v of options) {
+        const item = document.createElement('div');
+        item.className = 'item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = filterState[key].has(v);
+        cb.dataset.v = v;
+        const sp = document.createElement('div');
+        sp.textContent = v || '(blank)';
+        item.appendChild(cb);
+        item.appendChild(sp);
+        item.addEventListener('click', ev => {
+          ev.stopPropagation();
+          if (ev.target !== cb) cb.checked = !cb.checked;
+          if (cb.checked) filterState[key].add(v); else filterState[key].delete(v);
+          updateBtn();
+          applyAndRender();
+        });
+        list.appendChild(item);
+      }
+      updateBtn();
+    },
+    updateBtn,
+    closeMenu,
+  };
+}
+
+// ── Build filter widgets ──────────────────────────────────────
+const filterMount = document.getElementById('filterMount');
+const filterWidgets = {};
+
+filterWidgets.Net    = createMultiSelect({ title: 'Net',    key: 'measurement_NetWork', width: 110 });
+filterWidgets.Script = createMultiSelect({ title: 'Script', key: 'measurement_Script',  width: 130 });
+filterWidgets.Marea  = createMultiSelect({ title: 'Marea',  key: 'Marea',               width: 130 });
+
+filterMount.appendChild(filterWidgets.Net.el);
+filterMount.appendChild(filterWidgets.Script.el);
+filterMount.appendChild(filterWidgets.Marea.el);
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  closeActiveMenu();
+  improvementFilter = 'all';
+  document.querySelectorAll('.impr-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.impr === 'all')
+  );
+  filterWidgets.Net.setOptions(filterAllOptions.measurement_NetWork.slice());
+  filterWidgets.Script.setOptions(filterAllOptions.measurement_Script.slice());
+  filterWidgets.Marea.setOptions(filterAllOptions.Marea.slice());
+  applyAndRender();
+});
+
+// Tunnel hide
+document.getElementById('chkHideTunnel').addEventListener('change', e => {
+  hideTunnel = e.target.checked;
+  applyAndRender();
+});
+
+// Improvement filter buttons
+document.querySelectorAll('.impr-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    improvementFilter = btn.dataset.impr;
+    document.querySelectorAll('.impr-btn').forEach(b =>
+      b.classList.toggle('active', b === btn)
+    );
+    applyAndRender();
+  });
+});
+
+// ── Pivot render ──────────────────────────────────────────────
+function parseKmM(s) {
+  // e.g. "14+319.5" → 14319.5; "-3" → -3; "0+000.0" → 0
+  const t = String(s ?? '').trim();
+  const m = t.match(/^(-?\d+)\+(\d+(?:\.\d+)?)$/);
+  if (m) return parseFloat(m[1]) * 1000 + parseFloat(m[2]);
+  const n = parseFloat(t);
+  return isNaN(n) ? -Infinity : n;
+}
+
+function parseDateStr(s) {
+  // "2026/4/9" → Date; fallback to lexicographic
+  return new Date(String(s).replace(/\//g, '-'));
+}
+
+function updateStickyLefts() {
+  const ths = Array.from(document.querySelectorAll('#tHead th.fc'));
+  if (!ths.length) return;
+  let cum = 0;
+  const lefts = ths.map(th => { const l = cum; cum += th.getBoundingClientRect().width; return l; });
+  document.querySelectorAll('#pivotTable tr').forEach(tr => {
+    const fcs = tr.querySelectorAll('.fc');
+    fcs.forEach((td, i) => { if (i < lefts.length) td.style.left = Math.round(lefts[i]) + 'px'; });
+  });
+}
+
+// 延到兩個 rAF 確保瀏覽器完成 layout 再讀取寬度
+function scheduleUpdateStickyLefts() {
+  requestAnimationFrame(() => requestAnimationFrame(updateStickyLefts));
+}
+
+function applyAndRender() {
+  const pa = allPaRows.filter(r =>
+    filterState.measurement_NetWork.has(r.measurement_NetWork) &&
+    filterState.measurement_Script.has(r.measurement_Script) &&
+    filterState.Marea.has(r.Marea)
+  );
+  let loc = allLocRows.filter(r => filterState.Marea.has(r.marea));
+  if (hideTunnel) loc = loc.filter(r => !String(r.location_name || '').includes('**'));
+  renderPivot(loc, pa);
+  scheduleUpdateStickyLefts();
+  document.getElementById('statusTag').textContent =
+    `PA ${pa.length} 筆 ／ Loc ${loc.length} 筆`;
+}
+
+// 視窗縮放時重算
+window.addEventListener('resize', scheduleUpdateStickyLefts);
+
+// ── PA tooltip logic ──────────────────────────────────────────
+const paTooltip = document.getElementById('paTooltip');
+let tipVisible = false;
+
+// 配色池 — 各組合輪流取色
+const TIP_PALETTE = [
+  { bg:'rgba(43,124,255,0.14)',  border:'#2b7cff', text:'#a8cbff' },
+  { bg:'rgba(255,154,60,0.14)',  border:'#ff9a3c', text:'#ffd4a0' },
+  { bg:'rgba(0,214,255,0.12)',   border:'#00d6ff', text:'#8bf0ff' },
+  { bg:'rgba(179,0,255,0.14)',   border:'#b300ff', text:'#dca8ff' },
+  { bg:'rgba(0,200,100,0.14)',   border:'#00c864', text:'#7fffc0' },
+  { bg:'rgba(255,43,43,0.14)',   border:'#ff2b2b', text:'#ffaaaa' },
+  { bg:'rgba(255,220,0,0.12)',   border:'#ffdc00', text:'#fff08a' },
+  { bg:'rgba(0,180,180,0.14)',   border:'#00b4b4', text:'#88e8e8' },
+];
+
+function showTip(e, items) {
+  const total = items.length;
+  // 統計各組合的次數
+  const comboMap = new Map();
+  for (const d of items) {
+    const key = [d.Net, d.Type, d.Path, d.Script].filter(Boolean).join('_');
+    comboMap.set(key, (comboMap.get(key) || 0) + 1);
+  }
+  // 依次數降冪排序
+  const combos = [...comboMap.entries()].sort((a, b) => b[1] - a[1]);
+
+  let html = `<div class="tip-title">PA 事件 × ${total} 筆</div>`;
+  combos.forEach(([combo, cnt], idx) => {
+    const c = TIP_PALETTE[idx % TIP_PALETTE.length];
+    html += `<div class="tip-combo-row" style="background:${c.bg};border-left-color:${c.border};">`
+          + `<span class="tip-combo-label" style="color:${c.text};">${combo}</span>`
+          + `<span class="tip-combo-cnt" style="color:${c.text};">${cnt}筆</span>`
+          + `</div>`;
+  });
+  paTooltip.innerHTML = html;
+  paTooltip.style.display = 'block';
+  tipVisible = true;
+  posTip(e);
+}
+
+function posTip(e) {
+  const gap = 12;
+  const tw = paTooltip.offsetWidth  || 220;
+  const th = paTooltip.offsetHeight || 100;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + gap, y = e.clientY + gap;
+  if (x + tw > vw - 6) x = e.clientX - tw - gap;
+  if (y + th > vh - 6) y = e.clientY - th - gap;
+  if (x < 4) x = 4;
+  if (y < 4) y = 4;
+  paTooltip.style.left = x + 'px';
+  paTooltip.style.top  = y + 'px';
+}
+
+function hideTip() {
+  paTooltip.style.display = 'none';
+  tipVisible = false;
+}
+
+document.getElementById('tBody').addEventListener('mouseover', e => {
+  const sp = e.target.closest('.cell-val[data-tip-data]');
+  if (!sp) return;
+  try {
+    const items = JSON.parse(sp.dataset.tipData);
+    showTip(e, items);
+  } catch {}
+});
+document.getElementById('tBody').addEventListener('mousemove', e => {
+  if (tipVisible) posTip(e);
+});
+document.getElementById('tBody').addEventListener('mouseout', e => {
+  if (!e.target.closest('.cell-val')) hideTip();
+});
+
+function renderPivot(locRows, paRows) {
+  const thead = document.getElementById('tHead');
+  const tbody = document.getElementById('tBody');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  // ── Dates (x-axis) ──
+  const datesSet = new Set(paRows.map(r => r.Date).filter(Boolean));
+  const dates = Array.from(datesSet).sort((a, b) => parseDateStr(a) - parseDateStr(b));
+
+  // ── PA lookup map: location_name|date → detail rows[] ──
+  const paMap = new Map();
+  for (const r of paRows) {
+    const loc  = r.start_location_name || '';
+    const date = r.Date || '';
+    if (!loc || !date) continue;
+    const k = loc + '|' + date;
+    if (!paMap.has(k)) paMap.set(k, []);
+    paMap.get(k).push(r);
+  }
+
+  // ── Sort location rows by KM numeric then KM+M numeric ──
+  const rawSorted = locRows.slice().sort((a, b) => {
+    const ka = Number(a.KM), kb = Number(b.KM);
+    if (ka !== kb) return ka - kb;
+    return parseKmM(a['KM+M']) - parseKmM(b['KM+M']);
+  });
+
+  // ── Build set of locations with any PA events ──
+  const locWithEvents = new Set(paRows.map(r => r.start_location_name).filter(Boolean));
+
+  // ── Group by location_name (preserve first-seen order after sort) ──
+  const groupMap = new Map(); // location_name → { rows[] }
+  for (const r of rawSorted) {
+    const name = r.location_name || '';
+    if (!groupMap.has(name)) groupMap.set(name, []);
+    groupMap.get(name).push(r);
+  }
+
+  // ── Build merged rows ──
+  function mergeField(rows, field) {
+    const vals = [...new Set(rows.map(r => (r[field] ?? '').trim()).filter(Boolean))];
+    return vals.join('/');
+  }
+  let merged = [];
+  for (const [name, rows] of groupMap) {
+    const firstKmM = rows[0]['KM+M'] ?? '';
+    const lastKmM  = rows[rows.length - 1]['KM+M'] ?? '';
+    const kmRange  = firstKmM === lastKmM ? firstKmM : firstKmM + '~' + lastKmM;
+    merged.push({
+      location_name: name,
+      kmRange,
+      marea:   mergeField(rows, 'marea'),
+      mcenter: mergeField(rows, 'mcenter'),
+      memo:    mergeField(rows, 'memo'),
+      hasEvents: locWithEvents.has(name),
+    });
+  }
+
+  // ── Apply improvement filter ──
+  if (improvementFilter === 'bad')  merged = merged.filter(r => r.hasEvents);
+  if (improvementFilter === 'good') merged = merged.filter(r => !r.hasEvents);
+
+  // ── Build per-date count map for sorting ──
+  const dateTotalMap = new Map(); // locName|date → count (already in paMap)
+
+  // ── Apply sort ──
+  if (sortKey) {
+    const sd = sortDir;
+    merged.sort((a, b) => {
+      let va, vb;
+      if (sortKey === '__impr__') {
+        va = a.hasEvents ? 1 : 0;
+        vb = b.hasEvents ? 1 : 0;
+        return (va - vb) * sd;
+      }
+      if (sortKey === '__km__') {
+        va = parseKmM(a.kmRange.split('~')[0]);
+        vb = parseKmM(b.kmRange.split('~')[0]);
+        return (va - vb) * sd;
+      }
+      if (dates.includes(sortKey)) {
+        va = (paMap.get((a.location_name || '') + '|' + sortKey) || []).length;
+        vb = (paMap.get((b.location_name || '') + '|' + sortKey) || []).length;
+        return (va - vb) * sd;
+      }
+      va = String(a[sortKey] ?? '').toLowerCase();
+      vb = String(b[sortKey] ?? '').toLowerCase();
+      return va < vb ? -sd : va > vb ? sd : 0;
+    });
+  }
+
+  // ── Fixed column definitions ──
+  const fixedCols = [
+    { label: 'KM+M',          key: 'kmRange',        sortKey: '__km__',           cls: 'fc-km'   },
+    { label: 'location_name', key: 'location_name',  sortKey: 'location_name',    cls: 'fc-loc'  },
+    { label: 'marea',         key: 'marea',           sortKey: 'marea',            cls: 'fc-mare' },
+    { label: 'mcenter',       key: 'mcenter',         sortKey: 'mcenter',          cls: 'fc-mcen' },
+    { label: 'memo',          key: 'memo',            sortKey: 'memo',             cls: 'fc-memo' },
+    { label: '改善狀態',       key: null,              sortKey: '__impr__',          cls: 'fc-impr', isImpr: true },
+  ];
+
+  // ── Helper: make th sortable ──
+  function makeSortTh(th, key) {
+    th.classList.add('sortable');
+    const ind = document.createElement('span');
+    ind.className = 'sort-ind';
+    ind.textContent = '\u25B2\u25BC';
+    th.appendChild(ind);
+    if (sortKey === key) {
+      th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+      ind.textContent = sortDir === 1 ? '\u25B2' : '\u25BC';
+    }
+    th.addEventListener('click', () => {
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = 1; }
+      applyAndRender();
+    });
+  }
+
+  // ── Header row ──
+  for (const fc of fixedCols) {
+    const th = document.createElement('th');
+    th.className = 'fc ' + fc.cls;
+    th.textContent = fc.label;
+    makeSortTh(th, fc.sortKey);
+    thead.appendChild(th);
+  }
+  for (const d of dates) {
+    const th = document.createElement('th');
+    th.className = 'date-th';
+    th.textContent = d;
+    makeSortTh(th, d);
+    thead.appendChild(th);
+  }
+
+  // ── Body rows ──
+  const frag = document.createDocumentFragment();
+  for (const row of merged) {
+    const tr = document.createElement('tr');
+
+    for (const fc of fixedCols) {
+      const td = document.createElement('td');
+      td.className = 'fc ' + fc.cls;
+      if (fc.isImpr) {
+        const sp = document.createElement('span');
+        sp.className = 'badge-impr ' + (row.hasEvents ? 'bad' : 'good');
+        sp.textContent = row.hasEvents ? '未改善' : '已改善';
+        td.appendChild(sp);
+      } else {
+        td.textContent = row[fc.key] ?? '';
+      }
+      tr.appendChild(td);
+    }
+
+    for (const d of dates) {
+      const td = document.createElement('td');
+      td.style.textAlign = 'center';
+      const cellKey = (row.location_name || '') + '\x00' + d;
+      const detail = paMap.get((row.location_name || '') + '|' + d) || [];
+      if (detail.length > 0) {
+        const wrap = document.createElement('span');
+        wrap.style.cssText = 'display:inline-flex;align-items:center;gap:2px;';
+
+        const sp = document.createElement('span');
+        sp.className = 'cell-val';
+        sp.textContent = String(detail.length);
+        sp.dataset.tipData = JSON.stringify(detail.map(r => ({
+          Net:    r.measurement_NetWork || '',
+          Type:   r.measurement_Type   || '',
+          Path:   r.measurement_Path   || '',
+          Script: r.measurement_Script || '',
+        })));
+        sp.dataset.noteKey = cellKey;
+        sp.dataset.noteLabel = (row.location_name || '') + '  ·  ' + d;
+        wrap.appendChild(sp);
+
+        // note icon if notes exist
+        if ((noteStore[cellKey] || []).length > 0) {
+          const ico = document.createElement('span');
+          ico.className = 'cell-note-ico';
+          ico.textContent = '⚙️';
+          ico.title = '有註記';
+          ico.dataset.noteKey = cellKey;
+          ico.dataset.noteLabel = sp.dataset.noteLabel;
+          wrap.appendChild(ico);
+        }
+        td.appendChild(wrap);
+      }
+      tr.appendChild(td);
+    }
+
+    frag.appendChild(tr);
+  }
+  tbody.appendChild(frag);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+async function init() {
+  const loadSub = document.getElementById('loadSub');
+  try {
+    const base = new URL('./', location.href).toString();
+
+    loadSub.textContent = '讀取 PA_data.csv…';
+    const paTxt  = await fetchNoStore(base + 'PA_data.csv');
+    loadSub.textContent = '讀取 THSR_Location.csv…';
+    const locTxt = await fetchNoStore(base + 'THSR_Location.csv');
+
+    loadSub.textContent = '解析資料…';
+    allPaRows  = parseCsv(paTxt);
+    allLocRows = parseCsv(locTxt);
+
+    function uniqSorted(arr) {
+      return [...new Set(arr.filter(Boolean))].sort();
+    }
+
+    const nets    = uniqSorted(allPaRows.map(r => r.measurement_NetWork));
+    const scripts = uniqSorted(allPaRows.map(r => r.measurement_Script));
+    const mareas  = uniqSorted(allPaRows.map(r => r.Marea));
+
+    filterWidgets.Net.setOptions(nets);
+    filterWidgets.Script.setOptions(scripts);
+    filterWidgets.Marea.setOptions(mareas);
+
+    applyAndRender();
+    document.getElementById('loadOverlay').style.display = 'none';
+  } catch (e) {
+    document.getElementById('loadSub').textContent = '載入失敗：' + e.message;
+    console.error(e);
+  }
+}
+
+init();
+
+// ── GitHub sync config ────────────────────────────────────────────
+const GH_CONFIG_KEY = 'thsr_pa_gh_config';
+let ghCfg = { repo:'', branch:'main', pat:'', path:'notes.json' };
+
+function loadGhConfig() {
+  try { ghCfg = { ...ghCfg, ...JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}') }; }
+  catch {}
+}
+function saveGhConfig() {
+  localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghCfg));
+}
+function ghConfigured() { return !!(ghCfg.repo && ghCfg.path); }
+
+loadGhConfig();
+
+const ghBadge = document.getElementById('ghBadge');
+function updateGhBadge(state, msg) {
+  ghBadge.className = 'gh-badge ' + (state || '');
+  ghBadge.textContent = {
+    '':        '☁️ 未設定',
+    'ok':      '✅ 同步成功',
+    'err':     '⚠️ 同步失敗',
+    'syncing': '⏳ 同步中…',
+  }[state] || ('☁️ ' + (msg || '未設定'));
+}
+
+// ── GitHub API ────────────────────────────────────────────
+function ghRawUrl() {
+  return `https://raw.githubusercontent.com/${ghCfg.repo}/${ghCfg.branch}/${ghCfg.path}?v=${Date.now()}`;
+}
+function ghApiUrl() {
+  return `https://api.github.com/repos/${ghCfg.repo}/contents/${ghCfg.path}`;
+}
+function ghHeaders(withAuth) {
+  const h = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  if (withAuth && ghCfg.pat) h.Authorization = 'Bearer ' + ghCfg.pat;
+  return h;
+}
+
+async function ghFetchNotes() {
+  // 用 raw URL 讀取（公開 repo 不需 auth）
+  const res = await fetch(ghRawUrl());
+  if (res.status === 404) return {}; // 檔案尚未建立
+  if (!res.ok) throw new Error('GitHub 讀取失敗 ' + res.status);
+  return await res.json();
+}
+
+async function ghPushNotes(data) {
+  if (!ghCfg.pat) throw new Error('未設定 PAT，無法寫入');
+  // 先取目前 SHA
+  const getRes = await fetch(ghApiUrl(), { headers: ghHeaders(true) });
+  let sha = null;
+  if (getRes.ok) { const meta = await getRes.json(); sha = meta.sha; }
+  else if (getRes.status !== 404) throw new Error('取得 SHA 失敗 ' + getRes.status);
+
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const body = {
+    message: `chore: update notes ${new Date().toISOString()}`,
+    content,
+    branch: ghCfg.branch,
+    ...(sha ? { sha } : {}),
+  };
+  const putRes = await fetch(ghApiUrl(), {
+    method: 'PUT',
+    headers: { ...ghHeaders(true), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!putRes.ok) {
+    const err = await putRes.json().catch(() => ({}));
+    throw new Error((err.message || putRes.status));
+  }
+  return putRes.json();
+}
+
+// ── Note storage ──────────────────────────────────────────────────
+const NOTE_STORE_KEY = 'thsr_pa_logtable_notes';
+let noteStore = {};
+
+function loadNotes() {
+  try { noteStore = JSON.parse(localStorage.getItem(NOTE_STORE_KEY) || '{}'); }
+  catch { noteStore = {}; }
+}
+function saveNotes() {
+  localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
+  // 同步到 GitHub（有設定時）
+  if (ghConfigured()) {
+    updateGhBadge('syncing');
+    ghPushNotes(noteStore)
+      .then(() => updateGhBadge('ok'))
+      .catch(e => { updateGhBadge('err'); console.warn('GitHub push failed:', e); });
+  }
+}
+loadNotes();
+
+// 頁面載入後自動從 GitHub 讀取
+async function initGhSync() {
+  if (!ghConfigured()) { updateGhBadge(''); return; }
+  updateGhBadge('syncing');
+  try {
+    const remote = await ghFetchNotes();
+    noteStore = remote;
+    localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
+    applyAndRender();
+    updateGhBadge('ok');
+  } catch (e) {
+    updateGhBadge('err');
+    console.warn('GitHub fetch failed:', e);
+  }
+}
+initGhSync();
+
+// ── Note modal ──────────────────────────────────────────────────
+const noteBackdrop = document.getElementById('noteBackdrop');
+const noteModalTitle = document.getElementById('noteModalTitle');
+const noteList       = document.getElementById('noteList');
+const noteInputDate  = document.getElementById('noteInputDate');
+const noteInputAuthor= document.getElementById('noteInputAuthor');
+const noteInputContent = document.getElementById('noteInputContent');
+const btnNoteAdd   = document.getElementById('btnNoteAdd');
+const btnNoteClose = document.getElementById('btnNoteClose');
+
+let activeCellKey   = '';
+let activeCellLabel = '';
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}/${pad2(d.getMonth()+1)}/${pad2(d.getDate())}`;
+}
+
+function renderNoteList() {
+  const notes = noteStore[activeCellKey] || [];
+  if (!notes.length) {
+    noteList.innerHTML = '<div class="note-empty">尚無註記</div>';
+    return;
+  }
+  noteList.innerHTML = '';
+  notes.forEach((n, idx) => {
+    const item = document.createElement('div');
+    item.className = 'note-item';
+    item.innerHTML =
+      `<div class="note-item-meta">`
+      +`<span class="note-item-date">${n.date || ''}</span>`
+      +`<span class="note-item-author">${n.author || ''}</span>`
+      +`</div>`
+      +`<div class="note-item-body">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
+      +`<button class="note-item-del" data-idx="${idx}" title="刪除">×</button>`;
+    noteList.appendChild(item);
+  });
+}
+
+function openNoteModal(cellKey, label) {
+  activeCellKey   = cellKey;
+  activeCellLabel = label;
+  noteModalTitle.textContent = '註記 — ' + label;
+  noteInputDate.value    = todayStr();
+  noteInputContent.value = '';
+  // keep author sticky
+  renderNoteList();
+  noteBackdrop.classList.add('open');
+  noteInputContent.focus();
+}
+
+function closeNoteModal() {
+  noteBackdrop.classList.remove('open');
+}
+
+btnNoteClose.addEventListener('click', closeNoteModal);
+noteBackdrop.addEventListener('click', e => { if (e.target === noteBackdrop) closeNoteModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteModal(); });
+
+noteList.addEventListener('click', e => {
+  const btn = e.target.closest('.note-item-del');
+  if (!btn) return;
+  const idx = parseInt(btn.dataset.idx, 10);
+  if (!noteStore[activeCellKey]) return;
+  noteStore[activeCellKey].splice(idx, 1);
+  if (!noteStore[activeCellKey].length) delete noteStore[activeCellKey];
+  saveNotes();
+  renderNoteList();
+  // re-render table so icon updates
+  applyAndRender();
+  // reopen modal (applyAndRender closes nothing, but backdrop stays)
+});
+
+btnNoteAdd.addEventListener('click', () => {
+  const date    = noteInputDate.value.trim();
+  const author  = noteInputAuthor.value.trim();
+  const content = noteInputContent.value.trim();
+  if (!content) { noteInputContent.focus(); return; }
+  if (!noteStore[activeCellKey]) noteStore[activeCellKey] = [];
+  noteStore[activeCellKey].push({ id: Date.now(), date, author, content });
+  saveNotes();
+  noteInputContent.value = '';
+  renderNoteList();
+  applyAndRender();
+});
+
+// 鍵盤快捷鍵 Ctrl+Enter 新增
+noteInputContent.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) btnNoteAdd.click();
+});
+
+// Delegate: click on .cell-val or .cell-note-ico opens note modal
+document.getElementById('tBody').addEventListener('click', e => {
+  hideTip();
+  const target = e.target.closest('[data-note-key]');
+  if (!target) return;
+  e.stopPropagation();
+  openNoteModal(target.dataset.noteKey, target.dataset.noteLabel);
+});
+
+// ── GitHub settings modal ───────────────────────────────────────────
+const ghBackdrop   = document.getElementById('ghBackdrop');
+const ghInputRepo  = document.getElementById('ghInputRepo');
+const ghInputBranch= document.getElementById('ghInputBranch');
+const ghInputPat   = document.getElementById('ghInputPat');
+const ghInputPath  = document.getElementById('ghInputPath');
+const ghStatus     = document.getElementById('ghStatus');
+
+function openGhModal() {
+  ghInputRepo.value   = ghCfg.repo;
+  ghInputBranch.value = ghCfg.branch || 'main';
+  ghInputPat.value    = ghCfg.pat;
+  ghInputPath.value   = ghCfg.path || 'notes.json';
+  ghStatus.textContent = '';
+  ghBackdrop.classList.add('open');
+}
+function closeGhModal() { ghBackdrop.classList.remove('open'); }
+
+ghBadge.addEventListener('click', openGhModal);
+document.getElementById('btnGhClose').addEventListener('click', closeGhModal);
+ghBackdrop.addEventListener('click', e => { if (e.target === ghBackdrop) closeGhModal(); });
+
+document.getElementById('btnGhSave').addEventListener('click', () => {
+  ghCfg.repo   = ghInputRepo.value.trim();
+  ghCfg.branch = ghInputBranch.value.trim() || 'main';
+  ghCfg.pat    = ghInputPat.value.trim();
+  ghCfg.path   = ghInputPath.value.trim() || 'notes.json';
+  saveGhConfig();
+  ghStatus.style.color = '#4dffaa';
+  ghStatus.textContent = '✅ 設定已儲存，重新載入頁面即生效';
+  updateGhBadge(ghConfigured() ? 'ok' : '');
+});
+
+document.getElementById('btnGhClear').addEventListener('click', () => {
+  if (!confirm('確定清除 GitHub 設定？')) return;
+  ghCfg = { repo:'', branch:'main', pat:'', path:'notes.json' };
+  saveGhConfig();
+  ghInputRepo.value=''; ghInputBranch.value='main'; ghInputPat.value=''; ghInputPath.value='notes.json';
+  ghStatus.style.color = 'var(--muted)';
+  ghStatus.textContent = '已清除。';
+  updateGhBadge('');
+});
+
+document.getElementById('btnGhTest').addEventListener('click', async () => {
+  const repo   = ghInputRepo.value.trim();
+  const branch = ghInputBranch.value.trim() || 'main';
+  const path   = ghInputPath.value.trim() || 'notes.json';
+  const pat    = ghInputPat.value.trim();
+  ghStatus.style.color = '#ffd090';
+  ghStatus.textContent = '測試中…';
+  try {
+    const url = `https://raw.githubusercontent.com/${repo}/${branch}/${path}?v=${Date.now()}`;
+    const res = await fetch(url, pat ? { headers:{ Authorization:'Bearer '+pat } } : {});
+    if (res.status === 200 || res.status === 404) {
+      ghStatus.style.color = '#4dffaa';
+      ghStatus.textContent = '✅ 連線成功！' + (res.status===404 ? '（notes.json 尚未建立，首次儲存自動建立）' : '');
+    } else {
+      ghStatus.style.color = '#ff8080';
+      ghStatus.textContent = `⚠️ HTTP ${res.status}，請檢查 owner/repo 是否正確`;
+    }
+  } catch (e) {
+    ghStatus.style.color = '#ff8080';
+    ghStatus.textContent = '⚠️ 連線失敗：' + e.message;
+  }
+});
+
+// 初始化 GitHub badge 狀態
+updateGhBadge(ghConfigured() ? 'ok' : '');
+</script>
+</body>
+</html>
