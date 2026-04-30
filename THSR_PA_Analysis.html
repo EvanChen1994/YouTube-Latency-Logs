@@ -867,6 +867,10 @@
       max-width: min(92vw, 980px);
       white-space: pre-wrap;
     }
+    @keyframes newBlink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
   </style>
 </head>
 
@@ -910,6 +914,7 @@
             <span>隱藏隧道</span>
           </label>
           <div class="btn" id="btnInfo" title="系統資訊 / 狀態 / 錯誤訊息（彈窗）">🛈 系統資訊</div>
+          <div class="btn" id="btnLogTable" title="開啟 PA Log Table" style="position:relative;" onclick="window.open('THSR_PA_LogTable.html','_blank')">PA_LogTable<span style="position:absolute;top:-6px;right:-8px;background:#e00;color:#fff;font-size:10px;font-weight:bold;padding:1px 4px;border-radius:4px;animation:newBlink 1s step-start infinite;pointer-events:none;">NEW!</span></div>
           <div class="btn" id="btnExport" title="匯出右側表格（目前顯示/篩選結果）">匯出EXCEL</div>
           <div class="btn" id="btnClear" title="清除篩選與選取">清除篩選</div>
         </div>
