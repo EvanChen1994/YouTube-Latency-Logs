@@ -1621,7 +1621,7 @@ async function exportExcel() {
     const exRow = ws.addRow(rowVals);
 
     // 改善狀態著色
-    exRow.getCell(6).font = { color: { argb: row.hasEvents ? 'FFFF4444' : 'FF4DFFAA' }, bold: true };
+    exRow.getCell(6).font = { color: { argb: row.hasEvents ? 'FFFF4444' : 'FF008000' }, bold: true };
 
     // 日期欄位著色：VoLTE=藍、YouTube=橘、兩者都有=紅
     dateDetails.forEach((detail, di) => {
