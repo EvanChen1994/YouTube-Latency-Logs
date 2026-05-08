@@ -505,6 +505,12 @@
       "date": "2026/02/01",
       "author": "681610",
       "content": "412178_S73\t台中文山停車場 PMAX:46 to 43\n412178_S83\t台中文山停車場 PMAX:46 to 43\n416420_S33\t台中台電鐵塔 dlRsBoost:0 to 3\n419612_S53\t台中保安 dlCellPwrRed:0 to 3\n414179_S33\t台中魚市場 dlRsBoost:0 to 3\n414166_S13\t台中同安 S13+S12/EDT:3 to 5\n416664_S53\t台中忠勇路二 S53+S52/EDT:5 to 7\n416420_S13\t台中台電鐵塔 S13+S12/EDT:3 to 5"
+    },
+    {
+      "id": 1778209005609,
+      "date": "2026/03/01",
+      "author": "681610",
+      "content": "沿線站台開啟TTI Bundling"
     }
   ]
 }
