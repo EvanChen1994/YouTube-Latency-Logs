@@ -687,6 +687,12 @@
       "date": "2026/02/01",
       "author": "",
       "content": "525734_S1_S2 (元長客厝) 採Super Cell\n515733_S1_S2 (元長東庄) 採Super Cell"
+    },
+    {
+      "id": 1778210056879,
+      "date": "2026/03/01",
+      "author": "681610",
+      "content": "525734_23 (元長客厝) dlRsboost 0 to 3\n515733_13 (元長東庄) E3 to E2.5 and dlRsboost 0 to 3\n512153_23 (元長頂寮) E5 to E7\n522407_53 (元長客厝派出所R) dlCellPweRed 0 to 3\n515765_43 (元長內寮R) dlCellPweRed 3 to 6\n517366_23 (元長元進莊S2) dlCellPweRed 0 to 3"
     }
   ]
 }
