@@ -450,5 +450,13 @@
       "author": "681610",
       "content": "1.417474_S2_大雅遠香 L1800 E12 dlCellPwrRed 0 to 30; L900 E16 dlCellPwrRed 0 to 30;\n2.416143_S7_大雅新光 L1800 E8 dlCellPwrRed 0 to 30; L900 E12 dlRsBoost 3 to 0\n3.414697_S2_大雅康軒 L1800 E8 dlCellPwrRed 0 to 30;L900 E15 dlCellPwrRed 0 to 30;"
     }
+  ],
+  "78\t2026/4/9": [
+    {
+      "id": 1778206632415,
+      "date": "2026/03/01",
+      "author": "681610",
+      "content": "1.414658_23_大雅光復 FHEL 新增80度射向 與 既有S2(120度)做Super Cell\n2.414658_22_大雅光復 FHEL 新增80度射向 與 既有S2(120度)做Super Cell"
+    }
   ]
 }
