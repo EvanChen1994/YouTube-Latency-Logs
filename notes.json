@@ -47,6 +47,12 @@
       "date": "2026/03/08",
       "author": "681610",
       "content": "1.中壢內厝涵蓋不及於高鐵\n2.311565L3_中壢樹籽有分流是室內，建議移除分流涵蓋(cell33 high in UL RSSI, remove source of interference、traffic imbalance, cell34 traffic abnormally low(~18% of 33))\n3.313250L S2 RET +2 (2KM away from PA26)"
+    },
+    {
+      "id": 1778204658396,
+      "date": "2026/04/08",
+      "author": "681610",
+      "content": "1.MOS<3:311565-13中壢樹籽快速衰減15dB以上造成來不及HO而 Drop，調整 CIO(cellIndividualOffset)。\n2.1. 313079-23_中壢天德 RET 5 to 3\n2. 315249L8_中壢加揚(新增) 開啟高鐵專用功能。"
     }
   ]
 }
