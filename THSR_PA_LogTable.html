@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v2.0</title>
+  <title>THSR PA Log Table  v2.1</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -562,7 +562,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v2.0</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v2.1</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -598,7 +598,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
-   THSR PA Log Table  ver 2.0
+   THSR PA Log Table  ver 2.1
    - Top filter bar: Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
@@ -1206,7 +1206,15 @@ async function init() {
 
     const nets    = uniqSorted(allPaRows.map(r => r.measurement_NetWork));
     const scripts = uniqSorted(allPaRows.map(r => r.measurement_Script));
-    const mareas  = uniqSorted(allPaRows.map(r => r.Marea));
+    // Marea 依指定顯示順序排列
+    const MAREA_ORDER = ['行動北區營運處', '行動中區營運處', '行動南區營運處'];
+    const mareas = [...new Set(allPaRows.map(r => r.Marea).filter(Boolean))].sort((a, b) => {
+      const ia = MAREA_ORDER.indexOf(a), ib = MAREA_ORDER.indexOf(b);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.localeCompare(b, 'zh-Hant');
+    });
 
     filterWidgets.Net.setOptions(nets);
     filterWidgets.Script.setOptions(scripts);
@@ -1344,20 +1352,29 @@ async function withRetry(fn, maxRetries = 3, delayMs = 1500) {
   throw lastErr;
 }
 
+// Push 串行佇列：確保同一頁面內的 push 不並發，消除 SHA 衝突（GitHub 409）
+// 跨使用者衝突由 withRetry 的 5 次重試（每次重新 GET 最新 SHA）處理
+let _pushChain = Promise.resolve();
+function pushNotesQueued() {
+  const p = _pushChain.catch(() => {}).then(() => withRetry(() => ghPushNotes(noteStore), 5, 1200));
+  _pushChain = p.catch(() => {});
+  return p;
+}
+
 function saveNotes() {
   localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
   // 同步到 GitHub（有設定時），失敗自動重試 3 次
   if (ghConfigured()) {
     updateGhBadge('syncing');
-    withRetry(() => ghPushNotes(noteStore))
+    pushNotesQueued()
       .then(() => {
         updateGhBadge('ok');
       })
       .catch(e => {
         updateGhBadge('err');
-        console.warn('GitHub push failed after 3 retries:', e);
+        console.warn('GitHub push failed after 5 retries:', e);
         const msg = e?.message || String(e);
-        alert('⚠️ 注記同步失敗（已重試 3 次）！\n\n' + msg + '\n\n請確認 PAT 是否正確，以及是否有 repo 寫入權限（Contents: Read & Write）。');
+        alert('⚠️ 注記同步失敗（已重試 5 次）！\n\n' + msg + '\n\n請確認 PAT 是否正確，以及是否有 repo 寫入權限（Contents: Read & Write）。');
       });
   }
 }
@@ -1470,7 +1487,7 @@ btnNoteAdd.addEventListener('click', () => {
   // 先 push，完成後再拉取從遠端（避免並發編輯袊漏）
   if (ghConfigured()) {
     updateGhBadge('syncing');
-    withRetry(() => ghPushNotes(noteStore))
+    pushNotesQueued()
       .then(() => withRetry(() => ghFetchNotes()))
       .then(remote => {
         if (remote && typeof remote === 'object') {
@@ -1534,8 +1551,8 @@ document.getElementById('btnGhSave').addEventListener('click', async () => {
   ghStatus.textContent = '正在驗證 PAT…';
   updateGhBadge('syncing');
   try {
-    // 試著 push 一次目前 noteStore（等同驗證寫入權限），失敗重試 3 次
-    await withRetry(() => ghPushNotes(noteStore));
+    // 試著 push 一次目前 noteStore（等同驗證寫入權限），失敗重試 5 次
+    await pushNotesQueued();
     ghStatus.style.color = '#4dffaa';
     ghStatus.textContent = '✅ PAT 已儲存並驗證成功';
     updateGhBadge('ok');
