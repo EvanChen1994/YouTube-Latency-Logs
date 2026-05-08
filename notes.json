@@ -478,5 +478,13 @@
       "author": "681610",
       "content": "Frequency layer list for VoLTE service based HO\nfreqLayListServiceBasedHo\n1750 or 3050 調整至 1400"
     }
+  ],
+  "82\t2026/4/9": [
+    {
+      "id": 1778206777600,
+      "date": "2026/02/01",
+      "author": "681610",
+      "content": "1.417482_S43\t台中統一企業 dlCellPwrRed:0 to 3\n2.416462_S13\t台中協和國小 EDT:6 to 8\n3.416607_S43\t台中西屯林厝 dlCellPwrRed:0 to 3\n4.423539_S13\t台中鄉林大自然 dlCellPwrRed:0 to 3\n5.416607_S23\t台中新永安 EDT:7 to 9\n6.413537_S23\t台中永安一巷 EDT:5 to 7\n7.417559_S33\t台中安和特力屋 dlCellPwrRed:0 to 3"
+    }
   ]
 }
