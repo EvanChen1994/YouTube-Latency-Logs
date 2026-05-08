@@ -5,6 +5,12 @@
       "date": "2026/03/30",
       "author": "681610",
       "content": "1. 蘆竹億流 S1 Combine cell Loading 較高，行維處測試4G/5G YT與4G/5G DL 同時測試，造成資源排擠效應，自行復測結果無YT Lag。\n2. 蘆竹大竹北，南向受隔壁新建鐵皮屋阻擋，現場評估無法改善，替代台 蘆竹宏竹二 洽談中。\n3. 315222L3_大園廣大_PCI190 RET L9/L18/L26 10/5/5 to 10/7/7 .\n4. 316320L_大園宏昌興 change S2 PCI 68 to PCI 69 (physicalLayerSubCellId from 2 to 3) \n5. 316294L1/L2_大園永昌_PCI 145/153,Cell 12/13/22/23 crsGain from 300 to 0\n6. 315284L3_蘆竹國道二 Cell 31/32/33 crsGain from 300 to 0\n7. 315215L3_蘆竹建國十九村 無RET, Cell 32/33/34/35 crsGain from 0 to -300"
+    },
+    {
+      "id": 1778204051464,
+      "date": "2026/04/06",
+      "author": "681610",
+      "content": "1.蘆竹大竹北南向受隔壁新建鐵皮屋阻擋，現場評估無法改善，用蘆竹宏竹二改善\n2.蘆竹宏竹二共構台哥大主辦已簽約成案，4/15開工，預計6月底完工。\n3.MOS 2.78略小於3，315236L33_34蘆竹八股crsGain 0 to 300，使其能抵抗突發Fading"
     }
   ]
 }
