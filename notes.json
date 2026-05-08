@@ -40,5 +40,13 @@
       "author": "681610",
       "content": "1.3/25 大園埔心 combined cell完成開啟。(預計5/5往北增加1支Narrow beam_L1800_L2600)\n2. 涵蓋信號強度好，High UL BLER，修改PUCCH/PUSCH pZeroNominal些微增強UE發射功率。\n3.評估桃捷修護廠S1與S2開啟Combined cell"
     }
+  ],
+  "26\t2026/4/9": [
+    {
+      "id": 1778204637510,
+      "date": "2026/03/08",
+      "author": "681610",
+      "content": "1.中壢內厝涵蓋不及於高鐵\n2.311565L3_中壢樹籽有分流是室內，建議移除分流涵蓋(cell33 high in UL RSSI, remove source of interference、traffic imbalance, cell34 traffic abnormally low(~18% of 33))\n3.313250L S2 RET +2 (2KM away from PA26)"
+    }
   ]
 }
