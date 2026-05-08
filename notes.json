@@ -518,5 +518,13 @@
       "author": "681610",
       "content": "Frequency layer list for VoLTE service based HO\nfreqLayListServiceBasedHo\n1750 or 3050 調整至 1400"
     }
+  ],
+  "85\t2026/4/9": [
+    {
+      "id": 1778209042995,
+      "date": "2026/03/01",
+      "author": "681610",
+      "content": "412156_54_烏日五都會展 dlRsBoost 1000 -> 1300\n412156_44_烏日五都會展 dlRsBoost 1300 -> 1000"
+    }
   ]
 }
