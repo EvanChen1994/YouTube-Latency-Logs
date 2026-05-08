@@ -651,6 +651,12 @@
       "date": "2026/02/01",
       "author": "681610",
       "content": "522400_S1_S2 (虎尾高鐵) 採Super Cell\n522400_23 (虎尾高鐵) E3.5 to E2.5 and dlRsboost 0 to 3\n515628_33 (虎尾台大) dlcellPwrRed 調6\n517262_63 (虎尾虎興東) dlRsboost 0 to 3\n517190_63 (虎尾廉使二) dlRsboost 0 to 3\n513254_43 (虎尾矽品外) dlCellPwrRed 0 to 4\n513254_23 (虎尾富喬) dlCellPwrRed 0 to 4\n517293(虎尾田徑場) dlCellPwrRed to 10"
+    },
+    {
+      "id": 1778209694653,
+      "date": "2026/03/01",
+      "author": "681610",
+      "content": "517190_63 (虎尾廉使二) E4 to E2.5\n517262_33 (虎尾虎興南) E5 to E6\n522400_23 (虎尾高鐵) E3.5 to E2.5"
     }
   ]
 }
