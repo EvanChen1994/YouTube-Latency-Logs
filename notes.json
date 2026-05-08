@@ -443,6 +443,12 @@
       "date": "2026/02/01",
       "author": "681610",
       "content": "1.416763_S2_大雅信義 L1800 E4 to E6 ; L900 E8 to 10\n2.416766_S4_大雅南大營C棟 L1800 E9; L900 E14 dlCellPwrRed 0 to 30 (RET X)\n3.416766_S5_大雅南大營C棟 L1800 E8; L900 E14 dlCellPwrRed 0 to 20 (RET X)"
+    },
+    {
+      "id": 1778206606421,
+      "date": "2026/03/01",
+      "author": "681610",
+      "content": "1.417474_S2_大雅遠香 L1800 E12 dlCellPwrRed 0 to 30; L900 E16 dlCellPwrRed 0 to 30;\n2.416143_S7_大雅新光 L1800 E8 dlCellPwrRed 0 to 30; L900 E12 dlRsBoost 3 to 0\n3.414697_S2_大雅康軒 L1800 E8 dlCellPwrRed 0 to 30;L900 E15 dlCellPwrRed 0 to 30;"
     }
   ]
 }
