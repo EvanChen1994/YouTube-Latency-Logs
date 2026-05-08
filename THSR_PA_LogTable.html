@@ -562,7 +562,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v1.9</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v2.0</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -598,7 +598,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
-   THSR PA Log Table  ver 1.9
+   THSR PA Log Table  ver 2.0
    - Top filter bar: Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
@@ -947,10 +947,11 @@ function showNoteTip(e, noteKey) {
   if (!notes || !notes.length) return;
   let html = `<div class="tip-title">📝 註記 × ${notes.length} 則</div>`;
   notes.forEach(n => {
+    const meta = (n.date   ? `<span style="color:#aad4ff;margin-right:6px;">${n.date}</span>` : '')
+               + (n.author ? `<span style="color:#ffd090;">${n.author}</span>` : '');
     html += `<div style="margin:4px 0;padding:5px 8px;background:rgba(255,255,255,0.07);border-radius:6px;font-size:12px;">`
-          + (n.date   ? `<span style="color:#aad4ff;margin-right:6px;">${n.date}</span>` : '')
-          + (n.author ? `<span style="color:#ffd090;margin-right:8px;">${n.author}</span>` : '')
-          + `<span style="color:#e8e8e8;white-space:pre-wrap;">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`
+          + (meta ? `<div style="margin-bottom:3px;">${meta}</div>` : '')
+          + `<div style="color:#e8e8e8;white-space:pre-wrap;">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
           + `</div>`;
   });
   paTooltip.innerHTML = html;
