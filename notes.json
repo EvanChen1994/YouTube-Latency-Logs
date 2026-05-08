@@ -491,6 +491,12 @@
       "date": "2026/03/01",
       "author": "681610",
       "content": "1.沿線站台開啟TTI Bundling"
+    },
+    {
+      "id": 1778206802935,
+      "date": "2026/04/01",
+      "author": "681610",
+      "content": "Frequency layer list for VoLTE service based HO\nfreqLayListServiceBasedHo\n1750 or 3050 調整至 1400"
     }
   ]
 }
