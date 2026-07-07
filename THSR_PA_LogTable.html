@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v2.2</title>
+  <title>THSR PA Log Table  v3.0</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -498,29 +498,17 @@
 </head>
 <body>
 
-<!-- GitHub Settings Modal -->
+<!-- Google Sheets Sync Settings Modal -->
 <div id="ghBackdrop">
   <div id="ghModal">
     <div class="gh-modal-head">
-      <div class="gh-modal-title">⚙️ GitHub 同步設定</div>
+      <div class="gh-modal-title">⚙️ Google Sheets 同步設定</div>
       <button class="gh-modal-close" id="btnGhClose">關閉</button>
     </div>
     <div class="gh-row">
-      <label>Repository</label>
-      <input class="note-field" id="ghInputRepo" type="text" value="EvanChen1994/YouTube-Latency-Logs" readonly style="opacity:.5;cursor:default;">
-    </div>
-    <div class="gh-row">
-      <label>Branch</label>
-      <input class="note-field" id="ghInputBranch" type="text" value="main" readonly style="opacity:.5;cursor:default;">
-    </div>
-    <div class="gh-row">
-      <label>Personal Access Token（PAT）—寫入者才需要</label>
-      <input class="note-field" id="ghInputPat" type="password" placeholder="ghp_xxxx…" autocomplete="off">
-      <div class="gh-hint">只需 <b>repo &gt; Contents (read &amp; write)</b> 權限。PAT 僅儲存於本機 localStorage，不會傳給他人。</div>
-    </div>
-    <div class="gh-row">
-      <label>notes.json 路徑</label>
-      <input class="note-field" id="ghInputPath" type="text" value="notes.json" readonly style="opacity:.5;cursor:default;">
+      <label>Apps Script 網址（Web App URL）</label>
+      <input class="note-field" id="ghInputUrl" type="text" placeholder="https://script.google.com/macros/s/…/exec">
+      <div class="gh-hint">請將 Apps Script 部署為「網路應用程式」，存取權設定為「所有人」，並貼上執行 URL。URL 僅儲存於本機 localStorage。</div>
     </div>
     <div id="ghStatus" class="gh-status" style="color:var(--muted);"></div>
     <div class="gh-actions">
@@ -562,7 +550,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v2.2</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v3.0</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -580,7 +568,7 @@
     </label>
     <div class="btn" id="btnClear">清除篩選</div>
     <div class="bar-sep"></div>
-    <div class="gh-badge" id="ghBadge" title="GitHub 同步設定">☁️ 未設定</div>
+    <div class="gh-badge" id="ghBadge" title="Google Sheets 同步設定">☁️ 未設定</div>
     <button class="btn" id="btnSync" title="手動重新同步 notes">🔄 同步</button>
     <button class="btn" id="btnExport" title="匯出目前篩選結果為 Excel">📥 匯出 Excel</button>
     <div class="status-tag" id="statusTag"></div>
@@ -1232,28 +1220,22 @@ async function init() {
 
 init();
 
-// ── GitHub sync config ────────────────────────────────────────────
-const GH_CONFIG_KEY = 'thsr_pa_gh_config';
-// ── 預設值：固定指向此 repo，任何人開啟都自動讀取 notes.json ──
+// ── Google Apps Script sync config ──────────────────────────────
+const GH_CONFIG_KEY = 'thsr_pa_gas_config';
 let ghCfg = {
-  repo:   'EvanChen1994/YouTube-Latency-Logs',
-  branch: 'main',
-  pat:    '',          // 只有要寫入注記的人需要填
-  path:   'notes.json',
+  url: 'https://script.google.com/macros/s/AKfycbxM8-1ftURi22Fx8EZ6Al4vPmvG2AUsdrjoGeelBQMvWuKM94rIKnHOuUwgqIdism_X5A/exec',
 };
 
 function loadGhConfig() {
-  // 從 localStorage 讀取，但 repo/branch/path 若使用者沒改過就維持預設
   try {
     const saved = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-    // 只覆蓋 pat（其他欄位維持固定預設，避免誤改）
-    if (saved.pat) ghCfg.pat = saved.pat;
+    if (saved.url) ghCfg.url = saved.url;
   } catch {}
 }
 function saveGhConfig() {
   localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghCfg));
 }
-function ghConfigured() { return !!(ghCfg.repo && ghCfg.path); }
+function ghConfigured() { return !!(ghCfg.url); }
 
 loadGhConfig();
 
@@ -1268,58 +1250,24 @@ function updateGhBadge(state, msg) {
   }[state] || ('☁️ ' + (msg || '未設定'));
 }
 
-// ── GitHub API ────────────────────────────────────────────
-function ghRawUrl() {
-  return `https://raw.githubusercontent.com/${ghCfg.repo}/${ghCfg.branch}/${ghCfg.path}?v=${Date.now()}`;
-}
-function ghApiUrl() {
-  return `https://api.github.com/repos/${ghCfg.repo}/contents/${ghCfg.path}`;
-}
-function ghHeaders(withAuth) {
-  const h = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-  if (withAuth && ghCfg.pat) h.Authorization = 'Bearer ' + ghCfg.pat;
-  return h;
-}
-
+// ── Google Apps Script API ───────────────────────────────────────
 async function ghFetchNotes() {
-  // 改用 Contents API 取得資料，避免 raw.githubusercontent.com CDN 快取問題
-  // 有 PAT 時順便帶上 auth，可提高 API rate limit（60→5000 req/hr）
-  // 強制不快取，避免瀏覽器回傳 stale SHA（Contents API 預設可能被快取 60 秒）
-  const res = await fetch(ghApiUrl(), { headers: ghHeaders(true), cache: 'no-store' });
-  if (!res.ok) throw new Error('GitHub 讀取失敗 ' + res.status);
-  const meta = await res.json();
-  // Contents API 回傳 base64 編碼內容，需正確解碼 UTF-8
-  const text = new TextDecoder().decode(
-    Uint8Array.from(atob(meta.content.replace(/\n/g, '')), c => c.charCodeAt(0))
-  );
-  return JSON.parse(text);
+  const res = await fetch(ghCfg.url + '?v=' + Date.now(), { cache: 'no-store' });
+  if (!res.ok) throw new Error('Sheets 讀取失敗 ' + res.status);
+  return res.json();
 }
 
 async function ghPushNotes(data) {
-  if (!ghCfg.pat) throw new Error('未設定 PAT，無法寫入');
-  // 強制不快取：確保每次 retry 都拿到最新 SHA，避免「does not match」衝突
-  const getRes = await fetch(ghApiUrl(), { headers: ghHeaders(true), cache: 'no-store' });
-  let sha = null;
-  if (getRes.ok) { const meta = await getRes.json(); sha = meta.sha; }
-  else if (getRes.status !== 404) throw new Error('取得 SHA 失敗 ' + getRes.status);
-
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-  const body = {
-    message: `chore: update notes ${new Date().toISOString()}`,
-    content,
-    branch: ghCfg.branch,
-    ...(sha ? { sha } : {}),
-  };
-  const putRes = await fetch(ghApiUrl(), {
-    method: 'PUT',
-    headers: { ...ghHeaders(true), 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  if (!ghCfg.url) throw new Error('未設定 Apps Script URL，無法寫入');
+  // GAS Web App 不支援 application/json 的 CORS preflight，改用 text/plain
+  const res = await fetch(ghCfg.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data),
+    redirect: 'follow',
   });
-  if (!putRes.ok) {
-    const err = await putRes.json().catch(() => ({}));
-    throw new Error((err.message || putRes.status));
-  }
-  return putRes.json();
+  if (!res.ok) throw new Error('Sheets 寫入失敗 ' + res.status);
+  return res.json();
 }
 
 // ── Note storage ──────────────────────────────────────────────────
@@ -1380,7 +1328,7 @@ function saveNotes() {
 }
 loadNotes();
 
-// 頁面載入後自動從 GitHub 讀取，失敗自動重試 3 次
+// 頁面載入後自動從 Google Sheets 讀取，失敗自動重試 3 次
 async function initGhSync() {
   if (!ghConfigured()) { updateGhBadge(''); return; }
   updateGhBadge('syncing');
@@ -1396,7 +1344,7 @@ async function initGhSync() {
     updateGhBadge('ok');
   } catch (e) {
     updateGhBadge('err');
-    console.warn('GitHub fetch failed after 3 retries:', e);
+    console.warn('Sheets fetch failed after 3 retries:', e);
   }
 }
 // initGhSync() 已移至 init() 內部呼叫，不再單獨呼叫
@@ -1455,7 +1403,7 @@ function openNoteModal(cellKey, label) {
 
 function closeNoteModal() {
   noteBackdrop.classList.remove('open');
-  // 關閉時自動從 GitHub 拉取最新資料，讓表格圖示修新
+  // 關閉時自動從 Sheets 拉取最新資料，讓表格圖示更新
   if (ghConfigured()) initGhSync();
 }
 
@@ -1525,16 +1473,13 @@ document.getElementById('tBody').addEventListener('click', e => {
   openNoteModal(target.dataset.noteKey, target.dataset.noteLabel);
 });
 
-// ── GitHub settings modal ───────────────────────────────────────────
-const ghBackdrop   = document.getElementById('ghBackdrop');
-const ghInputRepo  = document.getElementById('ghInputRepo');
-const ghInputBranch= document.getElementById('ghInputBranch');
-const ghInputPat   = document.getElementById('ghInputPat');
-const ghInputPath  = document.getElementById('ghInputPath');
-const ghStatus     = document.getElementById('ghStatus');
+// ── Google Sheets settings modal ────────────────────────────────
+const ghBackdrop = document.getElementById('ghBackdrop');
+const ghInputUrl = document.getElementById('ghInputUrl');
+const ghStatus   = document.getElementById('ghStatus');
 
 function openGhModal() {
-  ghInputPat.value    = ghCfg.pat;
+  ghInputUrl.value     = ghCfg.url;
   ghStatus.textContent = '';
   ghBackdrop.classList.add('open');
 }
@@ -1545,16 +1490,21 @@ document.getElementById('btnGhClose').addEventListener('click', closeGhModal);
 ghBackdrop.addEventListener('click', e => { if (e.target === ghBackdrop) closeGhModal(); });
 
 document.getElementById('btnGhSave').addEventListener('click', async () => {
-  ghCfg.pat = ghInputPat.value.trim();
+  const url = ghInputUrl.value.trim();
+  if (!url) {
+    ghStatus.style.color = '#ff8080';
+    ghStatus.textContent = '❌ 請輸入 Apps Script URL';
+    return;
+  }
+  ghCfg.url = url;
   saveGhConfig();
   ghStatus.style.color = 'var(--muted)';
-  ghStatus.textContent = '正在驗證 PAT…';
+  ghStatus.textContent = '正在驗證連線…';
   updateGhBadge('syncing');
   try {
-    // 試著 push 一次目前 noteStore（等同驗證寫入權限），失敗重試 5 次
-    await pushNotesQueued();
+    await withRetry(() => ghFetchNotes());
     ghStatus.style.color = '#4dffaa';
-    ghStatus.textContent = '✅ PAT 已儲存並驗證成功';
+    ghStatus.textContent = '✅ URL 已儲存並驗證成功';
     updateGhBadge('ok');
   } catch (e) {
     ghStatus.style.color = '#ff6b6b';
@@ -1564,52 +1514,38 @@ document.getElementById('btnGhSave').addEventListener('click', async () => {
 });
 
 document.getElementById('btnGhClear').addEventListener('click', () => {
-  if (!confirm('確定清除 PAT？')) return;
-  ghCfg.pat = '';
+  if (!confirm('確定清除 Apps Script URL？')) return;
+  ghCfg.url = '';
   saveGhConfig();
-  ghInputPat.value = '';
+  ghInputUrl.value = '';
   ghStatus.style.color = 'var(--muted)';
   ghStatus.textContent = '已清除。';
   updateGhBadge('');
 });
 
 document.getElementById('btnGhTest').addEventListener('click', async () => {
-  const pat = ghInputPat.value.trim();
+  const url = ghInputUrl.value.trim();
+  if (!url) {
+    ghStatus.style.color = '#ff8080';
+    ghStatus.textContent = '❌ 請先輸入 URL';
+    return;
+  }
   ghStatus.style.color = '#ffd090';
   ghStatus.textContent = '測試中…';
   try {
-    // ① 讀取測試：raw URL 不帶 auth（public repo 不需要，且 raw.githubusercontent.com
-    //    不支援帶 Authorization header 的 CORS preflight，帶了反而失敗）
-    const rawUrl = `https://raw.githubusercontent.com/${ghCfg.repo}/${ghCfg.branch}/${ghCfg.path}?v=${Date.now()}`;
-    const rawRes = await fetch(rawUrl);
-    if (rawRes.status !== 200 && rawRes.status !== 404) {
+    const res = await fetch(url + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) {
       ghStatus.style.color = '#ff8080';
-      ghStatus.textContent = `⚠️ 讀取失敗 HTTP ${rawRes.status}`;
+      ghStatus.textContent = `⚠️ 讀取失敗 HTTP ${res.status}`;
       return;
     }
-    const readOk = '✅ 讀取 OK' + (rawRes.status === 404 ? '（notes.json 尚未建立，首次儲存自動建立）' : '');
-
-    // ② PAT 驗證：走 GitHub Contents API（正確支援帶 Authorization 的 CORS）
-    if (pat) {
-      const apiRes = await fetch(ghApiUrl(), {
-        headers: { ...ghHeaders(true), Authorization: 'Bearer ' + pat },
-      });
-      if (apiRes.status === 401) {
-        ghStatus.style.color = '#ff8080';
-        ghStatus.textContent = '❌ PAT 無效（401 Unauthorized）';
-        return;
-      }
-      if (apiRes.status === 403) {
-        ghStatus.style.color = '#ff8080';
-        ghStatus.textContent = '❌ PAT 無此 repo 權限（403 Forbidden）';
-        return;
-      }
-      // 200 或 404（檔案不存在）都代表 PAT 有效且有讀取權限
+    const data = await res.json();
+    if (data && typeof data === 'object') {
       ghStatus.style.color = '#4dffaa';
-      ghStatus.textContent = readOk + '　✅ PAT 驗證成功';
+      ghStatus.textContent = `✅ 讀取 OK，共 ${Object.keys(data).length} 筆 key`;
     } else {
-      ghStatus.style.color = '#4dffaa';
-      ghStatus.textContent = readOk + '　（未填 PAT，僅驗證讀取）';
+      ghStatus.style.color = '#ff8080';
+      ghStatus.textContent = '⚠️ 回傳格式錯誤';
     }
   } catch (e) {
     ghStatus.style.color = '#ff8080';
@@ -1792,7 +1728,7 @@ async function exportExcel() {
   URL.revokeObjectURL(url);
 }
 
-// 初始化 GitHub badge 狀態
+// 初始化 Sheets badge 狀態
 updateGhBadge(ghConfigured() ? 'ok' : '');
 
 // 手動同步按鈕
