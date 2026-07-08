@@ -871,10 +871,108 @@
       0%, 100% { opacity: 1; }
       50%       { opacity: 0; }
     }
+
+    /* ===== Login overlay ===== */
+    #loginOverlay {
+      position:fixed; inset:0;
+      background:rgba(7,11,22,0.97);
+      z-index:10000;
+      display:none; align-items:center; justify-content:center;
+    }
+    #loginBox {
+      background:rgba(10,19,40,0.99);
+      border:1px solid rgba(43,124,255,0.45);
+      border-radius:20px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.70);
+      padding:32px 36px;
+      width:min(400px,92vw);
+      display:flex; flex-direction:column; gap:16px;
+      backdrop-filter:blur(10px);
+    }
+    .login-title {
+      font-size:16px; font-weight:1000; color:var(--accent2);
+      text-align:center; letter-spacing:.4px;
+      text-shadow:0 0 16px rgba(0,214,255,0.30);
+    }
+    .login-sub { font-size:11px; color:var(--muted); text-align:center; }
+    .login-field {
+      width:100%; box-sizing:border-box;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:10px; padding:10px 14px;
+      color:var(--txt); font-size:13px;
+      outline:none; transition:.12s ease;
+    }
+    .login-field:focus { border-color:rgba(43,124,255,0.60); background:rgba(43,124,255,0.08); }
+    .login-btn {
+      width:100%;
+      border:1px solid rgba(43,124,255,0.50);
+      background:rgba(43,124,255,0.22);
+      color:var(--txt); border-radius:10px; padding:10px;
+      cursor:pointer; font-weight:800; font-size:13px;
+      transition:.15s ease;
+    }
+    .login-btn:hover { background:rgba(43,124,255,0.40); }
+    .login-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .login-err { font-size:12px; color:#ff8080; text-align:center; min-height:18px; font-weight:700; }
+    .login-ip-row {
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      font-size:11px; color:var(--muted);
+    }
+    .login-ip-val {
+      font-size:11px; font-weight:800; color:var(--accent2);
+      background:rgba(0,214,255,0.08); border:1px solid rgba(0,214,255,0.20);
+      border-radius:6px; padding:2px 8px; letter-spacing:.4px;
+    }
+
+    /* ===== Loading overlay ===== */
+    #loadingOverlay {
+      position:fixed; inset:0;
+      background:rgba(7,11,22,0.90);
+      z-index:9500;
+      display:none; align-items:center; justify-content:center;
+      flex-direction:column; gap:14px;
+      backdrop-filter:blur(4px);
+    }
+    #loadingOverlay .load-title {
+      font-size:15px; font-weight:1000; color:var(--accent2);
+      text-shadow:0 0 18px rgba(0,214,255,0.30);
+    }
+    #loadingOverlay .load-sub { font-size:12px; color:var(--muted); font-weight:700; }
+    .load-spinner {
+      width:38px; height:38px;
+      border:3px solid rgba(43,124,255,0.22);
+      border-top-color:var(--accent2);
+      border-radius:50%;
+      animation:loadSpin .75s linear infinite;
+    }
+    @keyframes loadSpin { to { transform:rotate(360deg); } }
   </style>
 </head>
 
 <body>
+<!-- Login overlay -->
+<div id="loginOverlay">
+  <div id="loginBox">
+    <div class="login-title">THSR PA Analysis</div>
+    <div class="login-sub">請輸入帳號資訊以繼續</div>
+    <input class="login-field" id="loginLdap" type="text" placeholder="LDAP 帳號（xxx@cht.com.tw）" autocomplete="username">
+    <input class="login-field" id="loginEmpId" type="text" placeholder="Employee ID（如：002507）" autocomplete="off" maxlength="20">
+    <button class="login-btn" id="btnLogin">登入</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-ip-row">
+      <span>您的 IP：</span>
+      <span class="login-ip-val" id="loginIpDisplay">檢測中…</span>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay">
+  <div class="load-spinner"></div>
+  <div class="load-title">資料載入中…</div>
+  <div class="load-sub" id="loadingSub">正在連接 GAS…</div>
+</div>
+
   <div id="fatalBanner"></div>
 
   <div class="app">
@@ -917,6 +1015,7 @@
           <div class="btn" id="btnLogTable" title="開啟 PA Log Table" style="position:relative;" onclick="window.open('THSR_PA_LogTable.html','_blank')">PA_LogTable<span style="position:absolute;top:-6px;right:-8px;background:#e00;color:#fff;font-size:10px;font-weight:bold;padding:1px 4px;border-radius:4px;animation:newBlink 1s step-start infinite;pointer-events:none;">NEW!</span></div>
           <div class="btn" id="btnExport" title="匯出右側表格（目前顯示/篩選結果）">匯出EXCEL</div>
           <div class="btn" id="btnClear" title="清除篩選與選取">清除篩選</div>
+          <div class="btn" id="btnLogout" title="登出">🚪 登出</div>
         </div>
       </div>
 
@@ -1070,9 +1169,15 @@
        ver 9.3
        - Update: 清除篩選後恢復 Filter 預設（Date=最新日；其餘=全選）
        - Update: 上方固定顯示「資料筆數 / PA路段(start_location_name)唯一筆數」
+       ---------------------------
+       ver 10.0
+       - New: 加入登入驗證（LDAP + Employee ID 比對 GAS）
+       - New: 資料來源改為 GAS API（不再讀取本機 CSV）
+       - New: 資料載入中 Loading overlay（小圈動畫）
+       - Update: 移除未使用的 parseCsvRobust / fetchNoStore / buildCsvText
        =========================== */
 
-    const APP_VERSION = "ver 9.3";
+    const APP_VERSION = "ver 10.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -1231,47 +1336,6 @@
       return s;
     }
 
-    function parseCsvRobust(text) {
-      const rows = [];
-      let row = [];
-      let cur = '';
-      let inQuotes = false;
-
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        const next = text[i + 1];
-
-        if (inQuotes) {
-          if (ch === '"' && next === '"') { cur += '"'; i++; }
-          else if (ch === '"') inQuotes = false;
-          else cur += ch;
-        } else {
-          if (ch === '"') inQuotes = true;
-          else if (ch === ',') { row.push(cur); cur = ''; }
-          else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
-          else if (ch === '\r') {}
-          else cur += ch;
-        }
-      }
-      if (cur.length || row.length) { row.push(cur); rows.push(row); }
-
-      while (rows.length && rows[rows.length - 1].every(v => (v ?? '').trim() === '')) rows.pop();
-      if (rows.length < 2) return [];
-
-      let header = rows[0].map(h => (h ?? '').trim());
-      if (header.length && header[0] && header[0].charCodeAt(0) === 0xFEFF) header[0] = header[0].replace('\uFEFF','');
-
-      const data = [];
-      for (let r = 1; r < rows.length; r++) {
-        const cols = rows[r];
-        if (!cols || cols.every(v => (v ?? '').trim() === '')) continue;
-        const obj = {};
-        for (let c = 0; c < header.length; c++) obj[header[c]] = (cols[c] ?? '').trim();
-        data.push(obj);
-      }
-      return data;
-    }
-
     function normalizePARows(rows) {
       if (!Array.isArray(rows)) return [];
       return rows.map(r => {
@@ -1282,20 +1346,6 @@
         };
       });
     }
-
-    async function fetchNoStore(absUrl) {
-      const res = await fetch(absUrl, { cache:'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} (${absUrl})`);
-      return res.text();
-    }
-
-    function initUrls() {
-      paCsvUrlAbs = new URL(`./PA_data.csv?v=${Date.now()}`, location.href).toString();
-      locCsvUrlAbs = new URL(`./THSR_Location.csv?v=${Date.now()}`, location.href).toString();
-      httpInfo = "pending...";
-      h3Info = "pending...";
-    }
-    initUrls();
 
     // Leaflet map + base layers
     const baseEMAP = L.tileLayer(
@@ -2113,30 +2163,6 @@
     });
 
     // ===== Export Excel (右側表格：目前顯示 displayedRows) =====
-    function csvEscapeCell(v){
-      const s = String(v ?? '');
-      if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
-        return `"${s.replaceAll('"','""')}"`;
-      }
-      return s;
-    }
-    function buildCsvText(rows, cols){
-      const header = cols.map(c => csvEscapeCell(c.exportLabel ?? c.key)).join(',');
-      const lines = [header];
-      for (const r of rows) {
-        const line = cols.map(c => {
-          let val = r?.[c.key] ?? '';
-          // 如果是時間欄位，確保包含秒數
-          if (c.isTime) {
-            val = ensureTimeWithSeconds(val);
-          }
-          return csvEscapeCell(val);
-        }).join(',');
-        lines.push(line);
-      }
-      // Excel 友善：加 BOM
-      return '\uFEFF' + lines.join('\r\n');
-    }
     function exportDisplayedRowsToExcel(rows, cols, filename){
       if (typeof XLSX === 'undefined') {
         alert('Excel 匯出套件尚未載入');
@@ -3927,6 +3953,8 @@
     });
 
     async function loadBothCSVsAndInit() {
+      showLoadingOverlay('向 GAS 取得資料中，請稍候…');
+      try {
       setStatus("starting...");
 
       if (typeof window.h3 === 'undefined') {
@@ -3937,26 +3965,25 @@
         h3Info = `loaded (${v})`;
       }
 
-      initUrls();
-      setStatus("fetching PA & Location");
-      httpInfo = "PA:pending | LOC:pending";
+      setStatus("向 GAS 取得資料…");
+      httpInfo = "GAS:pending";
 
-      const txtPA = await fetchNoStore(paCsvUrlAbs);
-      httpInfo = "PA:OK | LOC:pending";
+      const gasRes = await fetch(
+        ghCfg.url + '?action=getData&token=' + encodeURIComponent(sessionToken) + '&v=' + Date.now(),
+        { cache: 'no-store' }
+      );
+      if (!gasRes.ok) throw new Error(`GAS HTTP ${gasRes.status}`);
+      const gasJson = await gasRes.json();
 
-      let txtLoc = "";
-      let locOk = true;
-      try {
-        txtLoc = await fetchNoStore(locCsvUrlAbs);
-        httpInfo = "PA:OK | LOC:OK";
-      } catch (e) {
-        locOk = false;
-        httpInfo = "PA:OK | LOC:FAILED (skip blue grids)";
-        logError(e);
-      }
+      if (gasJson.error === 'unauthorized') { handleSessionExpired(); return; }
+      if (gasJson.error) throw new Error('GAS error: ' + gasJson.error);
 
-      const rowsPA = normalizePARows(parseCsvRobust(txtPA));
-      const rowsLoc = locOk ? parseCsvRobust(txtLoc) : [];
+      httpInfo = "GAS:OK";
+      paCsvUrlAbs = "(GAS API)";
+      locCsvUrlAbs = "(GAS API)";
+
+      const rowsPA = normalizePARows(gasJson.pa || []);
+      const rowsLoc = gasJson.loc || [];
       allLocationRowsRaw = rowsLoc;
 
       locMap.clear();
@@ -4006,15 +4033,126 @@
         if (isValidLatLng(r.end_lat, r.end_lon)) bounds.extend([Number(r.end_lat), Number(r.end_lon)]);
       }
       if (bounds.isValid()) map.fitBounds(bounds.pad(0.12));
+      } finally {
+        hideLoadingOverlay();
+      }
+    }
+
+    // ── Loading overlay 控制函式 ────────────────────────────────
+    function showLoadingOverlay(msg) {
+      const sub = document.getElementById('loadingSub');
+      if (sub) sub.textContent = msg || '正在連接 GAS…';
+      const el = document.getElementById('loadingOverlay');
+      if (el) el.style.display = 'flex';
+    }
+    function hideLoadingOverlay() {
+      const el = document.getElementById('loadingOverlay');
+      if (el) el.style.display = 'none';
+    }
+
+    const GAS_CONFIG_KEY = 'thsr_pa_gas_config';
+    const ghCfg = (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(GAS_CONFIG_KEY) || '{}');
+        return { url: saved.url || 'https://script.google.com/macros/s/AKfycbxM8-1ftURi22Fx8EZ6Al4vPmvG2AUsdrjoGeelBQMvWuKM94rIKnHOuUwgqIdism_X5A/exec' };
+      } catch {
+        return { url: 'https://script.google.com/macros/s/AKfycbxM8-1ftURi22Fx8EZ6Al4vPmvG2AUsdrjoGeelBQMvWuKM94rIKnHOuUwgqIdism_X5A/exec' };
+      }
+    })();
+
+    // \u2500\u2500 Session token\uff08\u8207 LogTable \u5171\u7528\u540c\u4e00 sessionStorage key\uff09\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    const SESSION_TOKEN_KEY = 'thsr_pa_session_token';
+    let sessionToken = sessionStorage.getItem(SESSION_TOKEN_KEY) || '';
+
+    function saveSessionToken(token) {
+      sessionToken = token;
+      sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    }
+    function clearSessionToken() {
+      sessionToken = '';
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    }
+    function handleSessionExpired() {
+      clearSessionToken();
+      alert('\u767b\u5165\u5df2\u904e\u671f\uff0c\u8acb\u91cd\u65b0\u767b\u5165\u3002');
+      location.reload();
+    }
+
+    // \u2500\u2500 Login overlay \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    let prefetchedIp = '';
+
+    async function showLoginOverlay() {
+      document.getElementById('loginOverlay').style.display = 'flex';
+      const ipEl = document.getElementById('loginIpDisplay');
+      ipEl.textContent = '\u6aa2\u6e2c\u4e2d\u2026';
+      prefetchedIp = '';
+      try {
+        const r = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+        prefetchedIp = (await r.json()).ip || '';
+        ipEl.textContent = prefetchedIp || '\u7121\u6cd5\u53d6\u5f97';
+      } catch (_) {
+        ipEl.textContent = '\u7121\u6cd5\u53d6\u5f97';
+      }
+    }
+
+    document.getElementById('btnLogin').addEventListener('click', doLogin);
+    document.getElementById('loginLdap').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('loginEmpId').focus();
+    });
+    document.getElementById('loginEmpId').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+    document.getElementById('btnLogout').addEventListener('click', () => {
+      if (confirm('\u78ba\u5b9a\u8981\u767b\u51fa\uff1f')) { clearSessionToken(); location.reload(); }
+    });
+
+    async function doLogin() {
+      const ldap  = document.getElementById('loginLdap').value.trim();
+      const empId = document.getElementById('loginEmpId').value.trim();
+      const errEl = document.getElementById('loginErr');
+      const btn   = document.getElementById('btnLogin');
+
+      if (!ldap || !empId) { errEl.textContent = '\u8acb\u586b\u5beb\u6240\u6709\u6b04\u4f4d'; return; }
+      errEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = '\u9a57\u8b49\u4e2d\u2026';
+
+      try {
+        const res = await fetch(ghCfg.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'login', ldap, empId, ip: prefetchedIp }),
+          redirect: 'follow',
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          errEl.textContent = '\u5e33\u865f\u6216 Employee ID \u4e0d\u7b26\uff0c\u8acb\u78ba\u8a8d\u5f8c\u91cd\u8a66';
+          btn.disabled = false;
+          btn.textContent = '\u767b\u5165';
+          return;
+        }
+        saveSessionToken(data.token);
+        document.getElementById('loginOverlay').style.display = 'none';
+        try { await loadBothCSVsAndInit(); }
+        catch (e) { hideLoadingOverlay(); logError(e); showFatal(String(e?.stack || e)); }
+      } catch (err) {
+        errEl.textContent = '\u9023\u7dda\u5931\u6557\uff1a' + (err.message || err);
+        btn.disabled = false;
+        btn.textContent = '\u767b\u5165';
+      }
     }
 
     function startApp() {
       try {
         setStatus("booting...");
-        setTimeout(async () => {
-          try { await loadBothCSVsAndInit(); }
-          catch (e) { logError(e); showFatal(String(e?.stack || e)); }
-        }, 0);
+        if (sessionToken && ghCfg.url) {
+          setTimeout(async () => {
+            try { await loadBothCSVsAndInit(); }
+            catch (e) { hideLoadingOverlay(); logError(e); showFatal(String(e?.stack || e)); }
+          }, 0);
+        } else {
+          showLoginOverlay();
+        }
       } catch (e) { logError(e); showFatal(String(e?.stack || e)); }
     }
 
