@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v3.0</title>
+  <title>THSR PA Log Table  v5.0</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -494,6 +494,59 @@
       font-size:15px; font-weight:1000; color:var(--accent2);
     }
     #loadOverlay .sub { font-size:12px; color:var(--muted); font-weight:700; }
+
+    /* ===== Login overlay ===== */
+    #loginOverlay {
+      position:fixed; inset:0;
+      background:rgba(7,11,22,0.97);
+      z-index:10000;
+      display:none; align-items:center; justify-content:center;
+    }
+    #loginBox {
+      background:rgba(10,19,40,0.99);
+      border:1px solid rgba(43,124,255,0.45);
+      border-radius:20px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.70);
+      padding:32px 36px;
+      width:min(400px,92vw);
+      display:flex; flex-direction:column; gap:16px;
+      backdrop-filter:blur(10px);
+    }
+    .login-title {
+      font-size:16px; font-weight:1000; color:var(--accent2);
+      text-align:center; letter-spacing:.4px;
+      text-shadow:0 0 16px rgba(0,214,255,0.30);
+    }
+    .login-sub { font-size:11px; color:var(--muted); text-align:center; }
+    .login-field {
+      width:100%; box-sizing:border-box;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:10px; padding:10px 14px;
+      color:var(--txt); font-size:13px;
+      outline:none; transition:.12s ease;
+    }
+    .login-field:focus { border-color:rgba(43,124,255,0.60); background:rgba(43,124,255,0.08); }
+    .login-btn {
+      width:100%;
+      border:1px solid rgba(43,124,255,0.50);
+      background:rgba(43,124,255,0.22);
+      color:var(--txt); border-radius:10px; padding:10px;
+      cursor:pointer; font-weight:800; font-size:13px;
+      transition:.15s ease;
+    }
+    .login-btn:hover { background:rgba(43,124,255,0.40); }
+    .login-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .login-err { font-size:12px; color:#ff8080; text-align:center; min-height:18px; font-weight:700; }
+    .login-ip-row {
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      font-size:11px; color:var(--muted);
+    }
+    .login-ip-val {
+      font-size:11px; font-weight:800; color:var(--accent2);
+      background:rgba(0,214,255,0.08); border:1px solid rgba(0,214,255,0.20);
+      border-radius:6px; padding:2px 8px; letter-spacing:.4px;
+    }
   </style>
 </head>
 <body>
@@ -519,9 +572,25 @@
   </div>
 </div>
 
+<!-- Login overlay -->
+<div id="loginOverlay">
+  <div id="loginBox">
+    <div class="login-title">THSR PA Log Table</div>
+    <div class="login-sub">請輸入帳號資訊以繼續</div>
+    <input class="login-field" id="loginLdap" type="text" placeholder="LDAP 帳號（xxx@cht.com.tw）" autocomplete="username">
+    <input class="login-field" id="loginEmpId" type="text" placeholder="Employee ID（如：002507）" autocomplete="off" maxlength="20">
+    <button class="login-btn" id="btnLogin">登入</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-ip-row">
+      <span>您的 IP：</span>
+      <span class="login-ip-val" id="loginIpDisplay">檢測中…</span>
+    </div>
+  </div>
+</div>
+
 <div id="loadOverlay">
   <div>載入中…</div>
-  <div class="sub" id="loadSub">讀取 CSV…</div>
+  <div class="sub" id="loadSub">讀取資料…</div>
 </div>
 
 <div id="paTooltip"></div>
@@ -550,7 +619,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v3.0</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v5.0</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -571,6 +640,7 @@
     <div class="gh-badge" id="ghBadge" title="Google Sheets 同步設定">☁️ 未設定</div>
     <button class="btn" id="btnSync" title="手動重新同步 notes">🔄 同步</button>
     <button class="btn" id="btnExport" title="匯出目前篩選結果為 Excel">📥 匯出 Excel</button>
+    <button class="btn" id="btnLogout" title="登出">🚪 登出</button>
     <div class="status-tag" id="statusTag"></div>
   </div>
 
@@ -590,43 +660,6 @@
    - Top filter bar: Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
-
-// ── CSV parser ──────────────────────────────────────────────
-function parseCsv(text) {
-  const rows = [];
-  let row = [], cur = '', inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i], nx = text[i + 1];
-    if (inQ) {
-      if (ch === '"' && nx === '"') { cur += '"'; i++; }
-      else if (ch === '"') inQ = false;
-      else cur += ch;
-    } else {
-      if (ch === '"') inQ = true;
-      else if (ch === ',') { row.push(cur); cur = ''; }
-      else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
-      else if (ch !== '\r') cur += ch;
-    }
-  }
-  if (cur || row.length) { row.push(cur); rows.push(row); }
-  while (rows.length && rows[rows.length - 1].every(v => !v.trim())) rows.pop();
-  if (rows.length < 2) return [];
-  let hdr = rows[0].map(h => h.trim());
-  if (hdr[0]?.charCodeAt(0) === 0xFEFF) hdr[0] = hdr[0].slice(1);
-  return rows.slice(1)
-    .filter(r => r.some(v => v.trim()))
-    .map(r => {
-      const o = {};
-      hdr.forEach((h, i) => o[h] = (r[i] ?? '').trim());
-      return o;
-    });
-}
-
-async function fetchNoStore(url) {
-  const res = await fetch(url + '?v=' + Date.now(), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status} (${url})`);
-  return res.text();
-}
 
 // ── Filter state ─────────────────────────────────────────────
 const filterState = {
@@ -1173,28 +1206,26 @@ function renderPivot(locRows, paRows) {
   tbody.appendChild(frag);
 }
 
-// ── Init ──────────────────────────────────────────────────────
-async function init() {
+// ── Init（定義於此，末尾呼叫）────────────────────────────────
+async function loadData(userName) {
   const loadSub = document.getElementById('loadSub');
   try {
-    const base = new URL('./', location.href).toString();
-
-    loadSub.textContent = '讀取 PA_data.csv…';
-    const paTxt  = await fetchNoStore(base + 'PA_data.csv');
-    loadSub.textContent = '讀取 THSR_Location.csv…';
-    const locTxt = await fetchNoStore(base + 'THSR_Location.csv');
+    loadSub.textContent = '向 GAS 取得資料…';
+    const res = await fetch(
+      ghCfg.url + '?action=getData&token=' + encodeURIComponent(sessionToken) + '&v=' + Date.now(),
+      { cache: 'no-store' }
+    );
+    const json = await res.json();
+    if (json.error === 'unauthorized') { handleSessionExpired(); return; }
+    if (json.error) throw new Error(json.error);
 
     loadSub.textContent = '解析資料…';
-    allPaRows  = parseCsv(paTxt);
-    allLocRows = parseCsv(locTxt);
+    allPaRows  = json.pa  || [];
+    allLocRows = json.loc || [];
 
-    function uniqSorted(arr) {
-      return [...new Set(arr.filter(Boolean))].sort();
-    }
-
+    function uniqSorted(arr) { return [...new Set(arr.filter(Boolean))].sort(); }
     const nets    = uniqSorted(allPaRows.map(r => r.measurement_NetWork));
     const scripts = uniqSorted(allPaRows.map(r => r.measurement_Script));
-    // Marea 依指定顯示順序排列
     const MAREA_ORDER = ['行動北區營運處', '行動中區營運處', '行動南區營運處'];
     const mareas = [...new Set(allPaRows.map(r => r.Marea).filter(Boolean))].sort((a, b) => {
       const ia = MAREA_ORDER.indexOf(a), ib = MAREA_ORDER.indexOf(b);
@@ -1203,22 +1234,27 @@ async function init() {
       if (ib !== -1) return 1;
       return a.localeCompare(b, 'zh-Hant');
     });
-
     filterWidgets.Net.setOptions(nets);
     filterWidgets.Script.setOptions(scripts);
     filterWidgets.Marea.setOptions(mareas);
 
     applyAndRender();
     document.getElementById('loadOverlay').style.display = 'none';
-    // CSV 載入完成後才同步 notes，避免時序競爭
+    if (userName) document.getElementById('statusTag').textContent = '👤 ' + userName;
     await initGhSync();
   } catch (e) {
-    document.getElementById('loadSub').textContent = '載入失敗：' + e.message;
+    loadSub.textContent = '載入失敗：' + e.message;
     console.error(e);
   }
 }
 
-init();
+async function init() {
+  if (sessionToken && ghCfg.url) {
+    await loadData();
+  } else {
+    showLoginOverlay();
+  }
+}
 
 // ── Google Apps Script sync config ──────────────────────────────
 const GH_CONFIG_KEY = 'thsr_pa_gas_config';
@@ -1235,9 +1271,93 @@ function loadGhConfig() {
 function saveGhConfig() {
   localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(ghCfg));
 }
-function ghConfigured() { return !!(ghCfg.url); }
+function ghConfigured() { return !!(ghCfg.url && sessionToken); }
 
 loadGhConfig();
+
+// ── Session token ───────────────────────────────────────────
+const SESSION_TOKEN_KEY = 'thsr_pa_session_token';
+let sessionToken = sessionStorage.getItem(SESSION_TOKEN_KEY) || '';
+
+function saveSessionToken(token) {
+  sessionToken = token;
+  sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+}
+function clearSessionToken() {
+  sessionToken = '';
+  sessionStorage.removeItem(SESSION_TOKEN_KEY);
+}
+function handleSessionExpired() {
+  clearSessionToken();
+  alert('登入已過期，請重新登入。');
+  location.reload();
+}
+
+// ── Login overlay ───────────────────────────────────────────
+let prefetchedIp = '';
+
+async function showLoginOverlay() {
+  document.getElementById('loadOverlay').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('loginLdap').focus(), 50);
+  // 預取 IP 並顯示
+  const ipEl = document.getElementById('loginIpDisplay');
+  ipEl.textContent = '檢測中…';
+  prefetchedIp = '';
+  try {
+    const r = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+    prefetchedIp = (await r.json()).ip || '';
+    ipEl.textContent = prefetchedIp || '無法取得';
+  } catch (_) {
+    ipEl.textContent = '無法取得';
+  }
+}
+
+document.getElementById('btnLogin').addEventListener('click', doLogin);
+document.getElementById('loginLdap').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('loginEmpId').focus();
+});
+document.getElementById('loginEmpId').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogin() {
+  const ldap  = document.getElementById('loginLdap').value.trim();
+  const empId = document.getElementById('loginEmpId').value.trim();
+  const errEl = document.getElementById('loginErr');
+  const btn   = document.getElementById('btnLogin');
+
+  if (!ldap || !empId) { errEl.textContent = '請填寫所有欄位'; return; }
+  if (!ghCfg.url) { errEl.textContent = '尚未設定 GAS URL，請聯絡管理員'; return; }
+
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = '驗證中…';
+
+  try {
+    const res = await fetch(ghCfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'login', ldap, empId, ip: prefetchedIp }),
+      redirect: 'follow',
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      errEl.textContent = '帳號或 Employee ID 不符，請確認後重試';
+      btn.disabled = false;
+      btn.textContent = '登入';
+      return;
+    }
+    saveSessionToken(data.token);
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('loadOverlay').style.display = 'flex';
+    await loadData(data.userName);
+  } catch (err) {
+    errEl.textContent = '連線失敗：' + (err.message || err);
+    btn.disabled = false;
+    btn.textContent = '登入';
+  }
+}
 
 const ghBadge = document.getElementById('ghBadge');
 function updateGhBadge(state, msg) {
@@ -1252,22 +1372,28 @@ function updateGhBadge(state, msg) {
 
 // ── Google Apps Script API ───────────────────────────────────────
 async function ghFetchNotes() {
-  const res = await fetch(ghCfg.url + '?v=' + Date.now(), { cache: 'no-store' });
+  const res = await fetch(
+    ghCfg.url + '?action=getNotes&token=' + encodeURIComponent(sessionToken) + '&v=' + Date.now(),
+    { cache: 'no-store' }
+  );
   if (!res.ok) throw new Error('Sheets 讀取失敗 ' + res.status);
-  return res.json();
+  const data = await res.json();
+  if (data && data.error === 'unauthorized') { handleSessionExpired(); throw new Error('Session 已過期'); }
+  return data;
 }
 
-async function ghPushNotes(data) {
+async function ghPushNotes(noteData) {
   if (!ghCfg.url) throw new Error('未設定 Apps Script URL，無法寫入');
-  // GAS Web App 不支援 application/json 的 CORS preflight，改用 text/plain
   const res = await fetch(ghCfg.url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ action: 'pushNotes', token: sessionToken, data: noteData }),
     redirect: 'follow',
   });
   if (!res.ok) throw new Error('Sheets 寫入失敗 ' + res.status);
-  return res.json();
+  const result = await res.json();
+  if (result && result.error === 'unauthorized') { handleSessionExpired(); throw new Error('Session 已過期'); }
+  return result;
 }
 
 // ── Note storage ──────────────────────────────────────────────────
@@ -1735,6 +1861,17 @@ updateGhBadge(ghConfigured() ? 'ok' : '');
 document.getElementById('btnSync').addEventListener('click', async () => {
   await initGhSync();
 });
+
+// 登出按鈕
+document.getElementById('btnLogout').addEventListener('click', () => {
+  if (confirm('確定要登出？')) {
+    clearSessionToken();
+    location.reload();
+  }
+});
+
+// 所有設定完成後實際啟動
+init();
 </script>
 </body>
 </html>
