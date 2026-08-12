@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v5.0</title>
+  <title>THSR PA Log Table  v5.2</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -619,7 +619,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v5.0</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v5.2</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -677,7 +677,7 @@ let allPaRows  = [];
 let allLocRows = [];
 let hideTunnel = true;
 let improvementFilter = 'all'; // 'all' | 'bad' | 'good'
-let sortKey = null;  // null | fc key string | date string
+let sortKey = 'location_name'; // 預設依 location_name 由小到大
 let sortDir = 1;     // 1=asc, -1=desc
 
 // ── Multiselect helper ────────────────────────────────────────
@@ -870,6 +870,39 @@ function parseDateStr(s) {
   return new Date(String(s).replace(/\//g, '-'));
 }
 
+function compareLocationNames(a, b) {
+  return String(a ?? '').localeCompare(String(b ?? ''), 'zh-Hant', {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
+const IMPROVEMENT_CLEAN_MEASUREMENTS = 3;
+
+// 改善判定沿用目前篩選後的 PA 與 start_location_name：
+// 最新連續三個量測日期均未出現 PA 才是已改善；不足三次則維持未改善。
+function buildImprovementContext(paRows) {
+  const measurementDates = [...new Set(paRows.map(row => row.Date).filter(Boolean))]
+    .sort((a, b) => parseDateStr(a) - parseDateStr(b));
+  const recentDates = measurementDates.slice(-IMPROVEMENT_CLEAN_MEASUREMENTS);
+  const recentDateSet = new Set(recentDates);
+  const recentLocationsWithPa = new Set(
+    paRows
+      .filter(row => recentDateSet.has(row.Date))
+      .map(row => row.start_location_name)
+      .filter(Boolean)
+  );
+  return {
+    recentDates,
+    hasEnoughMeasurements: recentDates.length === IMPROVEMENT_CLEAN_MEASUREMENTS,
+    recentLocationsWithPa,
+  };
+}
+
+function isLocationImproved(locationName, context) {
+  return context.hasEnoughMeasurements && !context.recentLocationsWithPa.has(locationName);
+}
+
 function updateStickyLefts() {
   const ths = Array.from(document.querySelectorAll('#tHead th.fc'));
   if (!ths.length) return;
@@ -919,6 +952,13 @@ const TIP_PALETTE = [
   { bg:'rgba(0,180,180,0.14)',   border:'#00b4b4', text:'#88e8e8' },
 ];
 
+function makeTextElement(tagName, className, value) {
+  const el = document.createElement(tagName);
+  if (className) el.className = className;
+  el.textContent = String(value ?? '');
+  return el;
+}
+
 function showTip(e, items) {
   const total = items.length;
   // 統計各組合的次數
@@ -930,15 +970,20 @@ function showTip(e, items) {
   // 依次數降冪排序
   const combos = [...comboMap.entries()].sort((a, b) => b[1] - a[1]);
 
-  let html = `<div class="tip-title">PA 事件 × ${total} 筆</div>`;
+  paTooltip.replaceChildren(makeTextElement('div', 'tip-title', `PA 事件 × ${total} 筆`));
   combos.forEach(([combo, cnt], idx) => {
     const c = TIP_PALETTE[idx % TIP_PALETTE.length];
-    html += `<div class="tip-combo-row" style="background:${c.bg};border-left-color:${c.border};">`
-          + `<span class="tip-combo-label" style="color:${c.text};">${combo}</span>`
-          + `<span class="tip-combo-cnt" style="color:${c.text};">${cnt}筆</span>`
-          + `</div>`;
+    const row = document.createElement('div');
+    row.className = 'tip-combo-row';
+    row.style.background = c.bg;
+    row.style.borderLeftColor = c.border;
+    const label = makeTextElement('span', 'tip-combo-label', combo);
+    const count = makeTextElement('span', 'tip-combo-cnt', `${cnt}筆`);
+    label.style.color = c.text;
+    count.style.color = c.text;
+    row.append(label, count);
+    paTooltip.appendChild(row);
   });
-  paTooltip.innerHTML = html;
   paTooltip.style.display = 'block';
   tipVisible = true;
   posTip(e);
@@ -966,16 +1011,30 @@ function hideTip() {
 function showNoteTip(e, noteKey) {
   const notes = noteStore[noteKey];
   if (!notes || !notes.length) return;
-  let html = `<div class="tip-title">📝 註記 × ${notes.length} 則</div>`;
+  paTooltip.replaceChildren(makeTextElement('div', 'tip-title', `📝 註記 × ${notes.length} 則`));
   notes.forEach(n => {
-    const meta = (n.date   ? `<span style="color:#aad4ff;margin-right:6px;">${n.date}</span>` : '')
-               + (n.author ? `<span style="color:#ffd090;">${n.author}</span>` : '');
-    html += `<div style="margin:4px 0;padding:5px 8px;background:rgba(255,255,255,0.07);border-radius:6px;font-size:12px;">`
-          + (meta ? `<div style="margin-bottom:3px;">${meta}</div>` : '')
-          + `<div style="color:#e8e8e8;white-space:pre-wrap;">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
-          + `</div>`;
+    const item = document.createElement('div');
+    item.style.cssText = 'margin:4px 0;padding:5px 8px;background:rgba(255,255,255,0.07);border-radius:6px;font-size:12px;';
+    if (n.date || n.author) {
+      const meta = document.createElement('div');
+      meta.style.marginBottom = '3px';
+      if (n.date) {
+        const date = makeTextElement('span', '', n.date);
+        date.style.cssText = 'color:#aad4ff;margin-right:6px;';
+        meta.appendChild(date);
+      }
+      if (n.author) {
+        const author = makeTextElement('span', '', n.author);
+        author.style.color = '#ffd090';
+        meta.appendChild(author);
+      }
+      item.appendChild(meta);
+    }
+    const content = makeTextElement('div', '', n.content);
+    content.style.cssText = 'color:#e8e8e8;white-space:pre-wrap;';
+    item.appendChild(content);
+    paTooltip.appendChild(item);
   });
-  paTooltip.innerHTML = html;
   paTooltip.style.display = 'block';
   tipVisible = true;
   posTip(e);
@@ -1031,8 +1090,7 @@ function renderPivot(locRows, paRows) {
     return parseKmM(a['KM+M']) - parseKmM(b['KM+M']);
   });
 
-  // ── Build set of locations with any PA events ──
-  const locWithEvents = new Set(paRows.map(r => r.start_location_name).filter(Boolean));
+  const improvementContext = buildImprovementContext(paRows);
 
   // ── Group by location_name (preserve first-seen order after sort) ──
   const groupMap = new Map(); // location_name → { rows[] }
@@ -1058,13 +1116,13 @@ function renderPivot(locRows, paRows) {
       marea:   mergeField(rows, 'marea'),
       mcenter: mergeField(rows, 'mcenter'),
       memo:    mergeField(rows, 'memo'),
-      hasEvents: locWithEvents.has(name),
+      isImproved: isLocationImproved(name, improvementContext),
     });
   }
 
   // ── Apply improvement filter ──
-  if (improvementFilter === 'bad')  merged = merged.filter(r => r.hasEvents);
-  if (improvementFilter === 'good') merged = merged.filter(r => !r.hasEvents);
+  if (improvementFilter === 'bad')  merged = merged.filter(r => !r.isImproved);
+  if (improvementFilter === 'good') merged = merged.filter(r => r.isImproved);
 
   // ── Build per-date count map for sorting ──
   const dateTotalMap = new Map(); // locName|date → count (already in paMap)
@@ -1075,8 +1133,8 @@ function renderPivot(locRows, paRows) {
     merged.sort((a, b) => {
       let va, vb;
       if (sortKey === '__impr__') {
-        va = a.hasEvents ? 1 : 0;
-        vb = b.hasEvents ? 1 : 0;
+        va = a.isImproved ? 0 : 1;
+        vb = b.isImproved ? 0 : 1;
         return (va - vb) * sd;
       }
       if (sortKey === '__km__') {
@@ -1088,6 +1146,9 @@ function renderPivot(locRows, paRows) {
         va = (paMap.get((a.location_name || '') + '|' + sortKey) || []).length;
         vb = (paMap.get((b.location_name || '') + '|' + sortKey) || []).length;
         return (va - vb) * sd;
+      }
+      if (sortKey === 'location_name') {
+        return compareLocationNames(a.location_name, b.location_name) * sd;
       }
       va = String(a[sortKey] ?? '').toLowerCase();
       vb = String(b[sortKey] ?? '').toLowerCase();
@@ -1149,8 +1210,8 @@ function renderPivot(locRows, paRows) {
       td.className = 'fc ' + fc.cls;
       if (fc.isImpr) {
         const sp = document.createElement('span');
-        sp.className = 'badge-impr ' + (row.hasEvents ? 'bad' : 'good');
-        sp.textContent = row.hasEvents ? '未改善' : '已改善';
+        sp.className = 'badge-impr ' + (row.isImproved ? 'good' : 'bad');
+        sp.textContent = row.isImproved ? '已改善' : '未改善';
         td.appendChild(sp);
       } else {
         td.textContent = row[fc.key] ?? '';
@@ -1379,26 +1440,30 @@ async function ghFetchNotes() {
   if (!res.ok) throw new Error('Sheets 讀取失敗 ' + res.status);
   const data = await res.json();
   if (data && data.error === 'unauthorized') { handleSessionExpired(); throw new Error('Session 已過期'); }
+  if (data && data.error) throw new Error(data.error);
   return data;
 }
 
-async function ghPushNotes(noteData) {
+async function ghPostNoteAction(action, payload) {
   if (!ghCfg.url) throw new Error('未設定 Apps Script URL，無法寫入');
   const res = await fetch(ghCfg.url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'pushNotes', token: sessionToken, data: noteData }),
+    body: JSON.stringify({ action, token: sessionToken, ...payload }),
     redirect: 'follow',
   });
   if (!res.ok) throw new Error('Sheets 寫入失敗 ' + res.status);
   const result = await res.json();
   if (result && result.error === 'unauthorized') { handleSessionExpired(); throw new Error('Session 已過期'); }
+  if (result && result.error) throw new Error(result.error);
   return result;
 }
 
 // ── Note storage ──────────────────────────────────────────────────
 const NOTE_STORE_KEY = 'thsr_pa_logtable_notes';
+const NOTE_OUTBOX_KEY = 'thsr_pa_logtable_note_outbox';
 let noteStore = {};
+let noteOutbox = [];
 
 // 舊版本以 \x00 或 \uFFFD 作分隔符（\x00 在 HTML attribute 中會被部分瀏覽器換成 \uFFFD）
 // 統一遷移到 \t（tab，在 attribute value 中完全合法且不會出現在地名/日期中）
@@ -1412,7 +1477,25 @@ function migrateNoteKeys(store) {
 function loadNotes() {
   try { noteStore = migrateNoteKeys(JSON.parse(localStorage.getItem(NOTE_STORE_KEY) || '{}')); }
   catch { noteStore = {}; }
+  try {
+    const savedOutbox = JSON.parse(localStorage.getItem(NOTE_OUTBOX_KEY) || '[]');
+    noteOutbox = Array.isArray(savedOutbox) ? savedOutbox : [];
+  } catch { noteOutbox = []; }
 }
+
+function persistNotesLocal() {
+  localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
+}
+
+function persistNoteOutbox() {
+  localStorage.setItem(NOTE_OUTBOX_KEY, JSON.stringify(noteOutbox));
+}
+
+function createNoteId() {
+  return globalThis.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 // 通用重試工具：fn 為 async function，最多重試 maxRetries 次，每次等 delayMs ms
 async function withRetry(fn, maxRetries = 3, delayMs = 1500) {
   let lastErr;
@@ -1426,31 +1509,44 @@ async function withRetry(fn, maxRetries = 3, delayMs = 1500) {
   throw lastErr;
 }
 
-// Push 串行佇列：確保同一頁面內的 push 不並發，消除 SHA 衝突（GitHub 409）
-// 跨使用者衝突由 withRetry 的 5 次重試（每次重新 GET 最新 SHA）處理
+// 逐筆操作串行送出；成功後才由 outbox 移除，網路失敗或重新整理後仍可重送。
 let _pushChain = Promise.resolve();
-function pushNotesQueued() {
-  const p = _pushChain.catch(() => {}).then(() => withRetry(() => ghPushNotes(noteStore), 5, 1200));
+function enqueueStoredMutation(operation) {
+  const snapshot = JSON.parse(JSON.stringify(operation));
+  const p = _pushChain.catch(() => {}).then(() =>
+    withRetry(() => ghPostNoteAction(snapshot.action, snapshot.payload), 5, 1200)
+  ).then(result => {
+    noteOutbox = noteOutbox.filter(item => item.opId !== snapshot.opId);
+    persistNoteOutbox();
+    return result;
+  });
   _pushChain = p.catch(() => {});
   return p;
 }
 
-function saveNotes() {
-  localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
-  // 同步到 GitHub（有設定時），失敗自動重試 3 次
-  if (ghConfigured()) {
-    updateGhBadge('syncing');
-    pushNotesQueued()
-      .then(() => {
-        updateGhBadge('ok');
-      })
-      .catch(e => {
-        updateGhBadge('err');
-        console.warn('GitHub push failed after 5 retries:', e);
-        const msg = e?.message || String(e);
-        alert('⚠️ 注記同步失敗（已重試 5 次）！\n\n' + msg + '\n\n請確認 PAT 是否正確，以及是否有 repo 寫入權限（Contents: Read & Write）。');
-      });
-  }
+function queueNoteMutation(action, payload) {
+  const operation = { opId: createNoteId(), action, payload };
+  noteOutbox.push(operation);
+  persistNoteOutbox();
+  return enqueueStoredMutation(operation);
+}
+
+async function replayPendingMutations() {
+  const pending = noteOutbox.slice();
+  if (!pending.length) return;
+  const results = await Promise.allSettled(pending.map(enqueueStoredMutation));
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed) throw failed.reason;
+}
+
+function trackMutation(promise) {
+  updateGhBadge('syncing');
+  promise
+    .then(() => updateGhBadge('ok'))
+    .catch(e => {
+      updateGhBadge('err');
+      console.warn('Sheets note mutation failed after 5 retries:', e);
+    });
 }
 loadNotes();
 
@@ -1459,12 +1555,12 @@ async function initGhSync() {
   if (!ghConfigured()) { updateGhBadge(''); return; }
   updateGhBadge('syncing');
   try {
+    // 先送出離線期間累積的逐筆操作，再以遠端結果更新畫面。
+    await replayPendingMutations();
     const remote = await withRetry(() => ghFetchNotes());
     if (remote && typeof remote === 'object') {
-      // 同步策略：以 remote 為唯一真實來源，完整取代 local
-      // 如此刪除操作才能正確同步給其他人（若僅合併則遠端刪除永遠無法傳播）
       noteStore = migrateNoteKeys(remote);
-      localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
+      persistNotesLocal();
       applyAndRender();
     }
     updateGhBadge('ok');
@@ -1496,21 +1592,28 @@ function todayStr(){
 
 function renderNoteList() {
   const notes = noteStore[activeCellKey] || [];
+  noteList.replaceChildren();
   if (!notes.length) {
-    noteList.innerHTML = '<div class="note-empty">尚無註記</div>';
+    noteList.appendChild(makeTextElement('div', 'note-empty', '尚無註記'));
     return;
   }
-  noteList.innerHTML = '';
-  notes.forEach((n, idx) => {
+  notes.forEach(n => {
     const item = document.createElement('div');
     item.className = 'note-item';
-    item.innerHTML =
-      `<div class="note-item-meta">`
-      +`<span class="note-item-date">${n.date || ''}</span>`
-      +`<span class="note-item-author">${n.author || ''}</span>`
-      +`</div>`
-      +`<div class="note-item-body">${n.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
-      +`<button class="note-item-del" data-idx="${idx}" title="刪除">×</button>`;
+
+    const meta = document.createElement('div');
+    meta.className = 'note-item-meta';
+    meta.append(
+      makeTextElement('span', 'note-item-date', n.date),
+      makeTextElement('span', 'note-item-author', n.author),
+    );
+    item.append(meta, makeTextElement('div', 'note-item-body', n.content));
+
+    const button = makeTextElement('button', 'note-item-del', '×');
+    button.type = 'button';
+    button.dataset.noteId = String(n.id || '');
+    button.title = '刪除';
+    item.appendChild(button);
     noteList.appendChild(item);
   });
 }
@@ -1527,10 +1630,10 @@ function openNoteModal(cellKey, label) {
   noteInputContent.focus();
 }
 
-function closeNoteModal() {
+async function closeNoteModal() {
   noteBackdrop.classList.remove('open');
-  // 關閉時自動從 Sheets 拉取最新資料，讓表格圖示更新
-  if (ghConfigured()) initGhSync();
+  // initGhSync 會先等待/重送 outbox，避免舊遠端資料覆蓋尚未送達的本機修改。
+  if (ghConfigured()) await initGhSync();
 }
 
 btnNoteClose.addEventListener('click', closeNoteModal);
@@ -1540,15 +1643,18 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteMod
 noteList.addEventListener('click', e => {
   const btn = e.target.closest('.note-item-del');
   if (!btn) return;
-  const idx = parseInt(btn.dataset.idx, 10);
   if (!noteStore[activeCellKey]) return;
+  const noteId = String(btn.dataset.noteId || '');
+  const idx = noteStore[activeCellKey].findIndex(note => String(note.id || '') === noteId);
+  if (idx < 0) return;
   noteStore[activeCellKey].splice(idx, 1);
   if (!noteStore[activeCellKey].length) delete noteStore[activeCellKey];
-  saveNotes();
+  persistNotesLocal();
   renderNoteList();
-  // re-render table so icon updates
   applyAndRender();
-  // reopen modal (applyAndRender closes nothing, but backdrop stays)
+  if (ghConfigured()) {
+    trackMutation(queueNoteMutation('deleteNote', { cellKey: activeCellKey, noteId }));
+  }
 });
 
 btnNoteAdd.addEventListener('click', () => {
@@ -1557,28 +1663,12 @@ btnNoteAdd.addEventListener('click', () => {
   const content = noteInputContent.value.trim();
   if (!content) { noteInputContent.focus(); return; }
   if (!noteStore[activeCellKey]) noteStore[activeCellKey] = [];
-  noteStore[activeCellKey].push({ id: Date.now(), date, author, content });
-  // 先 push，完成後再拉取從遠端（避免並發編輯袊漏）
+  const note = { id: createNoteId(), date, author, content };
+  noteStore[activeCellKey].push(note);
+  // 先落地本機；遠端失敗時 outbox 會保留操作，之後可安全重送。
+  persistNotesLocal();
   if (ghConfigured()) {
-    updateGhBadge('syncing');
-    pushNotesQueued()
-      .then(() => withRetry(() => ghFetchNotes()))
-      .then(remote => {
-        if (remote && typeof remote === 'object') {
-          // 同步策略：以 remote 為唯一真實來源（push 已完成，remote 必有我們的新資料）
-          noteStore = migrateNoteKeys(remote);
-          localStorage.setItem(NOTE_STORE_KEY, JSON.stringify(noteStore));
-        }
-        updateGhBadge('ok');
-        renderNoteList();
-        applyAndRender();
-      })
-      .catch(e => {
-        updateGhBadge('err');
-        console.warn('sync after add failed:', e);
-      });
-  } else {
-    saveNotes();
+    trackMutation(queueNoteMutation('addNote', { cellKey: activeCellKey, note }));
   }
   noteInputContent.value = '';
   renderNoteList();
@@ -1715,7 +1805,7 @@ async function exportExcel() {
     return parseKmM(a['KM+M']) - parseKmM(b['KM+M']);
   });
 
-  const locWithEvents = new Set(pa.map(r => r.start_location_name).filter(Boolean));
+  const improvementContext = buildImprovementContext(pa);
   const groupMap = new Map();
   for (const r of rawSorted) {
     const name = r.location_name || '';
@@ -1734,23 +1824,26 @@ async function exportExcel() {
       location_name: name,
       kmRange: first === last ? first : first + '~' + last,
       marea: mf(rows, 'marea'), mcenter: mf(rows, 'mcenter'), memo: mf(rows, 'memo'),
-      hasEvents: locWithEvents.has(name),
+      isImproved: isLocationImproved(name, improvementContext),
     });
   }
 
-  if (improvementFilter === 'bad')  merged = merged.filter(r => r.hasEvents);
-  if (improvementFilter === 'good') merged = merged.filter(r => !r.hasEvents);
+  if (improvementFilter === 'bad')  merged = merged.filter(r => !r.isImproved);
+  if (improvementFilter === 'good') merged = merged.filter(r => r.isImproved);
 
   if (sortKey) {
     const sd = sortDir;
     merged.sort((a, b) => {
       let va, vb;
-      if (sortKey === '__impr__') { va = a.hasEvents ? 1 : 0; vb = b.hasEvents ? 1 : 0; return (va - vb) * sd; }
+      if (sortKey === '__impr__') { va = a.isImproved ? 0 : 1; vb = b.isImproved ? 0 : 1; return (va - vb) * sd; }
       if (sortKey === '__km__') { return (parseKmM(a.kmRange.split('~')[0]) - parseKmM(b.kmRange.split('~')[0])) * sd; }
       if (dates.includes(sortKey)) {
         va = (paMap.get((a.location_name || '') + '|' + sortKey) || []).length;
         vb = (paMap.get((b.location_name || '') + '|' + sortKey) || []).length;
         return (va - vb) * sd;
+      }
+      if (sortKey === 'location_name') {
+        return compareLocationNames(a.location_name, b.location_name) * sd;
       }
       va = String(a[sortKey] ?? '').toLowerCase();
       vb = String(b[sortKey] ?? '').toLowerCase();
@@ -1793,7 +1886,7 @@ async function exportExcel() {
 
     const rowVals = [
       row.kmRange, row.location_name, row.marea, row.mcenter, row.memo,
-      row.hasEvents ? '未改善' : '已改善',
+      row.isImproved ? '已改善' : '未改善',
       ...dateDetails.map(d => d.length > 0 ? d.length : ''),
       noteLines.join('\n'),
     ];
@@ -1801,7 +1894,7 @@ async function exportExcel() {
     const exRow = ws.addRow(rowVals);
 
     // 改善狀態著色
-    exRow.getCell(6).font = { color: { argb: row.hasEvents ? 'FFFF4444' : 'FF008000' }, bold: true };
+    exRow.getCell(6).font = { color: { argb: row.isImproved ? 'FF008000' : 'FFFF4444' }, bold: true };
 
     // 日期欄位著色：VoLTE=藍、YouTube=橘、兩者都有=紅
     dateDetails.forEach((detail, di) => {
