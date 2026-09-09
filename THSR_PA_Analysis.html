@@ -48,6 +48,7 @@
       z-index: 2000;
       pointer-events: auto;
     }
+    .leaflet-top.leaflet-right{ z-index:2100; }
     .filter-bar{
       pointer-events: auto;
       background: rgba(10,19,40,0.92);
@@ -216,25 +217,27 @@
       background: linear-gradient(180deg, rgba(11,26,51,0.92) 0%, rgba(10,19,40,0.88) 100%);
       backdrop-filter: blur(6px);
     }
-    .title-wrap { display:flex; align-items:baseline; gap:10px; min-width: 0; }
+    .title-wrap { display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-width: 0; }
     .title-wrap h2 {
       margin:0; font-size:18px; white-space:nowrap;
       letter-spacing: .5px;
       text-shadow: 0 0 12px rgba(43,124,255,0.35);
     }
+    .title-meta { display:flex; align-items:center; gap:8px; min-width:0; }
     .verTag { color:var(--muted); font-weight:800; white-space:nowrap; }
     .selectionTag{
-      color:var(--muted); font-size:12px; white-space:nowrap;
-      overflow:hidden; text-overflow:ellipsis; max-width: 24vw;
+      color:var(--muted); font-size:11px; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis; max-width: 16vw;
     }
-    .btns{ display:flex; gap:8px; align-items:center; position:relative; z-index:2; }
+    .btns{ display:flex; flex-wrap:nowrap; justify-content:flex-end; gap:4px; align-items:center; position:relative; z-index:2; flex:0 0 auto; }
     .btn{
       border:1px solid var(--line2);
       background: rgba(255,255,255,0.04);
       border-radius:10px;
-      padding:6px 10px;
+      padding:5px 6px;
       cursor:pointer;
       font-weight:800;
+      font-size:11px;
       user-select:none;
       display:flex;
       align-items:center;
@@ -252,10 +255,10 @@
       border:1px solid rgba(255,255,255,0.14);
       background: rgba(255,255,255,0.04);
       border-radius:10px;
-      padding:6px 10px;
+      padding:5px 6px;
       color: rgba(231,238,252,0.92);
       font-weight: 900;
-      font-size: 12px;
+      font-size:11px;
       white-space:nowrap;
       box-shadow: 0 0 14px rgba(0,0,0,0.25);
     }
@@ -265,10 +268,10 @@
       border:1px solid var(--line2); 
       background: rgba(255,255,255,0.04); 
       border-radius:10px; 
-      padding:6px 10px; 
+      padding:5px 6px; 
       cursor:pointer; 
       font-weight:800; 
-      font-size:12px; 
+      font-size:11px; 
       color: var(--txt); 
       user-select:none; 
       transition: .15s ease;
@@ -292,6 +295,79 @@
       backdrop-filter: blur(6px);
       line-height: 1.35;
     }
+
+    .table-toolbar{
+      position:relative;
+      z-index:3;
+      padding:6px 12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(11,26,51,0.42);
+    }
+    .table-filter-mount{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .table-filter-mount .column-picker{ margin-left:auto; }
+    .table-filter-mount .msel{ gap:4px; }
+    .table-filter-mount .msel .lbl{ font-size:10px; }
+    .table-filter-mount .msel-btn{
+      padding:4px 6px;
+      font-size:10px;
+    }
+    .table-filter-mount .msel-btn .sum{ font-size:10px; }
+    .column-picker{ display:inline-block; position:relative; text-align:left; }
+    .column-picker summary{
+      list-style:none;
+      border:1px solid var(--line2);
+      border-radius:7px;
+      padding:4px 8px;
+      background:rgba(255,255,255,0.04);
+      color:var(--txt);
+      cursor:pointer;
+      font-size:11px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    .column-picker summary::-webkit-details-marker{ display:none; }
+    .column-picker summary::after{ content:' ▾'; color:var(--accent2); }
+    .column-picker[open] summary::after{ content:' ▴'; }
+    .column-picker-menu{
+      position:absolute;
+      right:0;
+      top:calc(100% + 5px);
+      width:330px;
+      max-height:360px;
+      overflow:auto;
+      padding:8px;
+      border:1px solid var(--line2);
+      border-radius:8px;
+      background:rgba(6,18,40,0.98);
+      box-shadow:0 14px 28px rgba(0,0,0,0.48);
+    }
+    .column-picker-tools{ display:flex; gap:6px; margin-bottom:7px; }
+    .column-picker-tools button{
+      border:1px solid var(--line2);
+      border-radius:6px;
+      padding:3px 7px;
+      background:rgba(255,255,255,0.05);
+      color:var(--txt);
+      cursor:pointer;
+      font-size:11px;
+      font-weight:800;
+    }
+    .column-picker-list{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:3px 8px; }
+    .column-picker-item{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      min-width:0;
+      padding:3px;
+      font-size:11px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .column-picker-item input{ margin:0; cursor:pointer; }
 
     .table-wrap { position:relative; z-index:2; flex: 0 0 60%; overflow:auto; padding: 10px 10px 12px 10px; }
     .bottom-area { position:relative; z-index:2; flex: 1; padding: 10px 12px; border-top:1px solid var(--line); background: rgba(11,26,51,0.42); backdrop-filter: blur(6px); overflow:auto; }
@@ -434,6 +510,62 @@
     tbody tr:hover { background: rgba(43,124,255,0.08); }
     tbody tr.row-clickable { cursor: pointer; }
     tbody tr.row-clickable:hover { background: rgba(255,43,43,0.10); }
+    #evtBody tr.row-selection-pulse td{
+      background:rgba(255,43,43,0.14);
+      animation:rowSelectionPulse 1s ease-in-out infinite;
+    }
+    #evtBody tr.row-selection-pulse td:first-child{
+      border-left:2px solid rgba(255,43,43,0.95);
+    }
+    #evtBody tr.row-selection-pulse td:last-child{
+      border-right:2px solid rgba(255,43,43,0.95);
+    }
+    @keyframes rowSelectionPulse{
+      0%, 100%{
+        border-top-color:rgba(255,43,43,0.40);
+        border-bottom-color:rgba(255,43,43,0.40);
+        box-shadow:inset 0 2px 0 rgba(255,43,43,0.40), inset 0 -2px 0 rgba(255,43,43,0.40);
+      }
+      50%{
+        border-top-color:rgba(255,120,120,1);
+        border-bottom-color:rgba(255,120,120,1);
+        box-shadow:inset 0 2px 0 rgba(255,120,120,1), inset 0 -2px 0 rgba(255,120,120,1);
+      }
+    }
+    #evtTable td.network-cell {
+      max-width: 140px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    #evtBody td.critical-network-value{
+      color:#ff6363;
+      font-weight:900;
+      animation:criticalNetworkValuePulse .9s ease-in-out infinite;
+    }
+    @keyframes criticalNetworkValuePulse{
+      0%, 100%{
+        color:#ff6363;
+        text-shadow:0 0 2px rgba(255,43,43,0.30);
+      }
+      50%{
+        color:#ffffff;
+        text-shadow:0 0 10px rgba(255,43,43,1);
+      }
+    }
+    #evtBody td.pa-status{
+      font-weight:1000;
+      text-align:center;
+    }
+    #evtBody td.pa-status-fad{
+      color:#ff6262;
+      animation:paStatusFadPulse .9s ease-in-out infinite;
+    }
+    #evtBody td.pa-status-rmd{ color:#ffb14a; }
+    #evtBody td.pa-status-cmd{ color:#e27cff; }
+    @keyframes paStatusFadPulse{
+      0%, 100%{ color:#ff6262; text-shadow:0 0 2px rgba(255,43,43,0.35); }
+      50%{ color:#ffffff; text-shadow:0 0 10px rgba(255,43,43,1); }
+    }
 
     .muted { color: var(--muted); }
     .err { color: #ffb0b0; white-space:pre-wrap; }
@@ -610,7 +742,22 @@
       color: var(--txt);
       transition: width .16s ease;
     }
-    .script-stats-ctrl:not(.expanded){ width: 72px; }
+    .script-stats-ctrl:not(.expanded){
+      width: 72px;
+      border-width:2px;
+      border-color: rgba(179,0,255,0.95);
+      animation: scriptStatsCollapsedPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes scriptStatsCollapsedPulse{
+      0%, 100%{
+        border-color: rgba(179,0,255,0.60);
+        box-shadow: 0 0 10px rgba(179,0,255,0.38);
+      }
+      50%{
+        border-color: rgba(224,123,255,1);
+        box-shadow: 0 0 24px rgba(179,0,255,0.95);
+      }
+    }
     .script-stats-head{
       display:flex;
       align-items:center;
@@ -776,7 +923,20 @@
       overflow:hidden;
       white-space:nowrap;
       text-overflow:ellipsis;
-      max-width: 480px;
+      flex:1;
+      min-width:0;
+    }
+    .chart-metric-select{
+      min-width:110px;
+      max-width:145px;
+      border:1px solid rgba(255,255,255,0.18);
+      border-radius:6px;
+      padding:3px 5px;
+      background:rgba(6,18,40,0.96);
+      color:var(--txt);
+      font-size:10px;
+      font-weight:800;
+      cursor:pointer;
     }
     .chart-close{
       border:1px solid rgba(255,255,255,0.16);
@@ -789,7 +949,7 @@
     }
     .chart-close:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
     #gridChart{
-      position:absolute; left:0; top:38px; width:100%; height: calc(100% - 38px);
+      position:absolute; left:0; top:42px; width:100%; height: calc(100% - 42px);
       z-index:1;
     }
 
@@ -991,6 +1151,18 @@
       <div class="chart-float" id="chartFloat">
         <div class="chart-head">
           <div class="ctitle" id="chartTitle">start_location_name：</div>
+          <select class="chart-metric-select" id="chartMetric" title="選擇圖表指標">
+            <option value="PA">PA</option>
+            <option value="Start_LTE_ServingCell">S_LTE_Cell</option>
+            <option value="Start_LTE_PCI">S_LTE_PCI</option>
+            <option value="Start_RSRP">S_RSRP</option>
+            <option value="Start_SINR">S_SINR</option>
+            <option value="Start_TA">S_TA</option>
+            <option value="Start_NR_ServingCell" data-nr-option>S_NR_Cell</option>
+            <option value="Start_NR_PCI" data-nr-option>S_NR_PCI</option>
+            <option value="Start_SS-RSRP" data-nr-option>S_SS-RSRP</option>
+            <option value="Start_SS-SINR" data-nr-option>S_SS-SINR</option>
+          </select>
           <button class="chart-close" id="chartClose">✕</button>
         </div>
         <canvas id="gridChart"></canvas>
@@ -1001,8 +1173,10 @@
       <div class="topbar">
         <div class="title-wrap">
           <h2>THSR PA Analysis</h2>
-          <div class="verTag" id="verTag"></div>
-          <div class="selectionTag" id="selectionTag" title=""></div>
+          <div class="title-meta">
+            <div class="verTag" id="verTag"></div>
+            <div class="selectionTag" id="selectionTag" title=""></div>
+          </div>
         </div>
 
         <div class="btns">
@@ -1023,6 +1197,20 @@
         Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
         數字顯示：zoom ≥ 12 顯示紅格筆數（依 Script 上色）；zoom ≤ 11 改顯示「start_location_name 的 unique 數量」（紅藍一起算、重複只算 1，並以 bucket 聚合加總）。<br>
         <span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
+        <br><span class="muted">PA狀態（僅 Date 單日有效）：FAD（First Anomaly Detected，首次發生）、RMD（Recurring Measurement Defect，復發）、CMD（Continuous Measurement Defect，連續發生）。Net 全選時合併 4G／5G 判定，否則分開判定。</span>
+      </div>
+
+      <div class="table-toolbar table-filter-mount" id="tableFilterMount">
+        <details class="column-picker" id="columnPicker">
+          <summary>顯示欄位（<span id="columnPickerCount"></span>）</summary>
+          <div class="column-picker-menu">
+            <div class="column-picker-tools">
+              <button type="button" data-column-action="all">全選</button>
+              <button type="button" data-column-action="none">全不選</button>
+            </div>
+            <div class="column-picker-list" id="columnPickerList"></div>
+          </div>
+        </details>
       </div>
 
       <div class="table-wrap">
@@ -1177,7 +1365,7 @@
        - Update: 移除未使用的 parseCsvRobust / fetchNoStore / buildCsvText
        =========================== */
 
-    const APP_VERSION = "ver 10.0";
+    const APP_VERSION = "ver 11.0";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -1410,6 +1598,7 @@
     let allLocationRowsRaw = [];
     let filteredRows = [];
     let displayedRows = [];
+    let selectedTableRows = new Set();
     let hideTunnelSegments = true; // 默认隐藏隧道路段
     let selectionLocationNames = [];
     let selectionPrimaryName = '';
@@ -1475,7 +1664,7 @@
     const redLabelItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
     const nameCountItems = { RES8:[], RES9:[], RES10:[], RES11:[] };
 
-    let currentResKey = 'RES9';
+    let currentResKey = 'RES10';
 
     function bucketSizeForZoom(z) { return Math.max(26, 92 - z * 4); }
 
@@ -1620,10 +1809,8 @@
         const div = L.DomUtil.create('div', 'res-ctrl');
         div.innerHTML = `
           <div class="ttl">H3 Resolution</div>
-          <label><input type="radio" name="res" value="RES8" checked> RES8</label>
-          <label><input type="radio" name="res" value="RES9"> RES9</label>
-          <label><input type="radio" name="res" value="RES10"> RES10</label>
-          <label><input type="radio" name="res" value="RES11"> RES11</label>
+          <label><input type="radio" name="res" value="RES8"> H3_Res8</label>
+          <label><input type="radio" name="res" value="RES10" checked> H3_Res10</label>
         `;
         L.DomEvent.disableClickPropagation(div);
         div.querySelectorAll('input[name="res"]').forEach(inp => {
@@ -1918,12 +2105,18 @@
       measurement_NetWork: new Set(),
       measurement_Script: new Set(),
       Marea: new Set(),
+      tablePAStatus: new Set(),
+      tableCounty: new Set(),
+      tableCenter: new Set(),
     };
     const filterAllOptions = {
       Date: [],
       measurement_NetWork: [],
       measurement_Script: [],
       Marea: [],
+      tablePAStatus: [],
+      tableCounty: [],
+      tableCenter: [],
     };
     function uniqSorted(values){
       return Array.from(new Set(values.filter(v => v !== ''))).sort();
@@ -1945,7 +2138,7 @@
       activeMenu = null;
     }
 
-    function createMultiSelectInline({title, key, width=140}) {
+    function createMultiSelectInline({title, key, width=140, onChange=null}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
@@ -2045,6 +2238,7 @@
           for (const v of filterAllOptions[key]) filterState[key].add(v);
         }
         updateButton();
+        onChange?.();
         applyFilterAndRerender();
         list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
           const v = cb.dataset.v;
@@ -2098,6 +2292,7 @@
               if (cb.checked) filterState[key].add(v);
               else filterState[key].delete(v);
               updateButton();
+              onChange?.();
               applyFilterAndRerender();
             });
 
@@ -2116,7 +2311,12 @@
     filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:138});
     filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:92});
     filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:128});
-    filterWidgets.Marea = createMultiSelectInline({title:'Marea', key:'Marea', width:108});
+    filterWidgets.Marea = createMultiSelectInline({
+      title:'Marea',
+      key:'Marea',
+      width:108,
+      onChange: resetTableDimensionFilters,
+    });
 
     filterMount.appendChild(filterWidgets.Date.el);
     filterMount.appendChild(filterWidgets.measurement_NetWork.el);
@@ -2159,6 +2359,7 @@
       filterWidgets.measurement_NetWork.setOptions((filterAllOptions.measurement_NetWork || []).slice());
       filterWidgets.measurement_Script.setOptions((filterAllOptions.measurement_Script || []).slice());
       filterWidgets.Marea.setOptions((filterAllOptions.Marea || []).slice());
+      resetTableDimensionFilters();
       applyFilterAndRerender();
     });
 
@@ -2171,7 +2372,7 @@
 
       const header = cols.map(c => c.exportLabel ?? c.key);
       const body = rows.map(r => cols.map(c => {
-        let val = r?.[c.key] ?? '';
+        let val = getTableCellValue(r, c.key);
         if (c.isTime) val = ensureTimeWithSeconds(val);
         return val;
       }));
@@ -2190,8 +2391,13 @@
     // Table
     const evtHeadRow = document.getElementById('evtHeadRow');
     const evtBody = document.getElementById('evtBody');
+    const tableFilterMount = document.getElementById('tableFilterMount');
+    const columnPicker = document.getElementById('columnPicker');
+    const columnPickerCount = document.getElementById('columnPickerCount');
+    const columnPickerList = document.getElementById('columnPickerList');
 
     const COLS = [
+      { key: 'pa_status', label: 'PA狀態', exportLabel: 'PA Status' },
       { key: 'Date', label: 'Date' },
       { key: 'start_location_name', label: 'S.loc' },
       { key: 'Memo', label: 'Memo' },
@@ -2220,12 +2426,187 @@
       { key: 'twcounty', label: 'County' },
       { key: 'Marea', label: 'Area' },
       { key: 'Mcenter', label: 'Center' },
+      { key: 'Start_Network', label: 'S_Net', wrap: true },
+      { key: 'End_Network', label: 'E_Net', wrap: true },
+      { key: 'Start_LTE_ServingCell', label: 'S_LTE Cell', wrap: true },
+      { key: 'End_LTE_ServingCell', label: 'E_LTE Cell', wrap: true },
+      { key: 'Start_LTE_PCI', label: 'S_LTE PCI', wrap: true },
+      { key: 'End_LTE_PCI', label: 'E_LTE PCI', wrap: true },
+      { key: 'Start_RSRP', label: 'S_RSRP', wrap: true },
+      { key: 'End_RSRP', label: 'E_RSRP', wrap: true },
+      { key: 'Start_RSRQ', label: 'S_RSRQ', wrap: true },
+      { key: 'End_RSRQ', label: 'E_RSRQ', wrap: true },
+      { key: 'Start_SINR', label: 'S_SINR', wrap: true },
+      { key: 'End_SINR', label: 'E_SINR', wrap: true },
+      { key: 'Start_NR_ServingCell', label: 'S_NR Cell', wrap: true },
+      { key: 'End_NR_ServingCell', label: 'E_NR Cell', wrap: true },
+      { key: 'Start_NR_PCI', label: 'S_NR PCI', wrap: true },
+      { key: 'End_NR_PCI', label: 'E_NR PCI', wrap: true },
+      { key: 'Start_SS-RSRP', label: 'S_SS-RSRP', wrap: true },
+      { key: 'End_SS-RSRP', label: 'E_SS-RSRP', wrap: true },
+      { key: 'Start_SS-RSRQ', label: 'S_SS-RSRQ', wrap: true },
+      { key: 'End_SS-RSRQ', label: 'E_SS-RSRQ', wrap: true },
+      { key: 'Start_SS-SINR', label: 'S_SS-SINR', wrap: true },
+      { key: 'End_SS-SINR', label: 'E_SS-SINR', wrap: true },
+      { key: 'Start_TA', label: 'S_TA', wrap: true },
+      { key: 'End_TA', label: 'E_TA', wrap: true },
+      { key: 'Start_CA_BW', label: 'S_CA BW', wrap: true },
+      { key: 'End_CA_BW', label: 'E_CA BW', wrap: true },
+      { key: 'Start_CA_ARFCN', label: 'S_CA ARFCN', wrap: true },
+      { key: 'End_CA_ARFCN', label: 'E_CA ARFCN', wrap: true },
     ];
+
+    const COLUMN_VISIBILITY_STORAGE_KEY = 'thsr_pa_visible_columns';
+    const savedVisibleColumnKeys = (() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY) || 'null');
+        return Array.isArray(saved) ? saved : null;
+      } catch (_) {
+        return null;
+      }
+    })();
+    const visibleColumnKeys = new Set(
+      savedVisibleColumnKeys
+        ? COLS.filter(c => savedVisibleColumnKeys.includes(c.key)).map(c => c.key)
+        : COLS.map(c => c.key)
+    );
+    visibleColumnKeys.add('pa_status');
+
+    function saveVisibleColumns() {
+      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify([...visibleColumnKeys]));
+    }
+
+    function getVisibleCols() {
+      return COLS.filter(c => visibleColumnKeys.has(c.key));
+    }
+
+    function getPAStatus(row) {
+      if (filterState.Date.size !== 1) return '-';
+      const selectedDate = parseDateParts([...filterState.Date][0]);
+      const rowDate = parseDateParts(row.Date);
+      const location = toClean(row.start_location_name);
+      const network = toClean(row.measurement_NetWork);
+      if (!selectedDate || !rowDate || rowDate.ordinal !== selectedDate.ordinal || !location || !network) return '-';
+
+      const isAllNetworksSelected = filterState.measurement_NetWork.size === filterAllOptions.measurement_NetWork.length;
+      const priorRows = allRowsRaw.filter(r => {
+        const date = parseDateParts(r.Date);
+        return date && date.ordinal < selectedDate.ordinal
+          && (isAllNetworksSelected || toClean(r.measurement_NetWork) === network);
+      });
+      const appearedBefore = priorRows.some(r => toClean(r.start_location_name) === location);
+      if (!appearedBefore) return 'FAD';
+
+      let previousDateOrdinal = -1;
+      for (const r of priorRows) {
+        const date = parseDateParts(r.Date);
+        if (date.ordinal > previousDateOrdinal) previousDateOrdinal = date.ordinal;
+      }
+      const appearedLastTime = priorRows.some(r => {
+        const date = parseDateParts(r.Date);
+        return date.ordinal === previousDateOrdinal && toClean(r.start_location_name) === location;
+      });
+      return appearedLastTime ? 'CMD' : 'RMD';
+    }
+
+    function getTableCellValue(row, key) {
+      return key === 'pa_status' ? getPAStatus(row) : (row[key] ?? '');
+    }
+
+    function isCriticalNetworkValue(key, value) {
+      const raw = toClean(value);
+      if ((key === 'Start_Network' || key === 'End_Network') && raw.toLowerCase() === 'noservice') return true;
+
+      const limits = {
+        Start_RSRP: -100, End_RSRP: -100,
+        Start_SINR: 0, End_SINR: 0,
+        'Start_SS-RSRP': -110, 'End_SS-RSRP': -110,
+        'Start_SS-SINR': 10, 'End_SS-SINR': 10,
+        Start_TA: 25, End_TA: 25,
+      };
+      if (!Object.hasOwn(limits, key)) return false;
+      const parsed = parseMaybeNumber(raw);
+      if (!parsed.isNum) return false;
+      return (key === 'Start_TA' || key === 'End_TA')
+        ? parsed.num >= limits[key]
+        : parsed.num <= limits[key];
+    }
+
+    function updateColumnPicker() {
+      const visibleCols = getVisibleCols();
+      columnPickerCount.textContent = `${visibleCols.length}/${COLS.length}`;
+      columnPickerList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = visibleColumnKeys.has(cb.value);
+      });
+    }
+
+    function rerenderVisibleColumns() {
+      renderTableHeader();
+      renderTableRows(displayedRows, {skipHeader:true});
+    }
+
+    for (const c of COLS) {
+      const item = document.createElement('label');
+      item.className = 'column-picker-item';
+      item.title = c.key;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = c.key;
+      checkbox.checked = true;
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) visibleColumnKeys.add(c.key);
+        else visibleColumnKeys.delete(c.key);
+        saveVisibleColumns();
+        updateColumnPicker();
+        rerenderVisibleColumns();
+      });
+
+      const label = document.createElement('span');
+      label.textContent = c.label;
+      item.append(checkbox, label);
+      columnPickerList.appendChild(item);
+    }
+
+    columnPicker.addEventListener('click', e => {
+      const action = e.target?.dataset?.columnAction;
+      if (!action) return;
+      e.preventDefault();
+      if (action === 'all') COLS.forEach(c => visibleColumnKeys.add(c.key));
+      if (action === 'none') visibleColumnKeys.clear();
+      saveVisibleColumns();
+      updateColumnPicker();
+      rerenderVisibleColumns();
+    });
+    updateColumnPicker();
+
+    filterWidgets.tablePAStatus = createMultiSelectInline({title:'PA狀態', key:'tablePAStatus', width:92});
+    filterWidgets.tableCounty = createMultiSelectInline({title:'County', key:'tableCounty', width:108});
+    filterWidgets.tableCenter = createMultiSelectInline({title:'Center', key:'tableCenter', width:108});
+    tableFilterMount.append(
+      filterWidgets.tablePAStatus.el,
+      filterWidgets.tableCounty.el,
+      filterWidgets.tableCenter.el,
+      columnPicker,
+    );
+
+    function resetTableDimensionFilters() {
+      const rows = allRowsRaw.filter(r => {
+        const passesMainFilters = filterState.Date.has(toClean(r.Date))
+          && filterState.measurement_NetWork.has(toClean(r.measurement_NetWork))
+          && filterState.measurement_Script.has(toClean(r.measurement_Script))
+          && filterState.Marea.has(toClean(r.Marea));
+        return passesMainFilters && (!hideTunnelSegments || !toClean(r.start_location_name).includes('*'));
+      });
+      filterWidgets.tablePAStatus.setOptions(['FAD', 'RMD', 'CMD', '-']);
+      filterWidgets.tableCounty.setOptions(uniqSorted(rows.map(r => toClean(r.twcounty))));
+      filterWidgets.tableCenter.setOptions(uniqSorted(rows.map(r => toClean(r.Mcenter))));
+    }
 
     btnExport.addEventListener('click', () => {
       const rows = (displayedRows && displayedRows.length) ? displayedRows : [];
       const fname = `THSR_PA_export_${nowStamp()}.xlsx`;
-      exportDisplayedRowsToExcel(rows, COLS, fname);
+      exportDisplayedRowsToExcel(rows, getVisibleCols(), fname);
     });
 
     let sortKey = '';
@@ -2233,7 +2614,7 @@
 
     function renderTableHeader() {
       evtHeadRow.innerHTML = '';
-      for (const c of COLS) {
+      for (const c of getVisibleCols()) {
         const th = document.createElement('th');
         th.dataset.key = c.key;
 
@@ -2266,19 +2647,35 @@
       rows.forEach((r, idx) => {
         const tr = document.createElement('tr');
         tr.classList.add('row-clickable');
+        if (selectedTableRows.has(r)) tr.classList.add('row-selection-pulse');
 
-        for (const c of COLS) {
+        for (const c of getVisibleCols()) {
           const td = document.createElement('td');
-          let v = (r[c.key] ?? '');
+          if (c.wrap) td.classList.add('network-cell');
+          let v = getTableCellValue(r, c.key);
+          if (c.key === 'pa_status') {
+            td.classList.add('pa-status', `pa-status-${String(v).toLowerCase()}`);
+            td.title = v === 'FAD' ? 'First Anomaly Detected：首次發生'
+              : v === 'RMD' ? 'Recurring Measurement Defect：復發'
+              : v === 'CMD' ? 'Continuous Measurement Defect：連續發生'
+              : '僅 Date 單日有效';
+          }
           // 如果是時間欄位，確保顯示包含秒數
           if (c.isTime) {
             v = ensureTimeWithSeconds(v);
           }
+          if (isCriticalNetworkValue(c.key, v)) td.classList.add('critical-network-value');
           td.textContent = v;
           td.title = v;
           tr.appendChild(td);
         }
-        tr.addEventListener('click', () => onRowClick(idx));
+        tr.addEventListener('click', () => {
+          selectedTableRows = new Set([r]);
+          evtBody.querySelectorAll('tr').forEach((rowEl, rowIdx) => {
+            rowEl.classList.toggle('row-selection-pulse', displayedRows[rowIdx] === r);
+          });
+          onRowClick(idx);
+        });
         frag.appendChild(tr);
       });
 
@@ -3347,8 +3744,42 @@
     const chartFloat = document.getElementById('chartFloat');
     const chartTitleEl = document.getElementById('chartTitle');
     const chartClose = document.getElementById('chartClose');
+    const chartMetric = document.getElementById('chartMetric');
     const chartCanvas = document.getElementById('gridChart');
     const ctx = chartCanvas.getContext('2d');
+
+    const CHART_METRIC_LABELS = {
+      PA: 'PA',
+      Start_LTE_ServingCell: 'S_LTE_Cell',
+      Start_LTE_PCI: 'S_LTE_PCI',
+      Start_RSRP: 'S_RSRP',
+      Start_SINR: 'S_SINR',
+      Start_TA: 'S_TA',
+      Start_NR_ServingCell: 'S_NR_Cell',
+      Start_NR_PCI: 'S_NR_PCI',
+      'Start_SS-RSRP': 'S_SS-RSRP',
+      'Start_SS-SINR': 'S_SS-SINR',
+    };
+    const DISCRETE_CHART_METRICS = new Set([
+      'Start_LTE_ServingCell', 'Start_LTE_PCI', 'Start_NR_ServingCell', 'Start_NR_PCI'
+    ]);
+
+    function updateChartMetricOptions() {
+      const canShowNr = (filterAllOptions.measurement_NetWork.length > 0
+        && filterState.measurement_NetWork.size === filterAllOptions.measurement_NetWork.length)
+        || filterState.measurement_NetWork.has('5G');
+      chartMetric.querySelectorAll('[data-nr-option]').forEach(option => {
+        option.hidden = !canShowNr;
+        option.disabled = !canShowNr;
+      });
+      if (!canShowNr && chartMetric.selectedOptions[0]?.dataset.nrOption !== undefined) {
+        chartMetric.value = 'PA';
+      }
+    }
+
+    chartMetric.addEventListener('change', () => {
+      if (selectionPrimaryName) renderStackedChartForLocation(selectionPrimaryName);
+    });
 
     chartClose.addEventListener('click', () => chartFloat.style.display = 'none');
 
@@ -3409,6 +3840,139 @@
     }
 
     function renderStackedChartForLocation(locationName){
+      if (chartMetric.value === 'PA') {
+        renderPAChartForLocation(locationName);
+      } else {
+        renderMetricChartForLocation(locationName, chartMetric.value);
+      }
+    }
+
+    function renderMetricChartForLocation(locationName, metricKey) {
+      if (!locationName) { clearChart(); hideChartWindow(); return; }
+      const rows = allRowsRaw.filter(r => {
+        const passesNonDateFilters = filterState.measurement_NetWork.has(toClean(r.measurement_NetWork))
+          && filterState.measurement_Script.has(toClean(r.measurement_Script))
+          && filterState.Marea.has(toClean(r.Marea))
+          && filterState.tableCounty.has(toClean(r.twcounty))
+          && filterState.tableCenter.has(toClean(r.Mcenter));
+        return passesNonDateFilters
+          && (!hideTunnelSegments || !toClean(r.start_location_name).includes('*'))
+          && toClean(r.start_location_name) === locationName;
+      });
+      const entries = rows.map(r => ({
+        date: toClean(r.Date),
+        value: toClean(r[metricKey]),
+        time: toClean(r.time_tw),
+        script: toClean(r.measurement_Script),
+      })).filter(entry => entry.date && entry.value);
+
+      showChartWindow();
+      chartTitleEl.textContent = `${CHART_METRIC_LABELS[metricKey]}：${locationName}（${entries.length}）`;
+      resizeCanvasToDisplaySize();
+      const W = chartCanvas.width, H = chartCanvas.height;
+      ctx.clearRect(0, 0, W, H);
+      if (!entries.length) {
+        ctx.fillStyle = 'rgba(154,176,216,0.95)';
+        ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+        ctx.fillText('（目前非 Date Filter 下沒有此指標資料）', 12, 28);
+        return;
+      }
+
+      const dates = [...new Set(entries.map(entry => entry.date))]
+        .sort((a, b) => (parseDateParts(a)?.ordinal || 0) - (parseDateParts(b)?.ordinal || 0));
+      const padL = 58, padR = 16, padT = 16, padB = 38;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const xForDate = date => dates.length === 1
+        ? padL + plotW / 2
+        : padL + dates.indexOf(date) * (plotW / (dates.length - 1));
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + plotH);
+      ctx.lineTo(padL + plotW, padT + plotH);
+      ctx.stroke();
+
+      if (DISCRETE_CHART_METRICS.has(metricKey)) {
+        const values = [...new Set(entries.map(entry => entry.value))]
+          .sort((a, b) => parseMaybeNumber(a).isNum && parseMaybeNumber(b).isNum ? Number(a) - Number(b) : a.localeCompare(b));
+        const yForValue = value => values.length === 1
+          ? padT + plotH / 2
+          : padT + plotH - values.indexOf(value) * (plotH / (values.length - 1));
+        values.forEach((value, index) => {
+          const y = yForValue(value);
+          ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+          ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+          ctx.fillStyle = 'rgba(231,238,252,0.82)';
+          ctx.font = '10px ui-monospace, Menlo, Consolas, monospace';
+          ctx.textAlign = 'right';
+          ctx.fillText(value.length > 9 ? `${value.slice(0, 8)}…` : value, padL - 5, y + 3);
+        });
+        const perDateIndex = new Map();
+        entries.forEach(entry => {
+          const index = perDateIndex.get(entry.date) || 0;
+          perDateIndex.set(entry.date, index + 1);
+          const x = xForDate(entry.date) + (index - (perDateIndex.get(entry.date) - 1) / 2) * 5;
+          const y = yForValue(entry.value);
+          ctx.fillStyle = scriptColor(entry.value);
+          ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.stroke();
+        });
+      } else {
+        const numericEntries = entries.map(entry => ({ ...entry, number: parseMaybeNumber(entry.value).num }))
+          .filter(entry => parseMaybeNumber(entry.value).isNum);
+        if (!numericEntries.length) {
+          ctx.fillStyle = 'rgba(154,176,216,0.95)'; ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
+          ctx.fillText('（此指標沒有可繪製的數值）', 12, 28); return;
+        }
+        let min = Math.min(...numericEntries.map(entry => entry.number));
+        let max = Math.max(...numericEntries.map(entry => entry.number));
+        if (min === max) { min -= 1; max += 1; }
+        const yForNumber = number => padT + plotH - ((number - min) / (max - min)) * plotH;
+        for (let tick = 0; tick <= 4; tick++) {
+          const value = min + ((max - min) * tick / 4), y = yForNumber(value);
+          ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y); ctx.stroke();
+          ctx.fillStyle = 'rgba(231,238,252,0.82)'; ctx.font = '10px ui-monospace, Menlo, Consolas, monospace'; ctx.textAlign = 'right';
+          ctx.fillText(value.toFixed(1), padL - 5, y + 3);
+        }
+        const dailyAverage = new Map();
+        dates.forEach(date => {
+          const values = numericEntries.filter(entry => entry.date === date).map(entry => entry.number);
+          dailyAverage.set(date, values.reduce((sum, value) => sum + value, 0) / values.length);
+        });
+        ctx.strokeStyle = 'rgba(0,214,255,0.95)'; ctx.lineWidth = 2; ctx.beginPath();
+        dates.forEach((date, index) => {
+          const x = xForDate(date), y = yForNumber(dailyAverage.get(date));
+          if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke(); ctx.lineWidth = 1;
+        const perDateIndex = new Map();
+        numericEntries.forEach(entry => {
+          const index = perDateIndex.get(entry.date) || 0;
+          perDateIndex.set(entry.date, index + 1);
+          const x = xForDate(entry.date) + (index - (perDateIndex.get(entry.date) - 1) / 2) * 5;
+          const y = yForNumber(entry.number);
+          const valueText = entry.number.toString();
+          ctx.fillStyle = scriptColor(entry.script || '(blank)'); ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.font = '10px ui-monospace, Menlo, Consolas, monospace';
+          const textWidth = ctx.measureText(valueText).width;
+          const textX = x - textWidth / 2;
+          const textY = Math.max(padT + 10, y - 7);
+          ctx.fillStyle = 'rgba(6,18,40,0.82)';
+          ctx.fillRect(textX - 2, textY - 9, textWidth + 4, 12);
+          ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+          ctx.fillText(valueText, x, textY);
+        });
+      }
+
+      dates.forEach(date => {
+        ctx.fillStyle = 'rgba(154,176,216,0.95)'; ctx.font = '10px ui-monospace, Menlo, Consolas, monospace'; ctx.textAlign = 'center';
+        ctx.fillText(date, xForDate(date), padT + plotH + 16);
+      });
+      ctx.textAlign = 'left';
+    }
+
+    function renderPAChartForLocation(locationName){
       if (!locationName) { clearChart(); hideChartWindow(); return; }
       const rows = filteredRows.filter(r => toClean(r.start_location_name) === locationName);
       showChartWindow();
@@ -3529,7 +4093,10 @@
         const passesFilter = filterState.Date.has(d)
             && filterState.measurement_NetWork.has(n)
             && filterState.measurement_Script.has(s)
-            && filterState.Marea.has(a);
+          && filterState.Marea.has(a)
+            && filterState.tablePAStatus.has(getPAStatus(r))
+          && filterState.tableCounty.has(toClean(r.twcounty))
+          && filterState.tableCenter.has(toClean(r.Mcenter));
         
         // 应用隧道路段过滤
         if (passesFilter && hideTunnelSegments) {
@@ -3596,12 +4163,13 @@
       }
     }
 
-    function onRedGridClick(meta){
-      const names = Array.from(meta.startNames).filter(Boolean);
+    function onGridClick(meta, type){
+      const names = (type === 'red' ? Array.from(meta.startNames) : Array.from(meta.names)).filter(Boolean);
       selectionLocationNames = names;
       selectionPrimaryName = names[0] || '';
 
       if (!names.length) {
+        selectedTableRows = new Set();
         setSelectionTag(`（此網格無 start_location_name）`);
         hideChartWindow();
         renderTableRows(filteredRows);
@@ -3609,6 +4177,7 @@
       }
 
       const selectedTable = filteredRows.filter(r => names.includes(toClean(r.start_location_name)));
+  selectedTableRows = new Set(selectedTable);
       setSelectionTag(`已篩選 start_location_name：${names.join('、')}（${selectedTable.length} 筆）`);
       renderTableRows(selectedTable);
 
@@ -3642,7 +4211,7 @@
         clearHoverHighlights();
         poly.setStyle(baseStyle);
       });
-      if (type === 'red') poly.on('click', () => onRedGridClick(meta));
+      poly.on('click', () => onGridClick(meta, type));
 
       if (type === 'red') addLayerToLocIndex(Array.from(meta.startNames), poly);
       else addLayerToLocIndex(Array.from(meta.names), poly);
@@ -3919,6 +4488,7 @@
     }
 
     function applyFilterAndRerender(){
+      updateChartMetricOptions();
       filteredRows = applyFiltersToRows(allRowsRaw);
       renderScriptStatsControl(filteredRows);
       const summaryText = buildTopSummaryText(filteredRows);
@@ -4005,9 +4575,10 @@
       // Date默认只选择最新日期
       const latestDate = optDate.length > 0 ? optDate[optDate.length - 1] : null;
       filterWidgets.Date.setOptions(optDate, latestDate ? [latestDate] : null);
-      filterWidgets.measurement_NetWork.setOptions(optNet);
+      filterWidgets.measurement_NetWork.setOptions(optNet, optNet.includes('4G') ? ['4G'] : null);
       filterWidgets.measurement_Script.setOptions(optScr);
       filterWidgets.Marea.setOptions(optArea);
+      resetTableDimensionFilters();
 
       filteredRows = applyFiltersToRows(allRowsRaw);
       renderScriptStatsControl(filteredRows);
@@ -4016,7 +4587,7 @@
       setSelectionTag(buildTopSummaryText(filteredRows));
       rebuildPointLayers(filteredRows);
       rebuildH3FromRows(filteredRows);
-      showOnlyRes('RES8');
+      showOnlyRes('RES10');
       initStatsYearFilter();
       updateStatsTypeFilterVisibility();
       renderPAStatistics();
