@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v5.2</title>
+  <title>THSR PA Log Table  v6.0(2026.10.16)</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -71,6 +71,13 @@
       gap:8px; user-select:none; font-size:11px;
     }
     .msel-btn:hover { background:rgba(255,154,60,0.10); border-color:rgba(255,154,60,0.30); }
+    #operatorSelect {
+      width:96px; box-sizing:border-box;
+      border:1px solid var(--line2); border-radius:10px;
+      padding:5px 7px; background:var(--panel); color:var(--txt);
+      font:800 11px system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+      cursor:pointer;
+    }
     .msel-btn .sum {
       flex:1; text-align:left; font-size:10px;
       color:rgba(154,176,216,0.95);
@@ -619,7 +626,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v5.2</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v6.0(2026.10.16)</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -656,18 +663,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ============================================================
-   THSR PA Log Table  ver 2.2
-   - Top filter bar: Net / Script / Marea
+   THSR PA Log Table  v6.0(2026.10.16)
+   - Top filter bar: Operator (single, default CHT) / Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
 
 // ── Filter state ─────────────────────────────────────────────
 const filterState = {
+  Operator:           new Set(),
   measurement_NetWork: new Set(),
   measurement_Script:  new Set(),
   Marea:               new Set(),
 };
 const filterAllOptions = {
+  Operator:           [],
   measurement_NetWork: [],
   measurement_Script:  [],
   Marea:               [],
@@ -818,10 +827,31 @@ function createMultiSelect({ title, key, width = 120 }) {
 const filterMount = document.getElementById('filterMount');
 const filterWidgets = {};
 
+const operatorWrap = document.createElement('label');
+operatorWrap.className = 'msel';
+operatorWrap.innerHTML = '<span class="lbl" id="operatorLabel">Operator</span><select id="operatorSelect" aria-labelledby="operatorLabel"></select>';
+const operatorSelect = operatorWrap.querySelector('select');
+operatorSelect.addEventListener('change', () => {
+  filterState.Operator.clear();
+  if (operatorSelect.selectedIndex >= 0) filterState.Operator.add(operatorSelect.value);
+  applyAndRender();
+});
+filterWidgets.Operator = {
+  el: operatorWrap,
+  setOptions(options, defaultSelected = ['CHT']) {
+    filterAllOptions.Operator = options.slice();
+    operatorSelect.replaceChildren(...options.map(value => new Option(value, value)));
+    const selected = defaultSelected.find(value => options.includes(value));
+    operatorSelect.selectedIndex = selected === undefined ? -1 : options.indexOf(selected);
+    filterState.Operator.clear();
+    if (selected !== undefined) filterState.Operator.add(selected);
+  },
+};
 filterWidgets.Net    = createMultiSelect({ title: 'Net',    key: 'measurement_NetWork', width: 110 });
 filterWidgets.Script = createMultiSelect({ title: 'Script', key: 'measurement_Script',  width: 130 });
 filterWidgets.Marea  = createMultiSelect({ title: 'Marea',  key: 'Marea',               width: 130 });
 
+filterMount.appendChild(filterWidgets.Operator.el);
 filterMount.appendChild(filterWidgets.Net.el);
 filterMount.appendChild(filterWidgets.Script.el);
 filterMount.appendChild(filterWidgets.Marea.el);
@@ -832,6 +862,7 @@ document.getElementById('btnClear').addEventListener('click', () => {
   document.querySelectorAll('.impr-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.impr === 'all')
   );
+  filterWidgets.Operator.setOptions(filterAllOptions.Operator.slice(), ['CHT']);
   filterWidgets.Net.setOptions(filterAllOptions.measurement_NetWork.slice());
   filterWidgets.Script.setOptions(filterAllOptions.measurement_Script.slice());
   filterWidgets.Marea.setOptions(filterAllOptions.Marea.slice());
@@ -919,12 +950,17 @@ function scheduleUpdateStickyLefts() {
   requestAnimationFrame(() => requestAnimationFrame(updateStickyLefts));
 }
 
-function applyAndRender() {
-  const pa = allPaRows.filter(r =>
+function getFilteredPaRows() {
+  return allPaRows.filter(r =>
+    filterState.Operator.has(r.Operator) &&
     filterState.measurement_NetWork.has(r.measurement_NetWork) &&
     filterState.measurement_Script.has(r.measurement_Script) &&
     filterState.Marea.has(r.Marea)
   );
+}
+
+function applyAndRender() {
+  const pa = getFilteredPaRows();
   let loc = allLocRows.filter(r => filterState.Marea.has(r.marea));
   if (hideTunnel) loc = loc.filter(r => !String(r.location_name || '').includes('**'));
   renderPivot(loc, pa);
@@ -1285,6 +1321,7 @@ async function loadData(userName) {
     allLocRows = json.loc || [];
 
     function uniqSorted(arr) { return [...new Set(arr.filter(Boolean))].sort(); }
+    const operators = uniqSorted(allPaRows.map(r => r.Operator));
     const nets    = uniqSorted(allPaRows.map(r => r.measurement_NetWork));
     const scripts = uniqSorted(allPaRows.map(r => r.measurement_Script));
     const MAREA_ORDER = ['行動北區營運處', '行動中區營運處', '行動南區營運處'];
@@ -1295,6 +1332,7 @@ async function loadData(userName) {
       if (ib !== -1) return 1;
       return a.localeCompare(b, 'zh-Hant');
     });
+    filterWidgets.Operator.setOptions(operators, ['CHT']);
     filterWidgets.Net.setOptions(nets, ['4G']);
     filterWidgets.Script.setOptions(scripts);
     filterWidgets.Marea.setOptions(mareas);
@@ -1779,11 +1817,7 @@ async function exportExcel() {
   }
 
   // 重建目前篩選後的資料（與 renderPivot 相同邏輯）
-  const pa = allPaRows.filter(r =>
-    filterState.measurement_NetWork.has(r.measurement_NetWork) &&
-    filterState.measurement_Script.has(r.measurement_Script) &&
-    filterState.Marea.has(r.Marea)
-  );
+  const pa = getFilteredPaRows();
   let locF = allLocRows.filter(r => filterState.Marea.has(r.marea));
   if (hideTunnel) locF = locF.filter(r => !String(r.location_name || '').includes('**'));
 
