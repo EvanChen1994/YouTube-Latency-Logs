@@ -90,6 +90,17 @@
     #filterMount .msel{ max-width:100%; min-width:0; }
     #filterMount .msel-btn{ box-sizing:border-box; min-width:0; }
     #filterMount .msel-btn .sum{ min-width:0; }
+    .filter-single-select{
+      box-sizing:border-box;
+      min-width:0;
+      border:1px solid var(--line2);
+      border-radius:10px;
+      padding:5px 4px;
+      background:var(--panel);
+      color:var(--txt);
+      font:800 10px system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+      cursor:pointer;
+    }
 
     /* ===== Multi-select (portal dropdown) ===== */
     .msel{ position:relative; display:flex; align-items:center; gap:6px; }
@@ -1358,7 +1369,7 @@
         <p>數字顯示：zoom ≥ 12 顯示紅格筆數（依 Script 上色）；zoom ≤ 11 改顯示「start_location_name 的 unique 數量」（紅藍一起算、重複只算 1，並以 bucket 聚合加總）。</p>
         <p>PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</p>
         <p>點選路段後，圖表旁會比較同一路段 CHT／FET／TWM 的 YoutubeLive 筆數；僅忽略 Operator 與 Script 選項，其餘 Filter 仍適用。</p>
-        <p>Operator 預設 CHT，地圖與明細依所選業者篩選；PA狀態依同一業者的歷史資料判定。右下方 PA路段統計追蹤及鎖頭視窗固定只計算 Operator=CHT，不受左側 Operator 選項影響；路段母檔分母維持不變。</p>
+        <p>Date 可複選，預設只選取最新量測日期；Operator 為單選下拉選單，預設 CHT。清除篩選會恢復上述預設。地圖與明細依所選業者篩選；PA狀態依同一業者的歷史資料判定。右下方 PA路段統計追蹤及鎖頭視窗固定只計算 Operator=CHT，不受左側 Operator 選項影響；路段母檔分母維持不變。</p>
       </div>
     </div>
   </div>
@@ -2270,7 +2281,41 @@
       activeMenu = null;
     }
 
-    function createMultiSelectInline({title, key, width=140, onChange=null, single=false}) {
+    function createSingleSelectInline({title, key, width, onChange=null}) {
+      const wrap = document.createElement('div');
+      wrap.className = 'msel';
+      L.DomEvent.disableClickPropagation(wrap);
+      L.DomEvent.disableScrollPropagation(wrap);
+
+      const label = document.createElement('label');
+      label.className = 'lbl';
+      label.htmlFor = `filter-${key}`;
+      label.textContent = title;
+      const select = document.createElement('select');
+      select.id = label.htmlFor;
+      select.className = 'filter-single-select';
+      select.style.width = width + 'px';
+      select.addEventListener('change', () => {
+        filterState[key].clear();
+        if (select.selectedIndex >= 0) filterState[key].add(select.value);
+        onChange?.();
+        applyFilterAndRerender();
+      });
+      wrap.append(label, select);
+      return {
+        el:wrap,
+        setOptions(options, defaultSelected = []) {
+          filterAllOptions[key] = options.slice();
+          select.replaceChildren(...options.map(value => new Option(value, value)));
+          const selected = defaultSelected.find(value => options.includes(value));
+          select.selectedIndex = selected === undefined ? -1 : options.indexOf(selected);
+          filterState[key].clear();
+          if (selected !== undefined) filterState[key].add(selected);
+        },
+      };
+    }
+
+    function createMultiSelectInline({title, key, width=140, onChange=null}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
@@ -2293,9 +2338,7 @@
 
       const tools = document.createElement('div');
       tools.className = 'msel-tools';
-      tools.innerHTML = single ? `
-        <div class="tbtn" data-act="close">關閉</div>
-      ` : `
+      tools.innerHTML = `
         <div class="tbtn" data-act="all">全選</div>
         <div class="tbtn" data-act="none">全不選</div>
         <div class="tbtn" data-act="close">關閉</div>
@@ -2311,7 +2354,7 @@
 
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
-        const t = single ? (Array.from(filterState[key])[0] || 'none') : summaryText(key);
+        const t = summaryText(key);
         sumEl.textContent = t;
         sumEl.title = Array.from(filterState[key]).join('、') || '(none)';
       }
@@ -2403,7 +2446,6 @@
           for (const v of selectedSet) {
             if (options.includes(v)) {
               filterState[key].add(v);
-              if (single) break;
             }
           }
 
@@ -2412,8 +2454,7 @@
             item.className = 'item';
 
             const cb = document.createElement('input');
-            cb.type = single ? 'radio' : 'checkbox';
-            if (single) cb.name = `filter-${key}`;
+            cb.type = 'checkbox';
             cb.checked = filterState[key].has(v);
             cb.dataset.v = v;
 
@@ -2425,17 +2466,9 @@
 
             item.addEventListener('click', (ev) => {
               ev.stopPropagation();
-              if (single) {
-                filterState[key].clear();
-                filterState[key].add(v);
-                list.querySelectorAll('input[type="radio"]').forEach(input => {
-                  input.checked = input.dataset.v === v;
-                });
-              } else {
-                if (ev.target !== cb) cb.checked = !cb.checked;
-                if (cb.checked) filterState[key].add(v);
-                else filterState[key].delete(v);
-              }
+              if (ev.target !== cb) cb.checked = !cb.checked;
+              if (cb.checked) filterState[key].add(v);
+              else filterState[key].delete(v);
               updateButton();
               onChange?.();
               applyFilterAndRerender();
@@ -2453,12 +2486,13 @@
     const filterMount = document.getElementById('filterMount');
     const filterWidgets = {};
 
-    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:96});
-    filterWidgets.Operator = createMultiSelectInline({
+    filterWidgets.Date = createMultiSelectInline({
+      title:'Date', key:'Date', width:96, onChange:resetTableDimensionFilters,
+    });
+    filterWidgets.Operator = createSingleSelectInline({
       title:'Operator',
       key:'Operator',
       width:64,
-      single:true,
       onChange: resetTableDimensionFilters,
     });
     filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:48});
@@ -4792,7 +4826,8 @@
       allRowsRaw = rowsPA;
       dataWarningsText = buildDataWarnings(rowsPA, rowsLoc);
 
-      const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)));
+      const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)))
+        .sort((a, b) => (parseDateParts(a)?.ordinal || 0) - (parseDateParts(b)?.ordinal || 0));
       const optOperator = uniqSorted(allRowsRaw.map(r => toClean(r.Operator)));
       const optNet  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_NetWork)));
       const optScr  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_Script)));
