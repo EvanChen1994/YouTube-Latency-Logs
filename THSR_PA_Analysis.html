@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Analysis</title>
+  <title>THSR PA Analysis ver 12.0(2026.10.16)</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -19,6 +19,9 @@
       --accent:#2b7cff;
       --accent2:#00d6ff;
       --danger:#ff2b2b;
+      --pa-fad:#ff6262;
+      --pa-rmd:#ffb14a;
+      --pa-cmd:#e27cff;
       --orange:#ff9a3c;
       --purple:#b300ff;
       --tipbg:#061a38;
@@ -45,6 +48,8 @@
       top:10px;
       left:50%;
       transform: translateX(-50%);
+      width: calc(100% - 20px);
+      max-width: 720px;
       z-index: 2000;
       pointer-events: auto;
     }
@@ -61,8 +66,10 @@
       align-items: stretch;
       gap:6px;
       backdrop-filter: blur(6px);
-      min-width: 320px;
-      max-width: min(92vw, 720px);
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
       overflow: visible;
     }
     .filter-desc{
@@ -77,9 +84,12 @@
     .filter-row{
       display:flex;
       align-items:center;
-      gap:8px;
+      gap:6px;
       flex-wrap: nowrap;
     }
+    #filterMount .msel{ max-width:100%; min-width:0; }
+    #filterMount .msel-btn{ box-sizing:border-box; min-width:0; }
+    #filterMount .msel-btn .sum{ min-width:0; }
 
     /* ===== Multi-select (portal dropdown) ===== */
     .msel{ position:relative; display:flex; align-items:center; gap:6px; }
@@ -286,6 +296,9 @@
 
     .hint{
       position:relative;
+      display:flex;
+      align-items:flex-end;
+      gap:8px;
       z-index:2;
       padding: 8px 12px;
       color: var(--muted);
@@ -295,6 +308,21 @@
       backdrop-filter: blur(6px);
       line-height: 1.35;
     }
+    .hint-copy{ flex:1; min-width:0; }
+    .hint-help-btn{
+      flex:0 0 auto;
+      padding:3px 7px;
+      border:1px solid var(--line2);
+      border-radius:6px;
+      background:rgba(255,255,255,0.04);
+      color:var(--txt);
+      font-size:11px;
+      cursor:pointer;
+    }
+    .hint-help-btn:hover{ background:rgba(43,124,255,0.10); }
+    .pa-description-fad{ color:var(--pa-fad); }
+    .pa-description-rmd{ color:var(--pa-rmd); }
+    .pa-description-cmd{ color:var(--pa-cmd); }
 
     .table-toolbar{
       position:relative;
@@ -557,13 +585,13 @@
       text-align:center;
     }
     #evtBody td.pa-status-fad{
-      color:#ff6262;
+      color:var(--pa-fad);
       animation:paStatusFadPulse .9s ease-in-out infinite;
     }
-    #evtBody td.pa-status-rmd{ color:#ffb14a; }
-    #evtBody td.pa-status-cmd{ color:#e27cff; }
+    #evtBody td.pa-status-rmd{ color:var(--pa-rmd); }
+    #evtBody td.pa-status-cmd{ color:var(--pa-cmd); }
     @keyframes paStatusFadPulse{
-      0%, 100%{ color:#ff6262; text-shadow:0 0 2px rgba(255,43,43,0.35); }
+      0%, 100%{ color:var(--pa-fad); text-shadow:0 0 2px rgba(255,43,43,0.35); }
       50%{ color:#ffffff; text-shadow:0 0 10px rgba(255,43,43,1); }
     }
 
@@ -880,12 +908,25 @@
     }
 
     /* Chart float */
-    .chart-float{
+    .chart-dock{
       position:absolute;
       left: 12px;
+      right: 12px;
       bottom: 12px;
-      width: min(560px, calc(50vw - 24px));
       height: 230px;
+      display:none;
+      gap:10px;
+      z-index:800;
+      pointer-events:none;
+    }
+    .chart-float{
+      position:relative;
+      flex:1;
+      min-width:0;
+      max-width:560px;
+      height:100%;
+      box-sizing:border-box;
+      pointer-events:auto;
       background: linear-gradient(180deg, rgba(11,26,51,0.98) 0%, rgba(7,11,22,0.98) 100%);
       border: 1px solid rgba(255,255,255,0.14);
       border-radius: 14px;
@@ -893,6 +934,44 @@
       overflow:hidden;
       display:none;
       z-index: 800;
+    }
+    .operator-comparison{
+      position:relative;
+      pointer-events:auto;
+      flex:0 0 190px;
+      box-sizing:border-box;
+      height:100%;
+      overflow:auto;
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius:14px;
+      background:linear-gradient(180deg, rgba(11,26,51,0.98), rgba(7,11,22,0.98));
+      box-shadow:0 18px 45px rgba(0,0,0,0.55);
+    }
+    .operator-comparison .chart-head{ min-height:25px; }
+    .operator-comparison-note{
+      padding:6px 10px 0;
+      font-size:10px;
+      line-height:1.4;
+      color:var(--muted);
+    }
+    .operator-comparison-rows{ padding:4px 10px 8px; }
+    .operator-comparison-row{ padding:4px 0; }
+    .operator-brand{ display:flex; align-items:center; gap:7px; font-size:11px; }
+    .operator-brand img{
+      width:24px; height:24px; object-fit:contain;
+      border-radius:5px; background:#fff;
+    }
+    .operator-brand strong{ margin-left:auto; font-size:16px; }
+    .operator-logo-error{ font-size:9px; color:var(--danger); }
+    .operator-count-track{
+      margin-top:3px; height:4px; overflow:hidden;
+      border-radius:4px; background:rgba(255,255,255,0.10);
+    }
+    .operator-count-bar{ height:100%; background:var(--accent2); border-radius:4px; }
+    @media (max-width:900px){
+      .chart-dock{ flex-direction:column; height:430px; }
+      .chart-float{ height:auto; }
+      .operator-comparison{ flex:0 0 190px; height:auto; }
     }
     .chart-float::before{
       content:"";
@@ -1142,12 +1221,13 @@
       <div class="mapTopBar">
         <div class="filter-bar" id="filterBar">
           <div class="filter-desc" id="filterDesc">
-            Filter（多選，下拉顯示 TOP5；超出用滾輪）
+            Filter（Operator 單選，其餘多選；下拉超出用滾輪）
           </div>
           <div class="filter-row" id="filterMount"></div>
         </div>
       </div>
 
+      <div class="chart-dock" id="chartDock">
       <div class="chart-float" id="chartFloat">
         <div class="chart-head">
           <div class="ctitle" id="chartTitle">start_location_name：</div>
@@ -1166,6 +1246,14 @@
           <button class="chart-close" id="chartClose">✕</button>
         </div>
         <canvas id="gridChart"></canvas>
+      </div>
+      <div class="operator-comparison" id="operatorComparison" role="region" aria-label="YoutubeLive 業者數量比較">
+        <div class="chart-head">
+          <div class="ctitle" id="operatorComparisonTitle">YoutubeLive 業者比較</div>
+        </div>
+        <div class="operator-comparison-note">忽略 Operator；Script 固定 YoutubeLive，其餘沿用 Filter。單位：筆。</div>
+        <div class="operator-comparison-rows" id="operatorComparisonRows" aria-live="polite"></div>
+      </div>
       </div>
     </div>
 
@@ -1194,10 +1282,11 @@
       </div>
 
       <div class="hint">
-        Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。<br>
-        數字顯示：zoom ≥ 12 顯示紅格筆數（依 Script 上色）；zoom ≤ 11 改顯示「start_location_name 的 unique 數量」（紅藍一起算、重複只算 1，並以 bucket 聚合加總）。<br>
-        <span class="muted">PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</span>
-        <br><span class="muted">PA狀態（僅 Date 單日有效）：FAD（First Anomaly Detected，首次發生）、RMD（Recurring Measurement Defect，復發）、CMD（Continuous Measurement Defect，連續發生）。Net 全選時合併 4G／5G 判定，否則分開判定。</span>
+        <div class="hint-copy">
+          <div>Filter（地圖最上方）會同時影響：左側 H3 / Points / 右側表格。紅格＝PA_data(start_H3)；藍格＝Location 命中（重複不畫）。</div>
+          <div>PA狀態（僅 Date 單日有效）：<span class="pa-description-fad">FAD（First Anomaly Detected，首次發生）</span>、<span class="pa-description-rmd">RMD（Recurring Measurement Defect，復發）</span>、<span class="pa-description-cmd">CMD（Continuous Measurement Defect，連續發生）</span>。Net 全選時合併 4G／5G 判定，否則分開判定。</div>
+        </div>
+        <button type="button" class="hint-help-btn" id="btnFeatureHelp" title="完整功能說明" aria-haspopup="dialog" aria-controls="featureHelpDialog">說明</button>
       </div>
 
       <div class="table-toolbar table-filter-mount" id="tableFilterMount">
@@ -1221,7 +1310,7 @@
       </div>
 
       <div class="bottom-area" id="bottomArea">
-        <div class="stats-title">PA路段統計追蹤</div>
+        <div class="stats-title">PA路段統計追蹤（Operator=CHT）</div>
         <div class="stats-filter">
           <label for="statsYearFilter">年份：</label>
           <select id="statsYearFilter">
@@ -1254,6 +1343,22 @@
             <tr><td colspan="4" style="text-align:center;color:var(--muted);">載入中...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="featureHelpBackdrop">
+    <div class="modal" id="featureHelpDialog" role="dialog" aria-modal="true" aria-labelledby="featureHelpTitle">
+      <div class="modal-header">
+        <div id="featureHelpTitle" style="font-weight:1000;">完整功能說明</div>
+        <button type="button" class="close-btn" id="btnFeatureHelpClose">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div id="featureHelpSummary"></div>
+        <p>數字顯示：zoom ≥ 12 顯示紅格筆數（依 Script 上色）；zoom ≤ 11 改顯示「start_location_name 的 unique 數量」（紅藍一起算、重複只算 1，並以 bucket 聚合加總）。</p>
+        <p>PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</p>
+        <p>點選路段後，圖表旁會比較同一路段 CHT／FET／TWM 的 YoutubeLive 筆數；僅忽略 Operator 與 Script 選項，其餘 Filter 仍適用。</p>
+        <p>Operator 預設 CHT，地圖與明細依所選業者篩選；PA狀態依同一業者的歷史資料判定。右下方 PA路段統計追蹤及鎖頭視窗固定只計算 Operator=CHT，不受左側 Operator 選項影響；路段母檔分母維持不變。</p>
       </div>
     </div>
   </div>
@@ -1365,7 +1470,7 @@
        - Update: 移除未使用的 parseCsvRobust / fetchNoStore / buildCsvText
        =========================== */
 
-    const APP_VERSION = "ver 11.0";
+    const APP_VERSION = "ver 12.0(2026.10.16)";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -1428,6 +1533,31 @@
     });
     btnModalClose.addEventListener('click', closeModal);
     modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+    const featureHelpBackdrop = document.getElementById('featureHelpBackdrop');
+    const btnFeatureHelp = document.getElementById('btnFeatureHelp');
+    const btnFeatureHelpClose = document.getElementById('btnFeatureHelpClose');
+    document.getElementById('featureHelpSummary').appendChild(document.querySelector('.hint-copy').cloneNode(true));
+    function closeFeatureHelp() {
+      featureHelpBackdrop.style.display = 'none';
+      btnFeatureHelp.focus();
+    }
+    btnFeatureHelp.addEventListener('click', () => {
+      featureHelpBackdrop.style.display = 'flex';
+      btnFeatureHelpClose.focus();
+    });
+    btnFeatureHelpClose.addEventListener('click', closeFeatureHelp);
+    featureHelpBackdrop.addEventListener('click', e => {
+      if (e.target === featureHelpBackdrop) closeFeatureHelp();
+    });
+    document.addEventListener('keydown', e => {
+      if (featureHelpBackdrop.style.display !== 'flex') return;
+      if (e.key === 'Escape') closeFeatureHelp();
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        btnFeatureHelpClose.focus();
+      }
+    });
 
     // Utils
     function escapeHtml(s) {
@@ -2102,6 +2232,7 @@
     // Filter state
     const filterState = {
       Date: new Set(),
+      Operator: new Set(),
       measurement_NetWork: new Set(),
       measurement_Script: new Set(),
       Marea: new Set(),
@@ -2111,6 +2242,7 @@
     };
     const filterAllOptions = {
       Date: [],
+      Operator: [],
       measurement_NetWork: [],
       measurement_Script: [],
       Marea: [],
@@ -2138,7 +2270,7 @@
       activeMenu = null;
     }
 
-    function createMultiSelectInline({title, key, width=140, onChange=null}) {
+    function createMultiSelectInline({title, key, width=140, onChange=null, single=false}) {
       const wrap = document.createElement('div');
       wrap.className = 'msel';
 
@@ -2161,7 +2293,9 @@
 
       const tools = document.createElement('div');
       tools.className = 'msel-tools';
-      tools.innerHTML = `
+      tools.innerHTML = single ? `
+        <div class="tbtn" data-act="close">關閉</div>
+      ` : `
         <div class="tbtn" data-act="all">全選</div>
         <div class="tbtn" data-act="none">全不選</div>
         <div class="tbtn" data-act="close">關閉</div>
@@ -2177,14 +2311,14 @@
 
       function updateButton(){
         const sumEl = btn.querySelector('.sum');
-        const t = summaryText(key);
+        const t = single ? (Array.from(filterState[key])[0] || 'none') : summaryText(key);
         sumEl.textContent = t;
         sumEl.title = Array.from(filterState[key]).join('、') || '(none)';
       }
 
       function positionMenu(){
         const rect = btn.getBoundingClientRect();
-        menu.style.width = rect.width + 'px';
+        menu.style.width = Math.max(rect.width, 180) + 'px';
 
         let left = rect.left;
         let top  = rect.bottom + 6;
@@ -2265,10 +2399,12 @@
           filterAllOptions[key] = options.slice();
 
           filterState[key].clear();
-          // 如果提供了defaultSelected，只选中这些；否则选中所有
           const selectedSet = defaultSelected ? new Set(defaultSelected) : new Set(options);
           for (const v of selectedSet) {
-            if (options.includes(v)) filterState[key].add(v);
+            if (options.includes(v)) {
+              filterState[key].add(v);
+              if (single) break;
+            }
           }
 
           for (const v of options) {
@@ -2276,7 +2412,8 @@
             item.className = 'item';
 
             const cb = document.createElement('input');
-            cb.type = 'checkbox';
+            cb.type = single ? 'radio' : 'checkbox';
+            if (single) cb.name = `filter-${key}`;
             cb.checked = filterState[key].has(v);
             cb.dataset.v = v;
 
@@ -2288,9 +2425,17 @@
 
             item.addEventListener('click', (ev) => {
               ev.stopPropagation();
-              if (ev.target !== cb) cb.checked = !cb.checked;
-              if (cb.checked) filterState[key].add(v);
-              else filterState[key].delete(v);
+              if (single) {
+                filterState[key].clear();
+                filterState[key].add(v);
+                list.querySelectorAll('input[type="radio"]').forEach(input => {
+                  input.checked = input.dataset.v === v;
+                });
+              } else {
+                if (ev.target !== cb) cb.checked = !cb.checked;
+                if (cb.checked) filterState[key].add(v);
+                else filterState[key].delete(v);
+              }
               updateButton();
               onChange?.();
               applyFilterAndRerender();
@@ -2308,9 +2453,16 @@
     const filterMount = document.getElementById('filterMount');
     const filterWidgets = {};
 
-    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:138});
-    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:92});
-    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:128});
+    filterWidgets.Date = createMultiSelectInline({title:'Date', key:'Date', width:96});
+    filterWidgets.Operator = createMultiSelectInline({
+      title:'Operator',
+      key:'Operator',
+      width:64,
+      single:true,
+      onChange: resetTableDimensionFilters,
+    });
+    filterWidgets.measurement_NetWork = createMultiSelectInline({title:'Net', key:'measurement_NetWork', width:48});
+    filterWidgets.measurement_Script = createMultiSelectInline({title:'Script', key:'measurement_Script', width:80});
     filterWidgets.Marea = createMultiSelectInline({
       title:'Marea',
       key:'Marea',
@@ -2319,6 +2471,7 @@
     });
 
     filterMount.appendChild(filterWidgets.Date.el);
+    filterMount.appendChild(filterWidgets.Operator.el);
     filterMount.appendChild(filterWidgets.measurement_NetWork.el);
     filterMount.appendChild(filterWidgets.measurement_Script.el);
     filterMount.appendChild(filterWidgets.Marea.el);
@@ -2356,6 +2509,7 @@
       const dateOpts = (filterAllOptions.Date || []).slice();
       const latestDate = dateOpts.length ? dateOpts[dateOpts.length - 1] : null;
       filterWidgets.Date.setOptions(dateOpts, latestDate ? [latestDate] : null);
+      filterWidgets.Operator.setOptions((filterAllOptions.Operator || []).slice(), ['CHT']);
       filterWidgets.measurement_NetWork.setOptions((filterAllOptions.measurement_NetWork || []).slice());
       filterWidgets.measurement_Script.setOptions((filterAllOptions.measurement_Script || []).slice());
       filterWidgets.Marea.setOptions((filterAllOptions.Marea || []).slice());
@@ -2420,6 +2574,7 @@
       { key: 'measurement_Type', label: 'Type' },
       { key: 'measurement_Path', label: 'Path' },
       { key: 'measurement_NetWork', label: 'Net' },
+      { key: 'Operator', label: 'Operator' },
       { key: 'measurement_Script', label: 'Script' },
       { key: 'start_location_KM+M', label: 'S.KM+M' },
       { key: 'end_location_KM+M', label: 'E.KM+M' },
@@ -2428,6 +2583,8 @@
       { key: 'Mcenter', label: 'Center' },
       { key: 'Start_Network', label: 'S_Net', wrap: true },
       { key: 'End_Network', label: 'E_Net', wrap: true },
+      { key: 'Start_NR_Mode', label: 'S_NR Mode', wrap: true },
+      { key: 'End_NR_Mode', label: 'E_NR Mode', wrap: true },
       { key: 'Start_LTE_ServingCell', label: 'S_LTE Cell', wrap: true },
       { key: 'End_LTE_ServingCell', label: 'E_LTE Cell', wrap: true },
       { key: 'Start_LTE_PCI', label: 'S_LTE PCI', wrap: true },
@@ -2492,6 +2649,7 @@
       const priorRows = allRowsRaw.filter(r => {
         const date = parseDateParts(r.Date);
         return date && date.ordinal < selectedDate.ordinal
+          && toClean(r.Operator) === toClean(row.Operator)
           && (isAllNetworksSelected || toClean(r.measurement_NetWork) === network);
       });
       const appearedBefore = priorRows.some(r => toClean(r.start_location_name) === location);
@@ -2593,6 +2751,7 @@
     function resetTableDimensionFilters() {
       const rows = allRowsRaw.filter(r => {
         const passesMainFilters = filterState.Date.has(toClean(r.Date))
+          && filterState.Operator.has(toClean(r.Operator))
           && filterState.measurement_NetWork.has(toClean(r.measurement_NetWork))
           && filterState.measurement_Script.has(toClean(r.measurement_Script))
           && filterState.Marea.has(toClean(r.Marea));
@@ -2761,6 +2920,10 @@
       return { columns: columns.length ? columns : ['(無資料)'], columnField: 'Mcenter' };
     }
 
+    function getCHTStatisticsRows() {
+      return allRowsRaw.filter(r => toClean(r.Operator) === 'CHT');
+    }
+
     function getPARowsByStatsType(rows) {
       if (statsCloneType === 'open') {
         return rows.filter(r => !toClean(r.start_location_name).includes('*'));
@@ -2788,7 +2951,8 @@
     }
 
     function initCloneFilters() {
-      const allDates = [...new Set(allRowsRaw.map(r => toClean(r.Date)).filter(d => d))];
+      const statisticsRows = getCHTStatisticsRows();
+      const allDates = [...new Set(statisticsRows.map(r => toClean(r.Date)).filter(d => d))];
       const years = [...new Set(allDates
         .map(d => parseDateParts(d))
         .filter(Boolean)
@@ -2801,7 +2965,7 @@
       }
       cloneYearFilter.innerHTML = html;
 
-      const netVals = [...new Set(allRowsRaw.map(r => toClean(r.measurement_NetWork)).filter(v => v))].sort();
+      const netVals = [...new Set(statisticsRows.map(r => toClean(r.measurement_NetWork)).filter(v => v))].sort();
       let netHtml = '<option value="ALL">ALL</option>';
       for (const net of netVals) {
         netHtml += `<option value="${escapeHtml(net)}">${escapeHtml(net)}</option>`;
@@ -2820,7 +2984,7 @@
       const scopeFieldPA = statsCloneViewMode === 'Mcenter' ? 'Mcenter' : 'Marea';
       const scopeFieldLoc = statsCloneViewMode === 'Mcenter' ? 'mcenter' : 'marea';
 
-      let paRows = allRowsRaw.filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      let paRows = getCHTStatisticsRows().filter(r => isDateInCloneStatsRange(toClean(r.Date)));
       paRows = getPARowsByCloneNet(paRows);
       let locRows = allLocationRowsRaw.slice();
 
@@ -2912,7 +3076,7 @@
     function getCloneRuleNoteText() {
       if (statsCloneActiveTab === 'reward') {
         return [
-          '統計規則（PA路段激勵統計）',
+          '統計規則（PA路段激勵統計，僅 Operator=CHT）',
           '1. 統計區間為「所選年度2月到次年1月」（未選年份則用全部月份）。',
           '2. 先依路段類型與 Net 篩選，再用該集合計算。',
           '3. 單一路段規則：曾出現後，連續缺席第3個月開始每月 +1 分；一旦當月再出現即歸零重算。',
@@ -2924,7 +3088,7 @@
         ? '結算模式開啟：重回改善需連續缺席4個月。'
         : '結算模式關閉：重回改善需連續缺席3個月。';
       return [
-        '統計規則（PA路段統計）',
+        '統計規則（PA路段統計，僅 Operator=CHT）',
         '1. 統計區間為「所選年度2月到次年1月」（未選年份則用全部月份）。',
         '2. 路段總數分母取自路段主檔（Location），並依欄位區域與路段類型切分；PA 資料會套用 Net 篩選。',
         '3. 鎖頭頁改善邏輯：路段預設為改善；首次出現立即退出改善；退出後連續缺席達門檻重回改善。',
@@ -2935,7 +3099,7 @@
 
     function buildRewardCloneView() {
       const { columns, columnField } = getCloneColumnsFromData();
-      let filteredPAData = allRowsRaw.filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      let filteredPAData = getCHTStatisticsRows().filter(r => isDateInCloneStatsRange(toClean(r.Date)));
       filteredPAData = getPARowsByCloneNet(filteredPAData);
       filteredPAData = getPARowsByStatsType(filteredPAData);
       const ymList = getContinuousYmList(filteredPAData);
@@ -3104,7 +3268,7 @@
     }
     
     function initStatsYearFilter() {
-      const allDates = [...new Set(allRowsRaw.map(r => toClean(r.Date)).filter(d => d))];
+      const allDates = [...new Set(getCHTStatisticsRows().map(r => toClean(r.Date)).filter(d => d))];
       const years = [...new Set(allDates
         .map(d => parseDateParts(d))
         .filter(Boolean)
@@ -3362,7 +3526,8 @@
     
     function renderPAStatistics(useCloneImprovedRule = false) {
       const statsBody = document.getElementById('statsBody');
-      if (!allRowsRaw || allRowsRaw.length === 0 || !allLocationRowsRaw || allLocationRowsRaw.length === 0) {
+      const statisticsRows = getCHTStatisticsRows();
+      if (statisticsRows.length === 0 || !allLocationRowsRaw || allLocationRowsRaw.length === 0) {
         statsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">無資料</td></tr>';
         return;
       }
@@ -3423,7 +3588,7 @@
 
       const areas = columns;
       
-      let filteredPAData = allRowsRaw.filter(r => isDateInStatsRange(toClean(r.Date)));
+      let filteredPAData = statisticsRows.filter(r => isDateInStatsRange(toClean(r.Date)));
       if (useCloneImprovedRule && statsCloneNet !== 'ALL') {
         filteredPAData = filteredPAData.filter(r => toClean(r.measurement_NetWork) === statsCloneNet);
       }
@@ -3741,12 +3906,56 @@
     renderTableHeader();
 
     // Chart float
+    const chartDock = document.getElementById('chartDock');
     const chartFloat = document.getElementById('chartFloat');
     const chartTitleEl = document.getElementById('chartTitle');
     const chartClose = document.getElementById('chartClose');
     const chartMetric = document.getElementById('chartMetric');
     const chartCanvas = document.getElementById('gridChart');
     const ctx = chartCanvas.getContext('2d');
+    const operatorComparisonTitle = document.getElementById('operatorComparisonTitle');
+    const operatorComparisonRows = document.getElementById('operatorComparisonRows');
+    const COMPARISON_OPERATORS = [
+      { key:'CHT', name:'中華電信', logo:'https://web-eshop.cdn.hinet.net/eShop%20Images/Consumer/Faicon/Faicon_logo_128x128.png' },
+      { key:'FET', name:'遠傳電信', logo:'https://www.fetnet.net/content/dam/fetnet/user_resource/cbu/images/help-center/FETNET-mobile-service-icon2.png' },
+      { key:'TWM', name:'台灣大哥大', logo:'https://www.taiwanmobile.com/bp-include/Y25/images/icons/apple-icon-120x120.png' },
+    ];
+
+    function getOperatorYoutubeCounts(locationName) {
+      const rows = applyFiltersToRows(allRowsRaw, { ignoreOperator:true, script:'YoutubeLive' })
+        .filter(r => toClean(r.start_location_name) === locationName);
+      return COMPARISON_OPERATORS.map(operator => ({
+        ...operator,
+        count:rows.filter(r => toClean(r.Operator) === operator.key).length,
+      }));
+    }
+
+    function renderOperatorComparison(locationName) {
+      if (!locationName) return;
+      const counts = getOperatorYoutubeCounts(locationName);
+      const maxCount = Math.max(1, ...counts.map(operator => operator.count));
+      operatorComparisonTitle.textContent = `YoutubeLive：${locationName}`;
+      operatorComparisonTitle.title = `YoutubeLive 業者比較：${locationName}`;
+      operatorComparisonRows.innerHTML = counts.map(operator => `
+        <div class="operator-comparison-row" data-operator="${operator.key}">
+          <div class="operator-brand">
+            <img src="${operator.logo}" alt="${operator.name}" referrerpolicy="no-referrer">
+            <span>${operator.key}</span><strong>${operator.count}</strong>
+          </div>
+          <div class="operator-count-track"><div class="operator-count-bar" style="width:${operator.count / maxCount * 100}%"></div></div>
+        </div>
+      `).join('');
+      operatorComparisonRows.querySelectorAll('img').forEach(img => {
+        img.addEventListener('error', () => {
+          img.hidden = true;
+          const message = document.createElement('span');
+          message.className = 'operator-logo-error';
+          message.textContent = '圖標未載入';
+          img.after(message);
+          logError(new Error(`業者圖標載入失敗：${img.alt} (${img.src})`));
+        }, { once:true });
+      });
+    }
 
     const CHART_METRIC_LABELS = {
       PA: 'PA',
@@ -3781,10 +3990,23 @@
       if (selectionPrimaryName) renderStackedChartForLocation(selectionPrimaryName);
     });
 
-    chartClose.addEventListener('click', () => chartFloat.style.display = 'none');
+    chartClose.addEventListener('click', hideChartWindow);
 
-    function showChartWindow(){ chartFloat.style.display = 'block'; resizeCanvasToDisplaySize(); }
-    function hideChartWindow(){ chartFloat.style.display = 'none'; }
+    function showChartWindow(){
+      chartDock.style.display = 'flex';
+      chartFloat.style.display = 'block';
+      resizeCanvasToDisplaySize();
+    }
+    function hideChartWindow(){
+      chartFloat.style.display = 'none';
+      chartDock.style.display = 'none';
+    }
+
+    window.addEventListener('resize', () => {
+      if (chartFloat.style.display === 'block' && selectionPrimaryName) {
+        renderStackedChartForLocation(selectionPrimaryName);
+      }
+    });
 
     function resizeCanvasToDisplaySize(){
       const rect = chartCanvas.getBoundingClientRect();
@@ -3845,12 +4067,14 @@
       } else {
         renderMetricChartForLocation(locationName, chartMetric.value);
       }
+      renderOperatorComparison(locationName);
     }
 
     function renderMetricChartForLocation(locationName, metricKey) {
       if (!locationName) { clearChart(); hideChartWindow(); return; }
       const rows = allRowsRaw.filter(r => {
         const passesNonDateFilters = filterState.measurement_NetWork.has(toClean(r.measurement_NetWork))
+          && filterState.Operator.has(toClean(r.Operator))
           && filterState.measurement_Script.has(toClean(r.measurement_Script))
           && filterState.Marea.has(toClean(r.Marea))
           && filterState.tableCounty.has(toClean(r.twcounty))
@@ -4084,15 +4308,16 @@
       drawLegendBoxAuto(scripts, legendX, legendY);
     }
 
-    function applyFiltersToRows(rows){
+    function applyFiltersToRows(rows, { ignoreOperator=false, script=null } = {}){
       return rows.filter(r => {
         const d = toClean(r.Date);
         const n = toClean(r.measurement_NetWork);
         const s = toClean(r.measurement_Script);
         const a = toClean(r.Marea);
         const passesFilter = filterState.Date.has(d)
+          && (ignoreOperator || filterState.Operator.has(toClean(r.Operator)))
             && filterState.measurement_NetWork.has(n)
-            && filterState.measurement_Script.has(s)
+            && (script === null ? filterState.measurement_Script.has(s) : s === script)
           && filterState.Marea.has(a)
             && filterState.tablePAStatus.has(getPAStatus(r))
           && filterState.tableCounty.has(toClean(r.twcounty))
@@ -4568,6 +4793,7 @@
       dataWarningsText = buildDataWarnings(rowsPA, rowsLoc);
 
       const optDate = uniqSorted(allRowsRaw.map(r => toClean(r.Date)));
+      const optOperator = uniqSorted(allRowsRaw.map(r => toClean(r.Operator)));
       const optNet  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_NetWork)));
       const optScr  = uniqSorted(allRowsRaw.map(r => toClean(r.measurement_Script)));
       const optArea = uniqSorted(allRowsRaw.map(r => toClean(r.Marea)));
@@ -4575,6 +4801,7 @@
       // Date默认只选择最新日期
       const latestDate = optDate.length > 0 ? optDate[optDate.length - 1] : null;
       filterWidgets.Date.setOptions(optDate, latestDate ? [latestDate] : null);
+      filterWidgets.Operator.setOptions(optOperator, ['CHT']);
       filterWidgets.measurement_NetWork.setOptions(optNet, optNet.includes('4G') ? ['4G'] : null);
       filterWidgets.measurement_Script.setOptions(optScr);
       filterWidgets.Marea.setOptions(optArea);
