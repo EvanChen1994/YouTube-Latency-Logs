@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Analysis ver 12.0(2026.10.16)</title>
+  <title>THSR PA Analysis ver 13.0(2026.11.04)</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -949,23 +949,36 @@
     .operator-comparison{
       position:relative;
       pointer-events:auto;
-      flex:0 0 190px;
+      flex:0 0 280px;
       box-sizing:border-box;
       height:100%;
-      overflow:auto;
+      overflow:hidden;
       border:1px solid rgba(255,255,255,0.14);
       border-radius:14px;
       background:linear-gradient(180deg, rgba(11,26,51,0.98), rgba(7,11,22,0.98));
       box-shadow:0 18px 45px rgba(0,0,0,0.55);
     }
     .operator-comparison .chart-head{ min-height:25px; }
-    .operator-comparison-note{
-      padding:6px 10px 0;
-      font-size:10px;
-      line-height:1.4;
-      color:var(--muted);
+    .comparison-help:not([open]){ display:none; }
+    .comparison-help{ margin:auto; padding:0; color:var(--txt); }
+    .comparison-help::backdrop{ background:rgba(0,0,0,0.55); }
+    .operator-comparison-rows{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:10px;
+      padding:4px 10px 8px;
     }
-    .operator-comparison-rows{ padding:4px 10px 8px; }
+    .operator-comparison-column h3{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:3px;
+      margin:2px 0 4px;
+      font-size:11px;
+      color:var(--accent2);
+    }
+    .comparison-script-icon{ display:flex; align-items:center; justify-content:center; height:22px; }
+    .comparison-script-icon svg{ width:26px; height:22px; }
     .operator-comparison-row{ padding:4px 0; }
     .operator-brand{ display:flex; align-items:center; gap:7px; font-size:11px; }
     .operator-brand img{
@@ -980,9 +993,9 @@
     }
     .operator-count-bar{ height:100%; background:var(--accent2); border-radius:4px; }
     @media (max-width:900px){
-      .chart-dock{ flex-direction:column; height:430px; }
+      .chart-dock{ flex-direction:column; height:470px; }
       .chart-float{ height:auto; }
-      .operator-comparison{ flex:0 0 190px; height:auto; }
+      .operator-comparison{ flex:0 0 230px; height:auto; }
     }
     .chart-float::before{
       content:"";
@@ -1258,11 +1271,11 @@
         </div>
         <canvas id="gridChart"></canvas>
       </div>
-      <div class="operator-comparison" id="operatorComparison" role="region" aria-label="YoutubeLive 業者數量比較">
+      <div class="operator-comparison" id="operatorComparison" role="region" aria-label="YoutubeLive／VoLTEmos 業者數量比較">
         <div class="chart-head">
-          <div class="ctitle" id="operatorComparisonTitle">YoutubeLive 業者比較</div>
+          <div class="ctitle" id="operatorComparisonTitle">YoutubeLive／VoLTEmos 業者比較</div>
+          <button type="button" class="hint-help-btn" id="btnComparisonHelp" title="業者比較說明" aria-haspopup="dialog" aria-controls="comparisonHelpDialog">說明</button>
         </div>
-        <div class="operator-comparison-note">忽略 Operator；Script 固定 YoutubeLive，其餘沿用 Filter。單位：筆。</div>
         <div class="operator-comparison-rows" id="operatorComparisonRows" aria-live="polite"></div>
       </div>
       </div>
@@ -1358,6 +1371,17 @@
     </div>
   </div>
 
+  <dialog class="modal comparison-help" id="comparisonHelpDialog" aria-labelledby="comparisonHelpTitle">
+    <div class="modal-header">
+      <div id="comparisonHelpTitle" style="font-weight:1000;">業者比較說明</div>
+      <button type="button" class="close-btn" id="btnComparisonHelpClose">關閉</button>
+    </div>
+    <div class="modal-body">
+      <p>比較所選路段 CHT、FET、TWM 的 YoutubeLive 與 VoLTEmos 筆數，兩者分開計算、不加總；比較條分別以各項目中最多筆數的業者為基準。</p>
+      <p>忽略 Operator 與 Script Filter，其餘沿用 Filter。VoLTEmos 僅計算 measurement_Script=VoLTEmos 且 event=mos_event 的資料。單位：筆。</p>
+    </div>
+  </dialog>
+
   <div class="modal-backdrop" id="featureHelpBackdrop">
     <div class="modal" id="featureHelpDialog" role="dialog" aria-modal="true" aria-labelledby="featureHelpTitle">
       <div class="modal-header">
@@ -1368,7 +1392,7 @@
         <div id="featureHelpSummary"></div>
         <p>數字顯示：zoom ≥ 12 顯示紅格筆數（依 Script 上色）；zoom ≤ 11 改顯示「start_location_name 的 unique 數量」（紅藍一起算、重複只算 1，並以 bucket 聚合加總）。</p>
         <p>PA Points：zoom ≥ 12 才顯示（Start/End 可複選）。右下角有圖例（滑鼠移上去顯示）。</p>
-        <p>點選路段後，圖表旁會比較同一路段 CHT／FET／TWM 的 YoutubeLive 筆數；僅忽略 Operator 與 Script 選項，其餘 Filter 仍適用。</p>
+        <p>點選路段後，圖表旁會並排顯示同一路段 CHT／FET／TWM 的 YoutubeLive 與 VoLTEmos 筆數，兩者不加總。VoLTEmos 僅計算 measurement_Script=VoLTEmos 且 event=mos_event 的資料；僅忽略 Operator 與 Script 選項，其餘 Filter 仍適用。</p>
         <p>Date 可複選，預設只選取最新量測日期；Operator 為單選下拉選單，預設 CHT。清除篩選會恢復上述預設。地圖與明細依所選業者篩選；PA狀態依同一業者的歷史資料判定。右下方 PA路段統計追蹤及鎖頭視窗固定只計算 Operator=CHT，不受左側 Operator 選項影響；路段母檔分母維持不變。</p>
       </div>
     </div>
@@ -1481,7 +1505,7 @@
        - Update: 移除未使用的 parseCsvRobust / fetchNoStore / buildCsvText
        =========================== */
 
-    const APP_VERSION = "ver 12.0(2026.10.16)";
+    const APP_VERSION = "ver 13.0(2026.11.04)";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -3949,15 +3973,19 @@
     const ctx = chartCanvas.getContext('2d');
     const operatorComparisonTitle = document.getElementById('operatorComparisonTitle');
     const operatorComparisonRows = document.getElementById('operatorComparisonRows');
+    const comparisonHelpDialog = document.getElementById('comparisonHelpDialog');
+    document.getElementById('btnComparisonHelp').addEventListener('click', () => comparisonHelpDialog.showModal());
+    document.getElementById('btnComparisonHelpClose').addEventListener('click', () => comparisonHelpDialog.close());
     const COMPARISON_OPERATORS = [
       { key:'CHT', name:'中華電信', logo:'https://web-eshop.cdn.hinet.net/eShop%20Images/Consumer/Faicon/Faicon_logo_128x128.png' },
       { key:'FET', name:'遠傳電信', logo:'https://www.fetnet.net/content/dam/fetnet/user_resource/cbu/images/help-center/FETNET-mobile-service-icon2.png' },
       { key:'TWM', name:'台灣大哥大', logo:'https://www.taiwanmobile.com/bp-include/Y25/images/icons/apple-icon-120x120.png' },
     ];
 
-    function getOperatorYoutubeCounts(locationName) {
-      const rows = applyFiltersToRows(allRowsRaw, { ignoreOperator:true, script:'YoutubeLive' })
-        .filter(r => toClean(r.start_location_name) === locationName);
+    function getOperatorComparisonCounts(locationName, script) {
+      const rows = applyFiltersToRows(allRowsRaw, { ignoreOperator:true, script })
+        .filter(r => toClean(r.start_location_name) === locationName
+          && (script !== 'VoLTEmos' || toClean(r.event) === 'mos_event'));
       return COMPARISON_OPERATORS.map(operator => ({
         ...operator,
         count:rows.filter(r => toClean(r.Operator) === operator.key).length,
@@ -3966,11 +3994,16 @@
 
     function renderOperatorComparison(locationName) {
       if (!locationName) return;
-      const counts = getOperatorYoutubeCounts(locationName);
-      const maxCount = Math.max(1, ...counts.map(operator => operator.count));
-      operatorComparisonTitle.textContent = `YoutubeLive：${locationName}`;
-      operatorComparisonTitle.title = `YoutubeLive 業者比較：${locationName}`;
-      operatorComparisonRows.innerHTML = counts.map(operator => `
+      operatorComparisonTitle.textContent = `業者比較：${locationName}`;
+      operatorComparisonTitle.title = `YoutubeLive／VoLTEmos 業者比較：${locationName}`;
+      operatorComparisonRows.innerHTML = ['YoutubeLive', 'VoLTEmos'].map(script => {
+        const counts = getOperatorComparisonCounts(locationName, script);
+        const maxCount = Math.max(1, ...counts.map(operator => operator.count));
+        return `<section class="operator-comparison-column" data-script="${script}" aria-label="${script} 業者比較">
+          <h3><span class="comparison-script-icon" aria-hidden="true">${script === 'YoutubeLive'
+            ? '<svg viewBox="0 0 28 20"><rect y="1" width="28" height="18" rx="5" fill="#ff0000"/><path d="M11 5.5v9l8-4.5z" fill="#fff"/></svg>'
+            : pointSvg('TEL')}</span>${script}</h3>
+          ${counts.map(operator => `
         <div class="operator-comparison-row" data-operator="${operator.key}">
           <div class="operator-brand">
             <img src="${operator.logo}" alt="${operator.name}" referrerpolicy="no-referrer">
@@ -3978,7 +4011,9 @@
           </div>
           <div class="operator-count-track"><div class="operator-count-bar" style="width:${operator.count / maxCount * 100}%"></div></div>
         </div>
-      `).join('');
+          `).join('')}
+        </section>`;
+      }).join('');
       operatorComparisonRows.querySelectorAll('img').forEach(img => {
         img.addEventListener('error', () => {
           img.hidden = true;
