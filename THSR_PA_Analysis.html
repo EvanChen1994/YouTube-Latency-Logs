@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Analysis ver 13.0(2026.11.04)</title>
+  <title>THSR PA Analysis ver 13.1(2026.11.19)</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -419,7 +419,7 @@
     .stats-back-btn:hover { background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.40); }
     .stats-lock-btn { padding:3px 10px; border-radius:6px; border:1px solid var(--line2); background: rgba(255,255,255,0.04); color:var(--txt); font-size:12px; cursor:pointer; font-weight:900; transition:.15s ease; }
     .stats-lock-btn:hover { background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.40); }
-    .clone-tabs { display:flex; gap:8px; margin-bottom:8px; }
+    .clone-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
     .clone-tab {
       border:1px solid var(--line2);
       background: rgba(255,255,255,0.04);
@@ -500,6 +500,10 @@
     }
     #statsCloneWrap { max-height: 62vh; overflow:auto; border:1px solid rgba(255,255,255,0.10); border-radius:10px; }
     #statsCloneHint { color: var(--muted); font-size:12px; margin-bottom:8px; }
+    #statsCloneWrap .tracking-improved { background:#bdd7ee; color:#102a43; }
+    #statsCloneWrap .tracking-unimproved { background:#ffc7ce; color:#721c24; }
+    #statsCloneWrap .tracking-pending { background:#ffeb9c; color:#664d03; }
+    #statsCloneWrap .tracking-cell { white-space:pre-line; text-align:center; min-width:110px; }
     #statsCloneRuleNote {
       border: 1px solid rgba(0,214,255,0.26);
       background: rgba(0,214,255,0.08);
@@ -656,6 +660,7 @@
       color: var(--txt);
     }
     .close-btn:hover{ background: rgba(43,124,255,0.10); border-color: rgba(43,124,255,0.35); }
+    a.close-btn { text-decoration:none; white-space:nowrap; }
 
     /* H3 labels */
     .lblWrap{
@@ -1433,8 +1438,9 @@
     <div class="modal" role="dialog" aria-modal="true" aria-label="PA路段統計(行維處版)" style="width:min(1200px,95vw);">
       <div class="modal-header">
         <div style="font-weight:1000;">PA路段統計(行維處版)</div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
           <button class="close-btn" id="btnStatsCloneExport">匯出EXCEL</button>
+          <a class="close-btn" id="btnStatsCloneRuleExamplesDownload" href="PA_Settlement_Incentive_Examples.xlsx" download="PA_Settlement_Incentive_Examples.xlsx" title="下載一般結算、激勵與7次全組合的改善規則 Excel 範例">改善規則範例下載</a>
           <button class="close-btn" id="btnStatsCloneBack" style="display:none;">← 返回Marea</button>
           <button class="close-btn" id="btnStatsCloneClose">關閉</button>
         </div>
@@ -1443,6 +1449,8 @@
         <div class="clone-tabs">
           <button class="clone-tab active" id="cloneTabStats">PA路段統計(行維處版)</button>
           <button class="clone-tab" id="cloneTabReward">PA路段激勵統計(行維處版)</button>
+          <button class="clone-tab" id="cloneTabTracking">PA路段改善追蹤</button>
+          <button class="clone-tab" id="cloneTabRewardTracking">PA路段激勵改善追蹤</button>
         </div>
         <div class="clone-filter-bar">
           <label for="cloneYearFilter">年份：</label>
@@ -1469,7 +1477,8 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/h3-js@4.4.0/dist/h3-js.umd.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="PA_Incentive.js"></script>
 
   <script>
     /* ===========================
@@ -1483,6 +1492,9 @@
        ver 8.1
        - New: 鎖頭視窗內新增統計規則註記（PA路段統計、PA路段激勵統計）
        - Update: 右側匯出CSV改為匯出EXCEL
+       - Update: 行維處版匯出全部儲存格採文字格式，避免「數值(比例%)」被轉為負數
+       - New: 行維處版一般／激勵改善追蹤分頁，依 Filter 顯示月份狀態、改善起算與最新判斷
+       - Update: Excel 使用 xlsx-js-style 保留追蹤工作表的藍／紅／黃底色
        ---------------------------
        ver 9.0
        - New: 左側地圖新增可收合 S_loc Script 統計套件（YoutubeLive／VoLTEmos）
@@ -1505,7 +1517,7 @@
        - Update: 移除未使用的 parseCsvRobust / fetchNoStore / buildCsvText
        =========================== */
 
-    const APP_VERSION = "ver 13.0(2026.11.04)";
+    const APP_VERSION = "ver 13.1(2026.11.19)";
     document.getElementById('verTag').textContent = APP_VERSION;
 
     // Fail-safe banner
@@ -2934,6 +2946,8 @@
     const btnStatsCloneClose = document.getElementById('btnStatsCloneClose');
     const cloneTabStats = document.getElementById('cloneTabStats');
     const cloneTabReward = document.getElementById('cloneTabReward');
+    const cloneTabTracking = document.getElementById('cloneTabTracking');
+    const cloneTabRewardTracking = document.getElementById('cloneTabRewardTracking');
     const cloneYearFilter = document.getElementById('cloneYearFilter');
     const cloneTypeFilter = document.getElementById('cloneTypeFilter');
     const cloneNetFilter = document.getElementById('cloneNetFilter');
@@ -2947,6 +2961,15 @@
     let statsCloneYear = '';
     let statsCloneType = 'open';
     let statsCloneNet = 'ALL';
+    const CLONE_TRACKING_STATUS = {
+      improved: { label: '已改善', color: 'BDD7EE' },
+      unimproved: { label: '未改善', color: 'FFC7CE' },
+      pending: { label: '待觀察', color: 'FFEB9C' }
+    };
+
+    function isCloneRewardTab() {
+      return statsCloneActiveTab === 'reward' || statsCloneActiveTab === 'rewardTracking';
+    }
 
     function openStatsCloneModal() {
       statsCloneBackdrop.style.display = 'flex';
@@ -3039,16 +3062,13 @@
     }
 
     function getCloneScopedData() {
-      const scopeFieldPA = statsCloneViewMode === 'Mcenter' ? 'Mcenter' : 'Marea';
-      const scopeFieldLoc = statsCloneViewMode === 'Mcenter' ? 'mcenter' : 'marea';
-
       let paRows = getCHTStatisticsRows().filter(r => isDateInCloneStatsRange(toClean(r.Date)));
       paRows = getPARowsByCloneNet(paRows);
       let locRows = allLocationRowsRaw.slice();
 
       if (statsCloneViewMode === 'Mcenter' && statsCloneSelectedArea) {
-        paRows = paRows.filter(r => toClean(r[scopeFieldPA]) === statsCloneSelectedArea);
-        locRows = locRows.filter(r => toClean(r[scopeFieldLoc]) === statsCloneSelectedArea);
+        paRows = paRows.filter(r => toClean(r.Marea) === statsCloneSelectedArea);
+        locRows = locRows.filter(r => toClean(r.marea) === statsCloneSelectedArea);
       }
 
       if (statsCloneType === 'open') {
@@ -3086,43 +3106,195 @@
       return ymList;
     }
 
-    function calcRewardSeries(rows, ymList) {
-      const monthMap = new Map();
-      for (const ym of ymList) monthMap.set(ym, new Set());
-      for (const r of rows) {
-        const p = parseDateParts(toClean(r.Date));
-        if (!p) continue;
-        const name = toClean(r.start_location_name);
-        if (!name) continue;
-        if (!monthMap.has(p.ym)) monthMap.set(p.ym, new Set());
-        monthMap.get(p.ym).add(name);
-      }
+    function buildRewardTimeline(rows, measurementDates) {
+      return PAIncentive.buildTimeline(rows, measurementDates).timeline;
+    }
 
-      const allLocs = new Set(rows.map(r => toClean(r.start_location_name)).filter(v => v));
-      const state = new Map();
-      for (const loc of allLocs) state.set(loc, { seen: false, absent: 0 });
-      const threshold = 3;
-
-      const scores = new Map();
-      for (const ym of ymList) {
-        const presentSet = monthMap.get(ym) || new Set();
-        let score = 0;
-
-        for (const loc of allLocs) {
-          const st = state.get(loc);
-          if (presentSet.has(loc)) {
-            st.seen = true;
-            st.absent = 0;
-            continue;
+    function summarizeRewardMonths(timeline, ymList) {
+      const monthly = new Map();
+      for (const [loc, cells] of timeline) {
+        let index = 0;
+        let latest = cells[0];
+        monthly.set(loc, ymList.map(ym => {
+          const monthCells = [];
+          while (index < cells.length && cells[index].date.slice(0, 7) <= ym) {
+            monthCells.push(cells[index++]);
           }
-          if (!st.seen) continue;
-          st.absent += 1;
-          if (st.absent >= threshold) score += 1;
-        }
-        scores.set(ym, score);
+          if (monthCells.length) latest = monthCells[monthCells.length - 1];
+          return {
+            ...latest,
+            appeared: monthCells.some(cell => cell.appeared),
+            appearedDates: monthCells.filter(cell => cell.appeared).map(cell => cell.date.replace(/-/g, '/')),
+            point: monthCells.reduce((sum, cell) => sum + cell.point, 0),
+            pointDates: monthCells.filter(cell => cell.point).map(cell => cell.date.replace(/-/g, '/')),
+          };
+        }));
       }
+      return monthly;
+    }
 
-      return { scores, baseCount: allLocs.size };
+    function calcRewardSeries(rows, measurementDates, ymList) {
+      const timeline = summarizeRewardMonths(buildRewardTimeline(rows, measurementDates), ymList);
+      const scores = new Map(ymList.map(ym => [ym, 0]));
+      for (const cells of timeline.values()) {
+        cells.forEach((cell, i) => scores.set(ymList[i], scores.get(ymList[i]) + cell.score));
+      }
+      return { scores, baseCount: timeline.size };
+    }
+
+    function buildCloneImprovementTimeline(rows, dateList, baseSet, useSettlement) {
+      const presentByDate = new Map(dateList.map(date => [date, new Set()]));
+      for (const row of rows) {
+        const present = presentByDate.get(toClean(row.Date));
+        if (present) present.add(toClean(row.start_location_name));
+      }
+      const timeline = new Map();
+      for (const loc of baseSet) {
+        let isImproved = true;
+        let seenEver = false;
+        let presentStreak = 0;
+        let absentStreak = 0;
+        const cells = [];
+        dateList.forEach((date, i) => {
+          const appeared = presentByDate.get(date).has(loc);
+          if (appeared) {
+            presentStreak += 1;
+            absentStreak = 0;
+            if (isImproved && (!seenEver || presentStreak >= 3)) isImproved = false;
+            seenEver = true;
+          } else {
+            absentStreak += 1;
+            presentStreak = 0;
+            if (!isImproved && absentStreak >= (useSettlement ? 4 : 3)) isImproved = true;
+          }
+          let status = isImproved ? 'improved' : 'unimproved';
+          if ((isImproved && (i < 2 || appeared)) || (!isImproved && !appeared)) status = 'pending';
+          cells.push({ date, status, isImproved, appeared, absentStreak });
+        });
+        timeline.set(loc, cells);
+      }
+      return timeline;
+    }
+
+    function collectCloneTrackingMetadata(rows, locationField, fields) {
+      const byLocation = new Map();
+      for (const row of rows) {
+        const loc = toClean(row[locationField]);
+        if (!loc) continue;
+        if (!byLocation.has(loc)) byLocation.set(loc, fields.map(() => new Set()));
+        fields.forEach((field, i) => {
+          const value = toClean(row[field]);
+          if (value) byLocation.get(loc)[i].add(value);
+        });
+      }
+      return new Map([...byLocation].map(([loc, values]) => [loc, values.map(set => [...set].join('、'))]));
+    }
+
+    function getCloneTrackingData(reward) {
+      const { paRows, locRows } = getCloneScopedData();
+      let globalRows = getCHTStatisticsRows().filter(r => isDateInCloneStatsRange(toClean(r.Date)));
+      globalRows = getPARowsByCloneNet(globalRows);
+      if (reward) globalRows = getPARowsByStatsType(globalRows);
+      const dates = reward
+        ? PAIncentive.buildTimeline([], globalRows.map(row => row.Date)).dates
+        : getMonthlyLastDates(globalRows);
+      const periods = reward ? getContinuousYmList(globalRows) : dates.map(date => parseDateParts(date).ym);
+      const measurementTimeline = reward ? buildRewardTimeline(paRows, dates) : null;
+      const timeline = reward
+        ? summarizeRewardMonths(measurementTimeline, periods)
+        : buildCloneImprovementTimeline(paRows, dates, new Set(locRows.map(r => toClean(r.location_name)).filter(Boolean)), settlementMode);
+      const locations = [...timeline.keys()].sort((a, b) => a.localeCompare(b, 'zh-Hant', { numeric: true }));
+      const locationMetadata = collectCloneTrackingMetadata(locRows, 'location_name', ['marea', 'mcenter', 'memo']);
+      const paMetadata = collectCloneTrackingMetadata(paRows, 'start_location_name', ['Marea', 'Mcenter', 'Memo']);
+      const metadata = new Map(locations.map(loc => [loc, [0, 1, 2].map(i =>
+        locationMetadata.get(loc)?.[i] || paMetadata.get(loc)?.[i] || ''
+      )]));
+      return { periods, locations, timeline, metadata, reward, measurementDates: dates, measurementTimeline };
+    }
+
+    function getCloneTrackingResultText(cell) {
+      return typeof cell.score === 'number' ? PAIncentive.formatScore(cell) : CLONE_TRACKING_STATUS[cell.status].label;
+    }
+
+    function getCloneTrackingCellText(cell, previousCell) {
+      if (typeof cell.score === 'number') {
+        const lines = [getCloneTrackingResultText(cell)];
+        if (cell.pointDates?.length) lines.push(`加分日期：${cell.pointDates.join('、')}`);
+        const appearedDates = cell.appearedDates || (cell.appeared ? [cell.date.replace(/-/g, '/')] : []);
+        if (appearedDates.length) lines.push(`PA日期：${appearedDates.join('、')}`);
+        return lines.join('\n');
+      }
+      const label = CLONE_TRACKING_STATUS[cell.status].label;
+      if (cell.status === 'unimproved') {
+        const dates = cell.appearedDates?.length ? cell.appearedDates.join('、') : formatYm(cell.date);
+        return `${label}\n日期：${dates}`;
+      }
+      if (cell.status === 'improved' && previousCell?.status !== 'improved') {
+        return `${label}\n起算：${formatYm(cell.date)}`;
+      }
+      return label;
+    }
+
+    function buildCloneTrackingView(reward) {
+      const { periods, locations, timeline, metadata } = getCloneTrackingData(reward);
+      let html = '<table id="cloneTrackingTable"><thead><tr><th>營運處</th><th>營運中心</th><th>MEMO</th><th>路段</th>';
+      html += periods.map(ym => `<th>${escapeHtml(formatYm(ym))}</th>`).join('');
+      html += `<th>${reward ? '累計分數' : '判斷結果'}</th></tr></thead><tbody>`;
+      if (!periods.length || !locations.length) {
+        html += `<tr><td colspan="${periods.length + 5}">無可統計資料</td></tr>`;
+      } else {
+        for (const loc of locations) {
+          const cells = timeline.get(loc);
+          html += '<tr>' + [...metadata.get(loc), loc].map(value => `<td>${escapeHtml(value)}</td>`).join('');
+          for (let i = 0; i < cells.length; i++) {
+            const cell = cells[i];
+            const text = getCloneTrackingCellText(cell, cells[i - 1]);
+            html += `<td class="tracking-cell tracking-${cell.status}" title="${escapeHtml(cell.date)}">${escapeHtml(text)}</td>`;
+          }
+          const finalStatus = cells[cells.length - 1].status;
+          html += `<td class="tracking-cell tracking-${finalStatus}">${escapeHtml(getCloneTrackingResultText(cells[cells.length - 1]))}</td></tr>`;
+        }
+      }
+      statsCloneWrap.innerHTML = html + '</tbody></table>';
+      btnStatsCloneBack.style.display = statsCloneViewMode === 'Mcenter' ? 'inline-block' : 'none';
+    }
+
+    function createCloneTextSheet(table) {
+      const ws = XLSX.utils.table_to_sheet(table, { raw: true });
+      for (const key of Object.keys(ws)) {
+        if (key.startsWith('!')) continue;
+        ws[key].t = 's';
+        ws[key].v = String(ws[key].v ?? '');
+        ws[key].z = '@';
+      }
+      return ws;
+    }
+
+    function createCloneTrackingSheet(data) {
+      const values = [['營運處', '營運中心', 'MEMO', '路段', ...data.periods.map(formatYm), data.reward ? '累計分數' : '判斷結果']];
+      for (const loc of data.locations) {
+        const cells = data.timeline.get(loc);
+        if (!cells.length) continue;
+        values.push([...data.metadata.get(loc), loc, ...cells.map((cell, i) =>
+          getCloneTrackingCellText(cell, cells[i - 1])
+        ), getCloneTrackingResultText(cells[cells.length - 1])]);
+      }
+      const ws = XLSX.utils.aoa_to_sheet(values);
+      values.forEach((row, r) => row.forEach((value, c) => {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        cell.t = 's';
+        cell.z = '@';
+        if (r > 0 && c > 3) {
+          const cells = data.timeline.get(values[r][3]);
+          const state = cells[Math.min(c - 4, cells.length - 1)];
+          cell.s = {
+            fill: { patternType: 'solid', fgColor: { rgb: CLONE_TRACKING_STATUS[state.status].color } },
+            alignment: { wrapText: true, vertical: 'center', horizontal: 'center' }
+          };
+        }
+      }));
+      ws['!cols'] = values[0].map((_, i) => ({ wch: i === 2 ? 40 : i === 3 ? 28 : 23 }));
+      return ws;
     }
 
     function formatYm(ym) {
@@ -3132,13 +3304,16 @@
     }
 
     function getCloneRuleNoteText() {
-      if (statsCloneActiveTab === 'reward') {
+      if (isCloneRewardTab()) {
         return [
           '統計規則（PA路段激勵統計，僅 Operator=CHT）',
           '1. 統計區間為「所選年度2月到次年1月」（未選年份則用全部月份）。',
           '2. 先依路段類型與 Net 篩選，再用該集合計算。',
-          '3. 單一路段規則：曾出現後，連續缺席第3個月開始每月 +1 分；一旦當月再出現即歸零重算。',
-          '4. 欄位內百分比為同月份橫向占比；總計欄固定為該月整體值（100.00%）。'
+          '3. 同一量測日期合併為1次。路段必須先出現過PA，之後連續4次未出現得+1、第5次+2、第6次+3，依此累計；無量測的日期或月份不計次。',
+          '4. PA復發保留分數並顯示「+N觀察中」，重新連續4次未出現才再+1；未得分顯示0。切換年度重新計算；年份選全部時沿用全部所選歷史。',
+          '5. 月份統計顯示月末的累計分數總和（含觀察中已保留的分數），百分比為當月橫向占比；無量測月份沿用前次分數，不新增分數。',
+          '6. 追蹤分頁每列一路段、每欄一月份，顯示當月最後量測後的累計分數，並列出加分及PA日期。藍底＝持續加分；黃底＝等待門檻或保留分數觀察中；紅底＝尚未得分且末次量測出現PA。Excel另附每個量測日期的加分、累計分數及觀察狀態。',
+          '7. 追蹤欄位順序為營運處、營運中心、MEMO、路段、各月份、判斷結果；對應資料優先取自路段主檔，缺漏欄位由篩選後PA資料補齊。'
         ].join('\n');
       }
 
@@ -3150,8 +3325,11 @@
         '1. 統計區間為「所選年度2月到次年1月」（未選年份則用全部月份）。',
         '2. 路段總數分母取自路段主檔（Location），並依欄位區域與路段類型切分；PA 資料會套用 Net 篩選。',
         '3. 鎖頭頁改善邏輯：路段預設為改善；首次出現立即退出改善；退出後連續缺席達門檻重回改善。',
-        '4. 改善狀態下若連續出現3個月，則退出改善。',
-        `5. ${settleText}`
+        '4. 已改善後再次出現PA，顯示待觀察且不計入該次改善數，但保留改善資格；下一個判定月份無PA即可恢復已改善。連續出現3個判定月份才取消改善資格，之後須重新連續缺席達門檻。',
+        `5. ${settleText}`,
+        '6. 改善追蹤沿用每月最後量測日判定，僅計算有量測資料的月份；起算日標在首次藍底儲存格，未改善儲存格標示當月判定的量測日期。前三次量測尚未齊備、缺席未達恢復門檻、改善後再出現但未連續3個月，均標黃待觀察；改善數及比例僅計入當次顯示已改善的路段，待觀察與未改善均不計入。',
+        '7. 藍底＝已改善；紅底＝未改善；黃底＝待觀察。最後一欄保留最新月份狀態。年份、路段類型、Net及營運處範圍與統計共用；匯出以文字保留數值及路段名稱，並附追蹤底色。',
+        '8. 追蹤欄位順序為營運處、營運中心、MEMO、路段、各月份、判斷結果；對應資料優先取自路段主檔，缺漏欄位由篩選後PA資料補齊。'
       ].join('\n');
     }
 
@@ -3161,14 +3339,18 @@
       filteredPAData = getPARowsByCloneNet(filteredPAData);
       filteredPAData = getPARowsByStatsType(filteredPAData);
       const ymList = getContinuousYmList(filteredPAData);
+      const measurementDates = PAIncentive.buildTimeline([], filteredPAData.map(row => row.Date)).dates;
+      if (statsCloneViewMode === 'Mcenter' && statsCloneSelectedArea) {
+        filteredPAData = filteredPAData.filter(r => toClean(r.Marea) === statsCloneSelectedArea);
+      }
 
       const rewardByArea = {};
       for (const area of columns) {
         const areaRows = filteredPAData.filter(r => toClean(r[columnField]) === area);
-        const result = calcRewardSeries(areaRows, ymList);
+        const result = calcRewardSeries(areaRows, measurementDates, ymList);
         rewardByArea[area] = result;
       }
-      const globalResult = calcRewardSeries(filteredPAData, ymList);
+      const globalResult = calcRewardSeries(filteredPAData, measurementDates, ymList);
 
       let html = '<table id="rewardStatsCloneTable"><thead><tr><th style="text-align:left;">月份</th>';
       for (const c of columns) {
@@ -3209,10 +3391,19 @@
     function buildStatsCloneView() {
       cloneTabStats.classList.toggle('active', statsCloneActiveTab === 'stats');
       cloneTabReward.classList.toggle('active', statsCloneActiveTab === 'reward');
+      cloneTabTracking.classList.toggle('active', statsCloneActiveTab === 'tracking');
+      cloneTabRewardTracking.classList.toggle('active', statsCloneActiveTab === 'rewardTracking');
       statsCloneRuleNote.textContent = getCloneRuleNoteText();
 
+      if (statsCloneActiveTab === 'tracking' || statsCloneActiveTab === 'rewardTracking') {
+        statsCloneHint.textContent = isCloneRewardTab()
+          ? '依量測日期累計激勵分數；PA復發保留分數並顯示「+N觀察中」，重新連續4次未出現再加分。月份欄顯示月末快照。'
+          : '依目前 Filter 追蹤：藍底＝已改善、紅底＝未改善、黃底＝待觀察；僅已改善計入改善數，待觀察不計入。最後一欄為最新判定。';
+        buildCloneTrackingView(isCloneRewardTab());
+        return;
+      }
       if (statsCloneActiveTab === 'reward') {
-        statsCloneHint.textContent = '激勵規則：路段曾出現後，連續3個月未出現起算，每多缺席1個月再+1。比例採同月份各欄位橫向占比。';
+        statsCloneHint.textContent = '激勵規則：曾出現PA後，連續4次量測未出現得+1，之後每次+1；PA復發保留已得分，重新連續4次未出現再加分。表格為月末累計分數。';
         buildRewardCloneView();
         return;
       }
@@ -3411,6 +3602,16 @@
       buildStatsCloneView();
     });
 
+    cloneTabTracking.addEventListener('click', () => {
+      statsCloneActiveTab = 'tracking';
+      buildStatsCloneView();
+    });
+
+    cloneTabRewardTracking.addEventListener('click', () => {
+      statsCloneActiveTab = 'rewardTracking';
+      buildStatsCloneView();
+    });
+
     btnStatsCloneExport.addEventListener('click', () => {
       if (typeof XLSX === 'undefined') {
         alert('Excel 匯出套件尚未載入');
@@ -3418,58 +3619,39 @@
       }
 
       const wb = XLSX.utils.book_new();
+      const reward = isCloneRewardTab();
       const table = statsCloneWrap.querySelector('#statsTableClone') || statsCloneWrap.querySelector('#rewardStatsCloneTable');
       if (table) {
-        const wsView = XLSX.utils.table_to_sheet(table);
-        XLSX.utils.book_append_sheet(wb, wsView, statsCloneActiveTab === 'reward' ? 'Incentive_View' : 'Stats_View');
+        const wsView = createCloneTextSheet(table);
+        XLSX.utils.book_append_sheet(wb, wsView, reward ? 'Incentive_View' : 'Stats_View');
       }
+      const trackingData = getCloneTrackingData(reward);
+      XLSX.utils.book_append_sheet(wb, createCloneTrackingSheet(trackingData), reward ? 'Incentive_Tracking' : 'Improvement_Tracking');
 
       const { paRows, locRows } = getCloneScopedData();
-      if (statsCloneActiveTab === 'stats') {
+      if (!reward) {
         const wsPA = XLSX.utils.json_to_sheet(paRows);
         const wsLoc = XLSX.utils.json_to_sheet(locRows);
         XLSX.utils.book_append_sheet(wb, wsPA, 'PA_Raw');
         XLSX.utils.book_append_sheet(wb, wsLoc, 'Location_Raw');
       } else {
-        const ymList = getContinuousYmList(paRows);
-        const monthMap = new Map();
-        for (const ym of ymList) monthMap.set(ym, new Set());
-        for (const r of paRows) {
-          const p = parseDateParts(toClean(r.Date));
-          if (!p) continue;
-          const name = toClean(r.start_location_name);
-          if (!name) continue;
-          if (!monthMap.has(p.ym)) monthMap.set(p.ym, new Set());
-          monthMap.get(p.ym).add(name);
-        }
-
-        const allLocs = [...new Set(paRows.map(r => toClean(r.start_location_name)).filter(v => v))].sort();
-        const state = new Map();
-        for (const loc of allLocs) state.set(loc, { seen: false, absent: 0 });
-
         const rewardDetail = [];
-        const threshold = 3;
-        for (const ym of ymList) {
-          const presentSet = monthMap.get(ym) || new Set();
-          for (const loc of allLocs) {
-            const st = state.get(loc);
-            const appeared = presentSet.has(loc);
-            let point = 0;
-            if (appeared) {
-              st.seen = true;
-              st.absent = 0;
-            } else if (st.seen) {
-              st.absent += 1;
-              if (st.absent >= threshold) point = 1;
-            }
-
+        for (let i = 0; i < trackingData.measurementDates.length; i++) {
+          const date = trackingData.measurementDates[i];
+          const ym = date.slice(0, 7);
+          for (const loc of trackingData.locations) {
+            const cell = trackingData.measurementTimeline.get(loc)[i];
             rewardDetail.push({
               month: formatYm(ym),
               ym,
+              measurement_date: date,
               start_location_name: loc,
-              appeared: appeared ? 'Y' : 'N',
-              consecutive_absent_after_seen: st.absent,
-              point_add: point
+              appeared: cell.appeared ? 'Y' : 'N',
+              consecutive_absent_after_seen: cell.absentStreak,
+              point_add: cell.point,
+              cumulative_score: cell.score,
+              observing: cell.observing ? 'Y' : 'N',
+              display: PAIncentive.formatScore(cell)
             });
           }
         }
@@ -3480,6 +3662,15 @@
         XLSX.utils.book_append_sheet(wb, wsPA, 'PA_Raw');
       }
 
+      for (const ws of Object.values(wb.Sheets)) {
+        for (const key of Object.keys(ws)) {
+          if (key.startsWith('!')) continue;
+          ws[key].t = 's';
+          ws[key].v = String(ws[key].v ?? '');
+          ws[key].z = '@';
+        }
+      }
+
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
       const yearLabel = selectedStatsYear || 'ALL';
       const typeLabel = selectedStatsType === 'ALL' ? 'ALL' : selectedStatsType === 'open' ? 'Open' : 'Tunnel';
@@ -3487,7 +3678,7 @@
       const cloneTypeLabel = statsCloneType === 'ALL' ? 'ALL' : statsCloneType === 'open' ? 'Open' : 'Tunnel';
       const cloneNetLabel = statsCloneNet || 'ALL';
       const viewLabel = statsCloneViewMode === 'Mcenter' ? `Mcenter_${statsCloneSelectedArea || 'NA'}` : 'Marea';
-      const tabLabel = statsCloneActiveTab === 'reward' ? 'Incentive' : 'Stats';
+      const tabLabel = reward ? 'Incentive' : 'Stats';
       XLSX.writeFile(wb, `PA_${tabLabel}_${yearLabel}_${typeLabel}_${cloneYearLabel}_${cloneTypeLabel}_${cloneNetLabel}_${viewLabel}_${timestamp}.xlsx`);
     });
 
@@ -3680,57 +3871,13 @@
       function buildImprovedSeriesWithRecovery(rows, dateList, baseSet, tunnelOnly = null, fieldName = 'start_location_name') {
         const improvedByDate = new Map();
         if (useCloneImprovedRule) {
-          const stateByLoc = new Map();
-          const absentEnterThreshold = settlementMode ? 4 : 3;
-
-          // 鎖頭專用規則：預設為改善；首次出現立即退出；退出後連續缺席達門檻重回改善；
-          // 進入改善後需連續出現3個月才退出。
-          for (const loc of baseSet) {
-            stateByLoc.set(loc, {
-              isImproved: true,
-              seenEver: false,
-              presentStreak: 0,
-              absentStreak: 0,
-            });
-          }
-
-          for (let i = 0; i < dateList.length; i++) {
-            const d0 = dateList[i];
-            const s0 = getLocationSetAtDate(rows, d0, tunnelOnly, fieldName);
-
-            let improvedCount = 0;
-            for (const loc of baseSet) {
-              const st = stateByLoc.get(loc);
-              const presentNow = s0.has(loc);
-              const seenBeforeThisMonth = st.seenEver === true;
-
-              if (presentNow) {
-                st.presentStreak += 1;
-                st.absentStreak = 0;
-                st.seenEver = true;
-
-                if (st.isImproved) {
-                  if (!seenBeforeThisMonth) {
-                    st.isImproved = false;
-                  } else if (st.presentStreak >= 3) {
-                    st.isImproved = false;
-                  }
-                }
-              } else {
-                st.absentStreak += 1;
-                st.presentStreak = 0;
-
-                if (!st.isImproved && st.absentStreak >= absentEnterThreshold) {
-                  st.isImproved = true;
-                }
-              }
-
-              if (st.isImproved) improvedCount++;
+          const timeline = buildCloneImprovementTimeline(rows, dateList, baseSet, settlementMode);
+          for (let i = 2; i < dateList.length; i++) {
+            let count = 0;
+            for (const cells of timeline.values()) {
+              if (cells[i].status === 'improved') count++;
             }
-
-            if (i >= 2) {
-              improvedByDate.set(d0, improvedCount);
-            }
+            improvedByDate.set(dateList[i], count);
           }
         } else {
           const improvedState = new Map();
