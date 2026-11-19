@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THSR PA Log Table  v6.0(2026.10.16)</title>
+  <title>THSR PA Log Table  v7.0(2026.11.19)</title>
   <style>
     :root {
       --bg0:#070b16;
@@ -71,7 +71,7 @@
       gap:8px; user-select:none; font-size:11px;
     }
     .msel-btn:hover { background:rgba(255,154,60,0.10); border-color:rgba(255,154,60,0.30); }
-    #operatorSelect {
+    #operatorSelect, #yearSelect {
       width:96px; box-sizing:border-box;
       border:1px solid var(--line2); border-radius:10px;
       padding:5px 7px; background:var(--panel); color:var(--txt);
@@ -133,6 +133,7 @@
       border-color:rgba(43,124,255,0.40);
       box-shadow:0 0 18px rgba(43,124,255,0.12);
     }
+    a.btn { text-decoration:none; }
     .status-tag { font-size:11px; color:var(--muted); white-space:nowrap; }
 
     /* ===== Main scroll area ===== */
@@ -210,6 +211,10 @@
     .badge-impr { display:inline-block; border-radius:5px; padding:1px 6px; font-size:10px; font-weight:800; }
     .badge-impr.bad  { background:rgba(255,43,43,0.22);  border:1px solid rgba(255,43,43,0.45);  color:#ff8080; }
     .badge-impr.good { background:rgba(0,200,100,0.18);  border:1px solid rgba(0,200,100,0.40);  color:#4dffaa; }
+    .badge-settlement { display:inline-block; border-radius:5px; padding:2px 6px; font-size:10px; font-weight:800; white-space:nowrap; }
+    .badge-settlement.improved { background:#bdd7ee; color:#102a43; }
+    .badge-settlement.unimproved { background:#ffc7ce; color:#721c24; }
+    .badge-settlement.pending { background:#ffeb9c; color:#664d03; }
 
     /* improvement filter button group */
     .impr-group { display:flex; align-items:center; gap:4px; }
@@ -584,7 +589,7 @@
   <div id="loginBox">
     <div class="login-title">THSR PA Log Table</div>
     <div class="login-sub">請輸入帳號資訊以繼續</div>
-    <input class="login-field" id="loginLdap" type="text" placeholder="LDAP 帳號（xxx@cht.com.tw）" autocomplete="username">
+    <input class="login-field" id="loginLdap" type="text" placeholder="帳號" autocomplete="username">
     <input class="login-field" id="loginEmpId" type="text" placeholder="Employee ID（如：002507）" autocomplete="off" maxlength="20">
     <button class="login-btn" id="btnLogin">登入</button>
     <div class="login-err" id="loginErr"></div>
@@ -626,7 +631,7 @@
 
 <div class="app">
   <div class="top-bar">
-    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v6.0(2026.10.16)</span></div>
+    <div class="bar-title">THSR PA Log Table <span style="font-size:10px;opacity:.6;font-weight:700;">v7.0(2026.11.19)</span></div>
     <div class="bar-sep"></div>
     <!-- 改善狀態 filter (放最前面) -->
     <div class="impr-group">
@@ -647,6 +652,7 @@
     <div class="gh-badge" id="ghBadge" title="Google Sheets 同步設定">☁️ 未設定</div>
     <button class="btn" id="btnSync" title="手動重新同步 notes">🔄 同步</button>
     <button class="btn" id="btnExport" title="匯出目前篩選結果為 Excel">📥 匯出 Excel</button>
+    <a class="btn" id="btnRuleExamplesDownload" href="PA_Settlement_Incentive_Examples.xlsx" download="PA_Settlement_Incentive_Examples.xlsx" title="下載一般結算、激勵與7次全組合的改善規則 Excel 範例">改善規則範例下載</a>
     <button class="btn" id="btnLogout" title="登出">🚪 登出</button>
     <div class="status-tag" id="statusTag"></div>
   </div>
@@ -661,21 +667,24 @@
 
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="PA_Incentive.js"></script>
 <script>
 /* ============================================================
-   THSR PA Log Table  v6.0(2026.10.16)
-   - Top filter bar: Operator (single, default CHT) / Net / Script / Marea
+   THSR PA Log Table  v7.0(2026.11.19)
+   - Top filter bar: Year (single, latest fiscal year, February through January) / Operator (single, default CHT) / Net / Script / Marea
    - Pivot table: rows = THSR_Location.csv, cols = dates from PA_data.csv
    ============================================================ */
 
 // ── Filter state ─────────────────────────────────────────────
 const filterState = {
+  Year:               new Set(),
   Operator:           new Set(),
   measurement_NetWork: new Set(),
   measurement_Script:  new Set(),
   Marea:               new Set(),
 };
 const filterAllOptions = {
+  Year:               [],
   Operator:           [],
   measurement_NetWork: [],
   measurement_Script:  [],
@@ -827,6 +836,31 @@ function createMultiSelect({ title, key, width = 120 }) {
 const filterMount = document.getElementById('filterMount');
 const filterWidgets = {};
 
+const yearWrap = document.createElement('label');
+yearWrap.className = 'msel';
+yearWrap.title = '統計年度：當年2月至次年1月；預設最新年度';
+yearWrap.innerHTML = '<span class="lbl" id="yearLabel">年份</span><select id="yearSelect" aria-labelledby="yearLabel"></select>';
+const yearSelect = yearWrap.querySelector('select');
+yearSelect.addEventListener('change', () => {
+  filterState.Year.clear();
+  if (yearSelect.selectedIndex >= 0) filterState.Year.add(yearSelect.value);
+  applyAndRender();
+});
+filterWidgets.Year = {
+  el: yearWrap,
+  setOptions(options) {
+    filterAllOptions.Year = options.slice();
+    yearSelect.replaceChildren(...options.map(value => {
+      const option = new Option(`${value}年`, value);
+      option.title = `${value}年2月～${Number(value) + 1}年1月`;
+      return option;
+    }));
+    yearSelect.selectedIndex = options.length - 1;
+    filterState.Year.clear();
+    if (options.length) filterState.Year.add(options[options.length - 1]);
+  },
+};
+
 const operatorWrap = document.createElement('label');
 operatorWrap.className = 'msel';
 operatorWrap.innerHTML = '<span class="lbl" id="operatorLabel">Operator</span><select id="operatorSelect" aria-labelledby="operatorLabel"></select>';
@@ -851,6 +885,7 @@ filterWidgets.Net    = createMultiSelect({ title: 'Net',    key: 'measurement_Ne
 filterWidgets.Script = createMultiSelect({ title: 'Script', key: 'measurement_Script',  width: 130 });
 filterWidgets.Marea  = createMultiSelect({ title: 'Marea',  key: 'Marea',               width: 130 });
 
+filterMount.appendChild(filterWidgets.Year.el);
 filterMount.appendChild(filterWidgets.Operator.el);
 filterMount.appendChild(filterWidgets.Net.el);
 filterMount.appendChild(filterWidgets.Script.el);
@@ -862,6 +897,7 @@ document.getElementById('btnClear').addEventListener('click', () => {
   document.querySelectorAll('.impr-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.impr === 'all')
   );
+  filterWidgets.Year.setOptions(filterAllOptions.Year.slice());
   filterWidgets.Operator.setOptions(filterAllOptions.Operator.slice(), ['CHT']);
   filterWidgets.Net.setOptions(filterAllOptions.measurement_NetWork.slice());
   filterWidgets.Script.setOptions(filterAllOptions.measurement_Script.slice());
@@ -934,6 +970,105 @@ function isLocationImproved(locationName, context) {
   return context.hasEnoughMeasurements && !context.recentLocationsWithPa.has(locationName);
 }
 
+const PA_SETTLEMENT_STATES = {
+  improved: { label: '已改善', color: 'FFBDD7EE' },
+  unimproved: { label: '未改善', color: 'FFFFC7CE' },
+  pending: { label: '觀察中', color: 'FFFFEB9C' },
+};
+const PA_SETTLEMENT_COLUMNS = [
+  {
+    label: 'PA路段結算', key: 'settlementStatus', statusKey: 'settlementStatus',
+    rule: '沿用目前年份／Operator／Net／Script／Marea Filter，取所選統計年度（2月至次年1月）的每月最後量測日。路段預設改善，首次出現PA即未改善；連續缺席3個月恢復改善。改善後再次出現PA顯示觀察中，不計入當次改善數，但保留改善資格；下一個判定月份無PA即恢復已改善，不必重新等3個月。連續出現PA達3個判定月份才取消改善資格。初期不足3次量測或恢復門檻未滿也顯示觀察中；只有當次顯示已改善才計入改善數。',
+  },
+  {
+    label: 'PA路段結算(激勵)', key: 'rewardSettlementScore', statusKey: 'rewardSettlementStatus', isIncentive: true,
+    rule: '沿用目前年份／Operator／Net／Script／Marea Filter。同一量測日期合併為1次；路段必須先出現過PA，之後連續4次未出現得+1、第5次+2、第6次+3，依此累計。PA復發保留分數並顯示「+N觀察中」，重新連續4次未出現才再+1；未得分顯示0。無量測的日期不計次，切換年度重新計算。',
+  },
+];
+
+function getPaSettlementCellText(row, column) {
+  return column.isIncentive
+    ? PAIncentive.formatScore({ score: row.rewardSettlementScore, observing: row.rewardSettlementObserving })
+    : PA_SETTLEMENT_STATES[row[column.key]].label;
+}
+
+function parsePaSettlementDate(dateText) {
+  const match = String(dateText ?? '').trim().match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+  if (!match) return null;
+  const y = Number(match[1]), m = Number(match[2]), d = Number(match[3]);
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return {
+    fiscalYear: m === 1 ? y - 1 : y,
+    month: y * 12 + m - 1,
+    date: y * 10000 + m * 100 + d,
+  };
+}
+
+function getPaFiscalYears(paRows) {
+  const years = new Set();
+  for (const row of paRows) {
+    const date = parsePaSettlementDate(row.Date);
+    if (date) years.add(String(date.fiscalYear));
+  }
+  return [...years].sort((a, b) => Number(a) - Number(b));
+}
+
+function buildPaSettlementContext(paRows, locationNames) {
+  const parsedRows = [];
+  let year = null;
+  for (const row of paRows) {
+    const date = parsePaSettlementDate(row.Date);
+    if (!date) continue;
+    if (year === null || date.fiscalYear > year) year = date.fiscalYear;
+    parsedRows.push({ name: row.start_location_name || '', ...date });
+  }
+
+  const monthlyLastDates = new Map();
+  const presenceByLocation = new Map();
+  for (const row of parsedRows) {
+    if (row.fiscalYear !== year) continue;
+    monthlyLastDates.set(row.month, Math.max(monthlyLastDates.get(row.month) || 0, row.date));
+    if (!presenceByLocation.has(row.name)) {
+      presenceByLocation.set(row.name, { dates: new Set() });
+    }
+    const presence = presenceByLocation.get(row.name);
+    presence.dates.add(row.date);
+  }
+  const months = [...monthlyLastDates.keys()].sort((a, b) => a - b);
+  const incentiveRows = paRows.filter(row => parsePaSettlementDate(row.Date)?.fiscalYear === year);
+  const incentive = PAIncentive.buildTimeline(incentiveRows, incentiveRows.map(row => row.Date), locationNames);
+  const results = new Map();
+  for (const name of locationNames) {
+    const presence = presenceByLocation.get(name);
+    let improved = true, seen = false, presentStreak = 0, absentStreak = 0;
+    let settlementStatus = 'pending';
+    months.forEach((month, i) => {
+      const appeared = presence?.dates.has(monthlyLastDates.get(month)) === true;
+      if (appeared) {
+        presentStreak++;
+        absentStreak = 0;
+        if (improved && (!seen || presentStreak >= 3)) improved = false;
+        seen = true;
+      } else {
+        absentStreak++;
+        presentStreak = 0;
+        if (!improved && absentStreak >= 3) improved = true;
+      }
+      settlementStatus = improved ? 'improved' : 'unimproved';
+      if ((improved && (i < 2 || appeared)) || (!improved && !appeared)) settlementStatus = 'pending';
+    });
+
+    const reward = incentive.timeline.get(String(name).trim())?.at(-1);
+    results.set(name, {
+      settlementStatus,
+      rewardSettlementStatus: reward?.status ?? 'pending',
+      rewardSettlementScore: reward?.score ?? 0,
+      rewardSettlementObserving: reward?.observing ?? false,
+    });
+  }
+  return { year, results };
+}
+
 function updateStickyLefts() {
   const ths = Array.from(document.querySelectorAll('#tHead th.fc'));
   if (!ths.length) return;
@@ -952,6 +1087,7 @@ function scheduleUpdateStickyLefts() {
 
 function getFilteredPaRows() {
   return allPaRows.filter(r =>
+    filterState.Year.has(String(parsePaSettlementDate(r.Date)?.fiscalYear)) &&
     filterState.Operator.has(r.Operator) &&
     filterState.measurement_NetWork.has(r.measurement_NetWork) &&
     filterState.measurement_Script.has(r.measurement_Script) &&
@@ -1127,6 +1263,7 @@ function renderPivot(locRows, paRows) {
   });
 
   const improvementContext = buildImprovementContext(paRows);
+  const settlementContext = buildPaSettlementContext(paRows, locRows.map(row => row.location_name || ''));
 
   // ── Group by location_name (preserve first-seen order after sort) ──
   const groupMap = new Map(); // location_name → { rows[] }
@@ -1153,6 +1290,7 @@ function renderPivot(locRows, paRows) {
       mcenter: mergeField(rows, 'mcenter'),
       memo:    mergeField(rows, 'memo'),
       isImproved: isLocationImproved(name, improvementContext),
+      ...settlementContext.results.get(name),
     });
   }
 
@@ -1168,6 +1306,10 @@ function renderPivot(locRows, paRows) {
     const sd = sortDir;
     merged.sort((a, b) => {
       let va, vb;
+      if (sortKey === 'rewardSettlementScore') {
+        return (a.rewardSettlementScore - b.rewardSettlementScore
+          || Number(a.rewardSettlementObserving) - Number(b.rewardSettlementObserving)) * sd;
+      }
       if (sortKey === '__impr__') {
         va = a.isImproved ? 0 : 1;
         vb = b.isImproved ? 0 : 1;
@@ -1235,6 +1377,13 @@ function renderPivot(locRows, paRows) {
     makeSortTh(th, d);
     thead.appendChild(th);
   }
+  for (const column of PA_SETTLEMENT_COLUMNS) {
+    const th = document.createElement('th');
+    th.textContent = column.label;
+    th.title = column.rule + (settlementContext.year === null ? '\n目前無可判定資料。' : `\n統計年度：${settlementContext.year}/02～${settlementContext.year + 1}/01`);
+    makeSortTh(th, column.key);
+    thead.appendChild(th);
+  }
 
   // ── Body rows ──
   const frag = document.createDocumentFragment();
@@ -1298,6 +1447,15 @@ function renderPivot(locRows, paRows) {
       tr.appendChild(td);
     }
 
+    for (const column of PA_SETTLEMENT_COLUMNS) {
+      const td = document.createElement('td');
+      td.style.textAlign = 'center';
+      const badge = document.createElement('span');
+      badge.className = 'badge-settlement ' + row[column.statusKey];
+      badge.textContent = getPaSettlementCellText(row, column);
+      td.appendChild(badge);
+      tr.appendChild(td);
+    }
     frag.appendChild(tr);
   }
   tbody.appendChild(frag);
@@ -1332,6 +1490,7 @@ async function loadData(userName) {
       if (ib !== -1) return 1;
       return a.localeCompare(b, 'zh-Hant');
     });
+    filterWidgets.Year.setOptions(getPaFiscalYears(allPaRows));
     filterWidgets.Operator.setOptions(operators, ['CHT']);
     filterWidgets.Net.setOptions(nets, ['4G']);
     filterWidgets.Script.setOptions(scripts);
@@ -1840,6 +1999,7 @@ async function exportExcel() {
   });
 
   const improvementContext = buildImprovementContext(pa);
+  const settlementContext = buildPaSettlementContext(pa, locF.map(row => row.location_name || ''));
   const groupMap = new Map();
   for (const r of rawSorted) {
     const name = r.location_name || '';
@@ -1859,6 +2019,7 @@ async function exportExcel() {
       kmRange: first === last ? first : first + '~' + last,
       marea: mf(rows, 'marea'), mcenter: mf(rows, 'mcenter'), memo: mf(rows, 'memo'),
       isImproved: isLocationImproved(name, improvementContext),
+      ...settlementContext.results.get(name),
     });
   }
 
@@ -1869,6 +2030,10 @@ async function exportExcel() {
     const sd = sortDir;
     merged.sort((a, b) => {
       let va, vb;
+      if (sortKey === 'rewardSettlementScore') {
+        return (a.rewardSettlementScore - b.rewardSettlementScore
+          || Number(a.rewardSettlementObserving) - Number(b.rewardSettlementObserving)) * sd;
+      }
       if (sortKey === '__impr__') { va = a.isImproved ? 0 : 1; vb = b.isImproved ? 0 : 1; return (va - vb) * sd; }
       if (sortKey === '__km__') { return (parseKmM(a.kmRange.split('~')[0]) - parseKmM(b.kmRange.split('~')[0])) * sd; }
       if (dates.includes(sortKey)) {
@@ -1893,7 +2058,7 @@ async function exportExcel() {
   // 標題列
   const hdrRow = ws.addRow([
     'KM+M', 'location_name', 'marea', 'mcenter', 'memo', '改善狀態',
-    ...dates, '註記',
+    ...dates, '註記', ...PA_SETTLEMENT_COLUMNS.map(column => column.label),
   ]);
   hdrRow.height = 20;
   hdrRow.eachCell(cell => {
@@ -1923,6 +2088,7 @@ async function exportExcel() {
       row.isImproved ? '已改善' : '未改善',
       ...dateDetails.map(d => d.length > 0 ? d.length : ''),
       noteLines.join('\n'),
+      ...PA_SETTLEMENT_COLUMNS.map(column => getPaSettlementCellText(row, column)),
     ];
 
     const exRow = ws.addRow(rowVals);
@@ -1950,6 +2116,12 @@ async function exportExcel() {
     if (noteLines.length) {
       exRow.getCell(FIX + dates.length + 1).alignment = { wrapText: true, vertical: 'top' };
     }
+    PA_SETTLEMENT_COLUMNS.forEach((column, i) => {
+      const cell = exRow.getCell(FIX + dates.length + 2 + i);
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: PA_SETTLEMENT_STATES[row[column.statusKey]].color } };
+      cell.font = { color: { argb: 'FF102A43' }, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
   }
 
   // 欄寬設定
@@ -1961,6 +2133,7 @@ async function exportExcel() {
   ws.getColumn(6).width = 10;  // 改善狀態
   dates.forEach((_, i) => { ws.getColumn(FIX + i + 1).width = 13; });
   ws.getColumn(FIX + dates.length + 1).width = 45; // 註記
+  PA_SETTLEMENT_COLUMNS.forEach((_, i) => { ws.getColumn(FIX + dates.length + 2 + i).width = 25; });
 
   // 凍結第一列
   ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
