@@ -667,7 +667,61 @@
 
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="PA_Incentive.js"></script>
+<!-- Embedded for standalone deployment; tests verify parity with PA_Incentive.js. -->
+<script id="pa-incentive">
+const PAIncentive = (() => {
+  function normalizeDate(value) {
+    const match = String(value ?? '').trim().match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if (!match) return null;
+    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  function buildTimeline(rows, measurementDates, locationNames = []) {
+    const dates = [...new Set(measurementDates.map(normalizeDate).filter(Boolean))].sort();
+    const presence = new Map(dates.map(date => [date, new Set()]));
+    const names = new Set(Array.from(locationNames, name => String(name ?? '').trim()).filter(Boolean));
+    for (const row of rows) {
+      const name = String(row.start_location_name ?? '').trim();
+      const date = normalizeDate(row.Date);
+      if (!name || !presence.has(date)) continue;
+      names.add(name);
+      presence.get(date).add(name);
+    }
+
+    const timeline = new Map();
+    for (const name of names) {
+      let score = 0, absentStreak = 0, seen = false;
+      const cells = dates.map(date => {
+        const appeared = presence.get(date).has(name);
+        let point = 0;
+        if (appeared) {
+          seen = true;
+          absentStreak = 0;
+        } else if (seen) {
+          absentStreak++;
+          if (absentStreak >= 4) {
+            point = 1;
+            score++;
+          }
+        }
+        const observing = score > 0 && absentStreak < 4;
+        const status = observing ? 'pending' : score > 0 ? 'improved' : appeared ? 'unimproved' : 'pending';
+        return { date, appeared, absentStreak, point, score, observing, status };
+      });
+      timeline.set(name, cells);
+    }
+    return { dates, timeline };
+  }
+
+  function formatScore(cell) {
+    return cell.score > 0 ? `+${cell.score}${cell.observing ? '\u89c0\u5bdf\u4e2d' : ''}` : '0';
+  }
+
+  return { buildTimeline, formatScore };
+})();
+</script>
 <script>
 /* ============================================================
    THSR PA Log Table  v7.0(2026.11.19)
